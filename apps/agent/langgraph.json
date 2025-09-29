@@ -1,0 +1,9 @@
+{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "agent": "./dist/agent.js:deepAgentGraph"
+  },
+  "env": ".env"
+}
