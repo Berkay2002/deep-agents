@@ -1,14 +1,13 @@
 # Deep Agents Monorepo
 
-This repository scaffolds a LangGraph agent package alongside a Next.js web application that proxies API requests to the LangGraph Server.
+This repository scaffolds the workspace layout for a LangGraph agent package and a Next.js application. Implementation details wi
+ll be added in later milestones.
 
 ## Structure
 
-- `apps/agent`: LangGraph agent package containing agent source files and configuration.
-- `apps/web`: Next.js application with an API route that forwards traffic to the LangGraph Server.
+- `apps/agent`: Placeholder LangGraph agent package with source directories and configuration files.
+- `apps/web`: Placeholder Next.js application with a stub API route for the LangGraph proxy.
 
 ## Getting Started
 
-1. Install dependencies with your preferred package manager (e.g. `pnpm install`).
-2. Configure `apps/agent/.env` with the required environment variables.
-3. Run the LangGraph agent and start the Next.js dev server as needed.
+Install dependencies with your preferred package manager once subsequent milestones add runnable code.

@@ -1,2 +1,1 @@
-// Placeholder for LangGraph state management utilities.
-export const initialState = {};
+// TODO: Define LangGraph state in a later milestone.

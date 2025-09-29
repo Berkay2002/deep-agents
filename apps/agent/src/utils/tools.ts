@@ -1,2 +1,1 @@
-// Placeholder for LangGraph tool definitions.
-export const tools = [];
+// TODO: Define LangGraph tools in a later milestone.
