@@ -1,17 +1,26 @@
 {
-  "name": "@repo/agent",
+  "name": "deep-agents-app",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "src/agent.ts",
+  "main": "dist/agent.js",
   "scripts": {
-    "build": "tsc -p .",
-    "start": "node dist/agent.js"
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "dev:server": "langgraph dev -c langgraph.json",
+    "build:server": "langgraph build"
   },
   "dependencies": {
-    "langgraph-sdk": "^0.1.0"
+    "@langchain/core": "^0.2.0",
+    "@langchain/google-genai": "^0.1.2",
+    "@langchain/mcp-adapters": "^0.6.0",
+    "@langchain/tavily": "^0.1.5",
+    "deepagents": "^1.0.0"
   },
   "devDependencies": {
-    "typescript": "^5.4.0"
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

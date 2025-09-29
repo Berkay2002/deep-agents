@@ -1,3 +1,5 @@
+// src/utils/tools.ts
+import { TavilySearch } from "@langchain/tavily";
 import type { Tool } from "@langchain/core/tools";
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";
 
@@ -17,20 +19,22 @@ const mcpServers = {
 };
 
 export type McpServerName = keyof typeof mcpServers;
-export type LoadedMcpTool = Tool;
+export type LoadedTool = Tool;
 
-const allServerNames: McpServerName[] = Object.keys(mcpServers) as McpServerName[];
+const allServerNames: McpServerName[] = Object.keys(
+  mcpServers
+) as McpServerName[];
 
 export const mcpClient = new MultiServerMCPClient({
   mcpServers,
 });
 
-let cachedTools: LoadedMcpTool[] | null = null;
-const cachedToolsByServer: Partial<Record<McpServerName, LoadedMcpTool[]>> = {};
+let cachedTools: LoadedTool[] | null = null;
+const cachedToolsByServer: Partial<Record<McpServerName, LoadedTool[]>> = {};
 
 const fetchToolsForServer = async (
-  server: McpServerName,
-): Promise<LoadedMcpTool[] | null> => {
+  server: McpServerName
+): Promise<LoadedTool[] | null> => {
   try {
     const tools = await mcpClient.getTools(server);
     cachedToolsByServer[server] = tools;
@@ -47,75 +51,71 @@ export interface LoadMcpToolsOptions {
 }
 
 const normalizeServerSelection = (
-  servers: LoadMcpToolsOptions["servers"],
+  servers: LoadMcpToolsOptions["servers"]
 ): McpServerName[] | undefined => {
-  if (!servers) {
-    return undefined;
-  }
-
+  if (!servers) return undefined;
   return Array.isArray(servers) ? servers : [servers];
 };
 
 export const loadMcpTools = async (
-  options: LoadMcpToolsOptions = {},
-): Promise<LoadedMcpTool[]> => {
+  options: LoadMcpToolsOptions = {}
+): Promise<LoadedTool[]> => {
   const serverSelection = normalizeServerSelection(options.servers);
   const shouldRefresh = options.refresh ?? false;
   const targetServers = serverSelection ?? allServerNames;
 
-  if (targetServers.length === 0) {
-    return [];
-  }
+  if (targetServers.length === 0) return [];
 
   if (!shouldRefresh) {
-    if (!serverSelection && cachedTools) {
-      return cachedTools;
-    }
-
-    if (serverSelection?.every((server) => cachedToolsByServer[server])) {
-      return serverSelection.flatMap(
-        (server) => cachedToolsByServer[server] ?? [],
-      );
+    if (!serverSelection && cachedTools) return cachedTools;
+    if (serverSelection?.every((s) => cachedToolsByServer[s])) {
+      return serverSelection.flatMap((s) => cachedToolsByServer[s] ?? []);
     }
   } else {
     cachedTools = null;
   }
 
   const serversToFetch = targetServers.filter(
-    (server) => shouldRefresh || !cachedToolsByServer[server],
+    (s) => shouldRefresh || !cachedToolsByServer[s]
   );
 
-  const fetchResults = await Promise.all(
-    serversToFetch.map(async (server) => ({
-      server,
-      tools: await fetchToolsForServer(server),
-    })),
+  const results = await Promise.all(
+    serversToFetch.map(async (s) => ({ server: s, tools: await fetchToolsForServer(s) }))
   );
 
-  const failedServers = fetchResults
-    .filter((result) => result.tools === null)
-    .map((result) => result.server);
+  const failed = results.filter((r) => r.tools === null).map((r) => r.server);
 
-  if (failedServers.length > 0 && failedServers.length < targetServers.length) {
+  if (failed.length > 0 && failed.length < targetServers.length) {
     console.warn(
-      `Some MCP servers failed to load tools: ${failedServers.join(", ")}. Returning available tools from remaining servers.`,
+      `Some MCP servers failed to load tools: ${failed.join(", ")}. Returning available tools.`
     );
   }
 
-  const availableTools = targetServers.flatMap(
-    (server) => cachedToolsByServer[server] ?? [],
-  );
+  const available = targetServers.flatMap((s) => cachedToolsByServer[s] ?? []);
 
-  if (failedServers.length === targetServers.length && availableTools.length === 0) {
-    const error = new Error(
-      `Failed to load MCP tools from servers: ${failedServers.join(", ")}`,
-    );
-    throw error;
+  if (failed.length === targetServers.length && available.length === 0) {
+    throw new Error(`Failed to load MCP tools from servers: ${failed.join(", ")}`);
   }
 
-  cachedTools = allServerNames.flatMap(
-    (server) => cachedToolsByServer[server] ?? [],
-  );
-
-  return serverSelection ? availableTools : cachedTools;
+  cachedTools = allServerNames.flatMap((s) => cachedToolsByServer[s] ?? []);
+  return serverSelection ? available : cachedTools;
 };
+
+// === High-level tool loader (used by Deep Agent) ===
+export async function loadDefaultTools(): Promise<LoadedTool[]> {
+  const tools: LoadedTool[] = [];
+
+  if (process.env.TAVILY_API_KEY) {
+    tools.push(
+      new TavilySearch({
+        tavilyApiKey: process.env.TAVILY_API_KEY,
+        maxResults: 5,
+      })
+    );
+  }
+
+  const mcpTools = await loadMcpTools();
+  tools.push(...mcpTools);
+
+  return tools;
+}
