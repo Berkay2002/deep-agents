@@ -1,0 +1,17 @@
+{
+  "name": "@repo/agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/agent.ts",
+  "scripts": {
+    "build": "tsc -p .",
+    "start": "node dist/agent.js"
+  },
+  "dependencies": {
+    "langgraph-sdk": "^0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
