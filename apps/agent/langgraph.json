@@ -1,0 +1,7 @@
+{
+  "entryPoint": "src/agent.ts",
+  "graph": {
+    "nodes": [],
+    "edges": []
+  }
+}

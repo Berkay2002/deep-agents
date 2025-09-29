@@ -1,0 +1,8 @@
+{
+  "name": "deep-agents-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/agent",
+    "apps/web"
+  ]
+}
