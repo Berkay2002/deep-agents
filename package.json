@@ -3,7 +3,7 @@
   "private": true,
   "workspaces": [
     "apps/agent",
-    "apps/web"
+    "apps/agent-chat-ui"
   ],
   "engines": {
     "node": ">=20"

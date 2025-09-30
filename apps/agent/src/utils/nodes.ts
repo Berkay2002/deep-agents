@@ -13,7 +13,14 @@ export const RESEARCH_SUB_AGENT_PROMPT = `You are a dedicated researcher. Your j
 
 Conduct thorough research and then reply to the user with a detailed answer to their question
 
-only your FINAL answer will be passed on to the user. They will have NO knowledge of anything except your final message, so your final report should be your final message!`;
+only your FINAL answer will be passed on to the user. They will have NO knowledge of anything except your final message, so your final report should be your final message!
+
+IMPORTANT: Tool Error Handling
+- If a search tool returns an error or empty results, acknowledge it and try alternative search queries
+- Check the search response for an 'error' or 'message' field before processing results
+- If multiple search attempts fail, continue with any information you've already gathered
+- Always provide the best answer possible with the information available, even if some searches failed
+- Mention in your final answer if you encountered limitations in gathering information`;
 
 export const CRITIQUE_SUB_AGENT_PROMPT = `You are a dedicated editor. You are being tasked to critique a report.
 
@@ -49,6 +56,13 @@ You can call the critique-agent to get a critique of the final report. After tha
 You can do this however many times you want until are you satisfied with the result.
 
 Only edit the file once at a time (if you call this tool in parallel, there may be conflicts).
+
+IMPORTANT: Error Handling & Resilience
+- If research agents encounter tool failures, they will inform you in their response
+- Continue research with alternative approaches if specific tools fail
+- If search services are unavailable, work with available information and acknowledge gaps
+- Always complete the report even if some information sources were unavailable
+- Document any limitations encountered during research in the final report's methodology section
 
 Here are instructions for writing the final report:
 

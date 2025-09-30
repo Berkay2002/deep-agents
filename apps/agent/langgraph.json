@@ -4,5 +4,8 @@
   "graphs": {
     "agent": "./dist/agent.js:deepAgentGraph"
   },
-  "env": ".env"
+  "env": ".env",
+  "auth": {
+    "path": "./dist/auth.js:auth"
+  }
 }

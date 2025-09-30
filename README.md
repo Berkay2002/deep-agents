@@ -1,47 +1,72 @@
 # Deep Agents Monorepo
 
-This repository hosts the Deep Agents LangGraph runtime alongside a lightweight Next.js proxy used to surface the agent over HTTP. The project is organized as an npm workspace so each package can be developed and deployed independently while sharing tooling.
+A production-ready LangGraph agent system with Google Gemini 2.5 Pro and a modern chat interface powered by Clerk authentication.
 
-## Packages
+## Structure
 
-- **apps/agent** – LangGraph agent that orchestrates subagents, default tools, and Gemini-based reasoning workflows.
-- **apps/web** – Next.js 14 application that exposes API routes bridging web clients to the agent runtime.
+- `apps/agent`: LangGraph agent using the `deepagents` library with Google Gemini 2.5 Pro
+- `apps/agent-chat-ui`: Next.js 15 chat UI with Clerk authentication and JWT-based LangGraph proxy
 
-## Prerequisites
+## Features
 
-- Node.js 20 or newer (matching the workspace `engines` field)
-- npm 10+ (ships with Node 20)
-- A Google Generative AI API key for agent execution (`GOOGLE_API_KEY` or `GOOGLE_GENAI_API_KEY`)
+- **LangGraph Agent**: Deep reasoning agent with Google Gemini 2.5 Pro
+- **Modern Chat UI**: Full-featured chat interface with message streaming
+- **Clerk Authentication**: Secure user authentication and session management
+- **JWT Authorization**: HS256 JWT tokens for agent authorization
+- **TypeScript**: Strict type safety across the entire monorepo
+- **Model Context Protocol**: MCP support for extensible tool integration (currently disabled)
 
-## Getting Started
+## Quick Start
 
-1. Install workspace dependencies:
+### Prerequisites
 
-   ```bash
-   npm install
-   ```
+- Node.js 20+
+- Google AI API key ([get one here](https://aistudio.google.com/apikey))
+- Clerk account ([sign up here](https://clerk.com/))
 
-2. Create environment files where needed. For the agent, copy `apps/agent/.env.example` to `apps/agent/.env` and provide the required Google credentials.
+### Installation
 
-3. Launch both packages in development mode:
+```bash
+npm install
+```
 
-   ```bash
-   npm run dev --workspaces
-   ```
+### Configuration
 
-   Use `npm run dev --workspace apps/agent` or `npm run dev --workspace apps/web` to focus on a single package.
+1. **Configure the agent** (`apps/agent/.env`):
+```bash
+GOOGLE_API_KEY=your_google_api_key_here
+LANGGRAPH_AUTH_SECRET=your_shared_secret_here
+LANGGRAPH_AUTH_ISSUER=http://localhost:3000
+LANGGRAPH_AUTH_AUDIENCE=deep-agents-langgraph
+```
 
-4. Run linting or formatting from the repo root:
+2. **Configure the chat UI** (`apps/agent-chat-ui/.env.local`):
+```bash
+LANGGRAPH_API_URL=http://localhost:2024
+LANGGRAPH_AUTH_SECRET=your_shared_secret_here  # Must match agent secret
+LANGGRAPH_AUTH_ISSUER=http://localhost:3000
+LANGGRAPH_AUTH_AUDIENCE=deep-agents-langgraph
 
-   ```bash
-   npm run lint
-   npm run format
-   ```
+# Get these from https://dashboard.clerk.com/last-active?path=api-keys
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+CLERK_SECRET_KEY=your_clerk_secret_key
+```
 
-## Additional Resources
+### Running the Application
 
-- [docs-by-langchain.md](docs-by-langchain.md) – High-level LangChain integration notes.
-- [langgraph-js.md](langgraph-js.md) / [langchain-js.md](langchain-js.md) – Reference material for the JavaScript ecosystem used in this project.
-- [MCP-SERVERS.md](MCP-SERVERS.md) – Details on Model Context Protocol server interactions.
+```bash
+# Terminal 1: Start the LangGraph agent
+cd apps/agent
+npm run build  # Required: compile TypeScript
+npm run dev    # Starts on port 2024
 
-For package-specific instructions, see the README files inside each workspace (for example, [`apps/agent/README.md`](apps/agent/README.md)).
+# Terminal 2: Start the chat UI
+cd apps/agent-chat-ui
+npm run dev    # Starts on port 3000
+```
+
+Visit http://localhost:3000 and sign in to start chatting with your agent!
+
+## Development
+
+See [CLAUDE.md](./CLAUDE.md) for detailed architecture documentation and development guidelines.

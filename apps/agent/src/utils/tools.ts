@@ -2,15 +2,14 @@
 import { TavilySearch } from "@langchain/tavily";
 import { tool, type StructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
-import { MultiServerMCPClient } from "@langchain/mcp-adapters";
+import { loadMcpTools } from "./mcp.js";
+import {
+  withRetry,
+  SearchTimeoutError,
+  ToolExecutionError,
+  formatErrorForUser,
+} from "./errors.js";
 
-// MCP servers configuration
-// Note: Currently disabled due to compatibility issues with npx execution
-// Many MCP servers are Python-based or lack proper bin configuration for npx
-// Future: Add working Node.js MCP servers or use Python-based servers with uvx
-const mcpServers = {};
-
-export type McpServerName = string;
 export type LoadedTool = StructuredTool;
 
 type InternetSearchTopic = "general" | "news" | "finance";
@@ -28,23 +27,83 @@ export const internetSearch = tool(
     includeRawContent?: boolean;
   }) => {
     if (!process.env.TAVILY_API_KEY) {
-      throw new Error(
-        "TAVILY_API_KEY is required to run the internet_search tool."
-      );
+      const errorMsg =
+        "TAVILY_API_KEY is not configured. Web search is unavailable.";
+      console.error(errorMsg);
+      return {
+        error: errorMsg,
+        results: [],
+        query,
+        message:
+          "Search tool is unavailable. Please continue with other available information.",
+      };
     }
 
-    const tavilySearch = new TavilySearch({
-      maxResults,
-      topic,
-      tavilyApiKey: process.env.TAVILY_API_KEY,
-      includeRawContent,
-    });
+    try {
+      // Execute search with retry logic and timeout
+      const result = await withRetry(
+        async () => {
+          const tavilySearch = new TavilySearch({
+            maxResults,
+            topic,
+            tavilyApiKey: process.env.TAVILY_API_KEY!,
+            includeRawContent,
+          });
 
-    return tavilySearch.invoke({ query });
+          return tavilySearch.invoke({ query });
+        },
+        {
+          maxAttempts: 3,
+          initialDelayMs: 1000,
+          timeoutMs: 30000, // 30 second timeout
+        }
+      );
+
+      return result;
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+
+      // Log the error for debugging
+      console.error(`Internet search failed for query "${query}":`, err);
+
+      // Check if it's a timeout error
+      if (err.message.includes("timed out")) {
+        const timeoutError = new SearchTimeoutError(query, 30000);
+        return {
+          error: formatErrorForUser(timeoutError),
+          results: [],
+          query,
+          message:
+            "The search took too long to complete. Try a more specific search query or continue with available information.",
+        };
+      }
+
+      // Handle rate limiting
+      if (err.message.includes("429") || err.message.includes("rate limit")) {
+        return {
+          error: "Search rate limit exceeded. Please wait a moment.",
+          results: [],
+          query,
+          message:
+            "Search service is temporarily rate-limited. Please continue with available information or try again shortly.",
+        };
+      }
+
+      // Generic error handling
+      const toolError = new ToolExecutionError("internet_search", err.message, err);
+      return {
+        error: formatErrorForUser(toolError),
+        results: [],
+        query,
+        message:
+          "Search encountered an error. Please continue with other available information or try a different query.",
+      };
+    }
   },
   {
     name: "internet_search",
-    description: "Run a web search",
+    description:
+      "Run a web search to find information. Returns search results or an error message if the search fails. Always check the response for an 'error' field.",
     schema: z.object({
       query: z.string().describe("The search query"),
       maxResults: z
@@ -65,90 +124,6 @@ export const internetSearch = tool(
     }),
   }
 );
-
-const allServerNames: string[] = Object.keys(mcpServers);
-const hasMcpServers = allServerNames.length > 0;
-
-// Only initialize MCP client if servers are configured
-export const mcpClient = hasMcpServers
-  ? new MultiServerMCPClient({ mcpServers })
-  : null;
-
-let cachedTools: LoadedTool[] | null = null;
-const cachedToolsByServer: Partial<Record<McpServerName, LoadedTool[]>> = {};
-
-const fetchToolsForServer = async (
-  server: McpServerName
-): Promise<LoadedTool[] | null> => {
-  if (!mcpClient) {
-    console.warn("MCP client not initialized. No MCP servers configured.");
-    return null;
-  }
-  try {
-    const tools = await mcpClient.getTools(server);
-    cachedToolsByServer[server] = tools as unknown as LoadedTool[];
-    return tools as unknown as LoadedTool[];
-  } catch (error) {
-    console.error(`Failed to load MCP tools for server: ${server}.`, error);
-    return null;
-  }
-};
-
-export interface LoadMcpToolsOptions {
-  servers?: McpServerName | McpServerName[];
-  refresh?: boolean;
-}
-
-const normalizeServerSelection = (
-  servers: LoadMcpToolsOptions["servers"]
-): McpServerName[] | undefined => {
-  if (!servers) return undefined;
-  return Array.isArray(servers) ? servers : [servers];
-};
-
-export const loadMcpTools = async (
-  options: LoadMcpToolsOptions = {}
-): Promise<LoadedTool[]> => {
-  const serverSelection = normalizeServerSelection(options.servers);
-  const shouldRefresh = options.refresh ?? false;
-  const targetServers = serverSelection ?? allServerNames;
-
-  if (targetServers.length === 0) return [];
-
-  if (!shouldRefresh) {
-    if (!serverSelection && cachedTools) return cachedTools;
-    if (serverSelection?.every((s) => cachedToolsByServer[s])) {
-      return serverSelection.flatMap((s) => cachedToolsByServer[s] ?? []);
-    }
-  } else {
-    cachedTools = null;
-  }
-
-  const serversToFetch = targetServers.filter(
-    (s) => shouldRefresh || !cachedToolsByServer[s]
-  );
-
-  const results = await Promise.all(
-    serversToFetch.map(async (s) => ({ server: s, tools: await fetchToolsForServer(s) }))
-  );
-
-  const failed = results.filter((r) => r.tools === null).map((r) => r.server);
-
-  if (failed.length > 0 && failed.length < targetServers.length) {
-    console.warn(
-      `Some MCP servers failed to load tools: ${failed.join(", ")}. Returning available tools.`
-    );
-  }
-
-  const available = targetServers.flatMap((s) => cachedToolsByServer[s] ?? []);
-
-  if (failed.length === targetServers.length && available.length === 0) {
-    console.warn(`All MCP servers failed to load: ${failed.join(", ")}. Agent will run without MCP tools.`);
-  }
-
-  cachedTools = allServerNames.flatMap((s) => cachedToolsByServer[s] ?? []);
-  return serverSelection ? available : cachedTools;
-};
 
 // === High-level tool loader (used by Deep Agent) ===
 export async function loadDefaultTools(): Promise<LoadedTool[]> {

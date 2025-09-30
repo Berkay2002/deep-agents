@@ -8,13 +8,14 @@ Deep Agents is a **Node.js/TypeScript-only monorepo** for building LangGraph age
 
 **Monorepo Structure:**
 - `apps/agent`: LangGraph agent using `deepagents` library with Google Gemini 2.5 Pro
-- `apps/web`: Next.js 15 proxy application for secure LangGraph communication
+- `apps/agent-chat-ui`: Next.js 15 chat UI with Clerk authentication and LangGraph proxy
 
 **Key Technologies:**
 - LangGraph + LangChain Core for agent orchestration
 - Google Gemini 2.5 Pro via `@langchain/google-genai`
 - MCP (Model Context Protocol) for tool integration (currently disabled)
-- Next.js 15 with App Router for web proxy
+- Next.js 15 with App Router for chat UI
+- Clerk for user authentication
 - TypeScript with strict mode, ES2022 target
 
 ## Development Commands
@@ -36,11 +37,13 @@ npm run dev:server         # Alias for dev (starts LangGraph server)
 npm run build:server       # Build for LangGraph Cloud deployment
 ```
 
-**Web workspace (`apps/web`):**
+**Agent Chat UI workspace (`apps/agent-chat-ui`):**
 ```bash
 npm run dev       # Start Next.js dev server on port 3000
 npm run build     # Build production Next.js bundle
 npm run start     # Start production Next.js server
+npm run lint      # Lint TypeScript/TSX files
+npm run format    # Format code with Prettier
 ```
 
 **Important:** Always run `npm run build` in `apps/agent` after modifying TypeScript files before starting the dev server. The LangGraph runtime requires compiled JavaScript in `dist/`.
@@ -55,16 +58,23 @@ TAVILY_API_KEY=your_tavily_api_key_here          # Optional: Enable Tavily web s
 DEEP_AGENT_INSTRUCTIONS="custom instructions"    # Optional: Override default agent behavior
 ```
 
-**Web proxy environment (`apps/web/.env.local`):**
+**Agent Chat UI environment (`apps/agent-chat-ui/.env.local`):**
 ```bash
-LANGGRAPH_BASE_URL=http://localhost:2024         # Required: LangGraph server URL (default port 2024)
-LANGGRAPH_SERVER_TOKEN=your_server_token         # Optional: Server authentication token
+LANGGRAPH_API_URL=http://localhost:2024                    # Required: LangGraph server URL
+LANGGRAPH_AUTH_SECRET=your_secret_here                    # Required: JWT signing secret
+LANGGRAPH_AUTH_ISSUER=http://localhost:3000               # Required: JWT issuer (use domain in production)
+LANGGRAPH_AUTH_AUDIENCE=deep-agents-langgraph            # Required: JWT audience
+LANGGRAPH_AUTH_TTL_SECONDS=900                           # Optional: Token lifetime (default 900)
+
+# Clerk authentication - Get from https://dashboard.clerk.com/last-active?path=api-keys
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_pk          # Required: Clerk publishable key
+CLERK_SECRET_KEY=your_clerk_sk                           # Required: Clerk secret key
 ```
 
 **Port Configuration:**
 - LangGraph dev server: `http://localhost:2024`
 - LangGraph Studio UI: `https://smith.langchain.com/studio?baseUrl=http://localhost:2024`
-- Next.js dev server: `http://localhost:3000`
+- Next.js chat UI: `http://localhost:3000`
 
 ## High-Level Architecture
 
@@ -108,22 +118,32 @@ LANGGRAPH_SERVER_TOKEN=your_server_token         # Optional: Server authenticati
 - **Error isolation**: Individual server failures don't prevent other servers from loading
 - **Asynchronous loading**: Tools loaded on-demand with `loadMcpTools()`
 
-### Next.js Proxy Architecture
+### Authentication & Proxy Architecture
 
-**Location**: `apps/web/src/app/api/[..._path]/route.ts`
+**Location**: `apps/agent-chat-ui/src/app/api/[..._path]/route.ts`
 
-**Purpose**: Secure client-to-LangGraph communication with header filtering and server-side authentication.
+**Purpose**: Secure client-to-LangGraph communication with JWT-based authentication.
+
+**Authentication Flow**:
+1. User authenticates via Clerk (sign-in modal)
+2. Clerk manages session and provides `userId`
+3. Proxy mints HS256 JWT with user identity and metadata
+4. JWT sent to LangGraph agent for verification
+5. Agent verifies JWT signature, issuer, and audience
 
 **Request Flow**:
 1. Client sends request to Next.js API route (e.g., `/api/threads`)
-2. Proxy filters sensitive headers (authorization, cookie, etc.)
-3. Adds `LANGGRAPH_SERVER_TOKEN` if configured
-4. Forwards to LangGraph server (`LANGGRAPH_BASE_URL`)
-5. Streams response back to client
+2. Proxy extracts `userId` from Clerk session
+3. Mints JWT with claims: `sub` (userId), `iss`, `aud`, `exp`, `display_name`, `permissions`, `metadata`
+4. Forwards to LangGraph server with `Authorization: Bearer <jwt>` header
+5. Agent verifies JWT before processing request
+6. Streams response back to client
 
 **Security Features**:
-- Removes sensitive client headers to prevent injection attacks
-- Adds server-side auth token transparently
+- User authentication via Clerk
+- JWT signing with shared secret (HS256)
+- Issuer/audience validation
+- Header filtering to prevent injection attacks
 - Supports all HTTP methods (GET, POST, PUT, DELETE, PATCH)
 - Handles streaming responses for real-time agent interactions
 

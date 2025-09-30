@@ -67,6 +67,50 @@ export async function invokeDeepAgent(input: AgentRunInput) {
   });
 }
 
+/**
+ * Custom function that streams agent responses with real-time progress updates
+ * Yields events for tool calls, sub-agent invocations, and final answers
+ */
+export async function* streamDeepAgent(input: AgentRunInput) {
+  const agent = await initDeepAgent();
+  const files = input.files?.length
+    ? Object.fromEntries(
+        input.files
+          .filter((file: AgentFile) => file.name)
+          .map((file: AgentFile) => [file.name, normalizeFileContent(file)])
+      )
+    : undefined;
+
+  const stream = await agent.stream({
+    messages: input.messages.map((message: BaseMessageLike) =>
+      coerceMessageLikeToMessage(message)
+    ),
+    files,
+  });
+
+  // Stream events with progress information
+  for await (const event of stream) {
+    // LangGraph returns events in the format { [nodeName]: data }
+    const entries = Object.entries(event);
+    if (entries.length === 0) continue;
+
+    // TypeScript-safe extraction of first entry
+    const firstEntry = entries[0];
+    if (!firstEntry) continue;
+
+    const nodeName = firstEntry[0];
+    const data = firstEntry[1];
+
+    // Emit structured event for client consumption
+    yield {
+      type: "progress",
+      nodeName,
+      data,
+      timestamp: new Date().toISOString(),
+    };
+  }
+}
+
 export type { AgentRunInput } from "./utils/state.js";
 
 // Export for LangGraph Server consumption (required by langgraph.json)
