@@ -7,6 +7,13 @@ import { createAgent, listAvailableAgents } from "./agents/index.js";
 import { selectAgent } from "./router.js";
 import type { AgentRunInput, AgentType, AgentFile } from "./shared/types.js";
 
+// TODO: Add agent instance caching for better performance
+// TODO: Implement agent health monitoring and failover
+// TODO: Add comprehensive logging and analytics
+// TODO: Support for streaming responses
+// TODO: Add rate limiting and usage quotas per agent
+// TODO: Implement agent load balancing for high traffic
+
 // Export individual agents for LangGraph configuration
 export const deepResearchAgent = await createDeepResearchAgent();
 export const codeAssistantAgent = await createCodeAssistantAgent();
@@ -42,6 +49,10 @@ export async function routerAgent(input: AgentRunInput) {
     coerceMessageLikeToMessage(message)
   );
   
+  // TODO: Add request/response logging for analytics
+  // TODO: Add execution time tracking
+  // TODO: Add error handling with fallback agents
+  
   const selection = await selectAgent(messages, input.preferredAgent);
   
   console.log(`🤖 Selected agent: ${selection.type}`);
@@ -56,10 +67,19 @@ export async function routerAgent(input: AgentRunInput) {
       )
     : undefined;
 
-  return selection.agent.invoke({
+  // TODO: Add response time monitoring
+  // const startTime = Date.now();
+  
+  const response = await selection.agent.invoke({
     messages,
     files,
   });
+  
+  // TODO: Log completion metrics
+  // const endTime = Date.now();
+  // logAgentMetrics(selection.type, { responseTime: endTime - startTime, success: true });
+  
+  return response;
 }
 
 /**
@@ -69,6 +89,9 @@ export async function routerAgent(input: AgentRunInput) {
  * @returns Agent response
  */
 export async function invokeSpecificAgent(agentType: AgentType, input: AgentRunInput) {
+  // TODO: Add agent-specific caching
+  // TODO: Add agent warm-up for cold starts
+  
   const agent = await createAgent(agentType);
   
   const messages = input.messages.map((message: BaseMessageLike) =>
@@ -112,6 +135,26 @@ export async function invokeDeepAgent(input: AgentRunInput) {
 export async function invokeWithAgentSelection(input: AgentRunInput) {
   return routerAgent(input);
 }
+
+// TODO: Add streaming response support
+// export async function* invokeWithStream(input: AgentRunInput) {
+//   const selection = await selectAgent(input.messages, input.preferredAgent);
+//   yield* selection.agent.stream({
+//     messages: input.messages.map(coerceMessageLikeToMessage),
+//     files: normalizeFiles(input.files)
+//   });
+// }
+
+// TODO: Add batch processing support
+// export async function invokeBatch(inputs: AgentRunInput[]) {
+//   return Promise.all(inputs.map(input => routerAgent(input)));
+// }
+
+// TODO: Add agent collaboration support
+// export async function invokeWithCollaboration(input: AgentRunInput, collaborationStrategy = 'sequential') {
+//   // Allow multiple agents to work together on complex tasks
+//   // Strategies: sequential, parallel, hierarchical, voting
+// }
 
 /**
  * Get information about available agents
