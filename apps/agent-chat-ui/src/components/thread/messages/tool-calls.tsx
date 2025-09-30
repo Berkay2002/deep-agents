@@ -2,9 +2,18 @@ import { AIMessage, ToolMessage } from "@langchain/langgraph-sdk";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { TodoList } from "../todo-list";
 
 function isComplexValue(value: any): boolean {
   return Array.isArray(value) || (typeof value === "object" && value !== null);
+}
+
+function isTodoListArgs(toolName: string, args: Record<string, any>): boolean {
+  return (
+    (toolName === "write_todos" || toolName === "TodoWrite") &&
+    "todos" in args &&
+    Array.isArray(args.todos)
+  );
 }
 
 export function ToolCalls({
@@ -19,6 +28,12 @@ export function ToolCalls({
       {toolCalls.map((tc, idx) => {
         const args = tc.args as Record<string, any>;
         const hasArgs = Object.keys(args).length > 0;
+
+        // Check if this is a todo list tool call
+        if (isTodoListArgs(tc.name, args)) {
+          return <TodoList key={idx} todos={args.todos} />;
+        }
+
         return (
           <div
             key={idx}
