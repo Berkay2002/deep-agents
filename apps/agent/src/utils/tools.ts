@@ -1,33 +1,24 @@
 // src/utils/tools.ts
 import { TavilySearch } from "@langchain/tavily";
-import type { Tool } from "@langchain/core/tools";
+import type { StructuredTool } from "@langchain/core/tools";
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";
 
-const defaultMathUrl = process.env.MCP_MATH_URL ?? "http://localhost:3030/mcp";
-const defaultWeatherUrl =
-  process.env.MCP_WEATHER_URL ?? "http://localhost:3031/mcp";
+// MCP servers configuration
+// Note: Currently disabled due to compatibility issues with npx execution
+// Many MCP servers are Python-based or lack proper bin configuration for npx
+// Future: Add working Node.js MCP servers or use Python-based servers with uvx
+const mcpServers = {};
 
-const mcpServers = {
-  math: {
-    transport: "sse" as const,
-    url: defaultMathUrl,
-  },
-  weather: {
-    transport: "sse" as const,
-    url: defaultWeatherUrl,
-  },
-};
+export type McpServerName = string;
+export type LoadedTool = StructuredTool;
 
-export type McpServerName = keyof typeof mcpServers;
-export type LoadedTool = Tool;
+const allServerNames: string[] = Object.keys(mcpServers);
+const hasMcpServers = allServerNames.length > 0;
 
-const allServerNames: McpServerName[] = Object.keys(
-  mcpServers
-) as McpServerName[];
-
-export const mcpClient = new MultiServerMCPClient({
-  mcpServers,
-});
+// Only initialize MCP client if servers are configured
+export const mcpClient = hasMcpServers
+  ? new MultiServerMCPClient({ mcpServers })
+  : null;
 
 let cachedTools: LoadedTool[] | null = null;
 const cachedToolsByServer: Partial<Record<McpServerName, LoadedTool[]>> = {};
@@ -35,10 +26,14 @@ const cachedToolsByServer: Partial<Record<McpServerName, LoadedTool[]>> = {};
 const fetchToolsForServer = async (
   server: McpServerName
 ): Promise<LoadedTool[] | null> => {
+  if (!mcpClient) {
+    console.warn("MCP client not initialized. No MCP servers configured.");
+    return null;
+  }
   try {
     const tools = await mcpClient.getTools(server);
-    cachedToolsByServer[server] = tools;
-    return tools;
+    cachedToolsByServer[server] = tools as unknown as LoadedTool[];
+    return tools as unknown as LoadedTool[];
   } catch (error) {
     console.error(`Failed to load MCP tools for server: ${server}.`, error);
     return null;
@@ -94,7 +89,7 @@ export const loadMcpTools = async (
   const available = targetServers.flatMap((s) => cachedToolsByServer[s] ?? []);
 
   if (failed.length === targetServers.length && available.length === 0) {
-    throw new Error(`Failed to load MCP tools from servers: ${failed.join(", ")}`);
+    console.warn(`All MCP servers failed to load: ${failed.join(", ")}. Agent will run without MCP tools.`);
   }
 
   cachedTools = allServerNames.flatMap((s) => cachedToolsByServer[s] ?? []);
@@ -110,7 +105,7 @@ export async function loadDefaultTools(): Promise<LoadedTool[]> {
       new TavilySearch({
         tavilyApiKey: process.env.TAVILY_API_KEY,
         maxResults: 5,
-      })
+      }) as unknown as LoadedTool
     );
   }
 

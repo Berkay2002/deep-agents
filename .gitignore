@@ -34,3 +34,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# MCP data storage
+/.data
+
+langgraph-js-full.md
+# workspace packages
+apps/*/node_modules/
+apps/*/.next/
+.claude/
+apps/*/dist/

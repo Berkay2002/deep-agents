@@ -2,16 +2,16 @@ import { Buffer } from "node:buffer";
 
 import { createDeepAgent } from "deepagents";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { coerceMessageLikeToMessage } from "@langchain/core/messages";
+import { coerceMessageLikeToMessage, type BaseMessageLike } from "@langchain/core/messages";
 
-import { DEFAULT_AGENT_INSTRUCTIONS } from "./utils/nodes";
-import { loadDefaultTools } from "./utils/tools";
-import type { AgentFile, AgentRunInput } from "./utils/state";
+import { DEFAULT_AGENT_INSTRUCTIONS } from "./utils/nodes.js";
+import { loadDefaultTools } from "./utils/tools.js";
+import type { AgentFile, AgentRunInput } from "./utils/state.js";
 
 export type DeepAgentGraph = Awaited<ReturnType<typeof createDeepAgent>>;
 
 const model = new ChatGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_API_KEY ?? process.env.GOOGLE_GENAI_API_KEY,
+  apiKey: process.env.GOOGLE_API_KEY ?? process.env.GOOGLE_GENAI_API_KEY ?? "",
   model: process.env.GOOGLE_GENAI_MODEL ?? "gemini-2.5-pro",
   temperature: 0.3,
   maxOutputTokens: 2048,
@@ -58,17 +58,20 @@ export async function invokeDeepAgent(input: AgentRunInput) {
   const files = input.files?.length
     ? Object.fromEntries(
         input.files
-          .filter((file) => file.name)
-          .map((file) => [file.name, normalizeFileContent(file)])
+          .filter((file: AgentFile) => file.name)
+          .map((file: AgentFile) => [file.name, normalizeFileContent(file)])
       )
     : undefined;
 
   return agent.invoke({
-    messages: input.messages.map((message) =>
+    messages: input.messages.map((message: BaseMessageLike) =>
       coerceMessageLikeToMessage(message)
     ),
     files,
   });
 }
 
-export type { AgentRunInput } from "./utils/state";
+export type { AgentRunInput } from "./utils/state.js";
+
+// Export for LangGraph Server consumption (required by langgraph.json)
+export const deepAgentGraph = await initDeepAgent();
