@@ -1,6 +1,7 @@
 // src/utils/tools.ts
 import { TavilySearch } from "@langchain/tavily";
-import type { StructuredTool } from "@langchain/core/tools";
+import { tool, type StructuredTool } from "@langchain/core/tools";
+import { z } from "zod";
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";
 
 // MCP servers configuration
@@ -11,6 +12,59 @@ const mcpServers = {};
 
 export type McpServerName = string;
 export type LoadedTool = StructuredTool;
+
+type InternetSearchTopic = "general" | "news" | "finance";
+
+export const internetSearch = tool(
+  async ({
+    query,
+    maxResults = 5,
+    topic = "general" as InternetSearchTopic,
+    includeRawContent = false,
+  }: {
+    query: string;
+    maxResults?: number;
+    topic?: InternetSearchTopic;
+    includeRawContent?: boolean;
+  }) => {
+    if (!process.env.TAVILY_API_KEY) {
+      throw new Error(
+        "TAVILY_API_KEY is required to run the internet_search tool."
+      );
+    }
+
+    const tavilySearch = new TavilySearch({
+      maxResults,
+      topic,
+      tavilyApiKey: process.env.TAVILY_API_KEY,
+      includeRawContent,
+    });
+
+    return tavilySearch.invoke({ query });
+  },
+  {
+    name: "internet_search",
+    description: "Run a web search",
+    schema: z.object({
+      query: z.string().describe("The search query"),
+      maxResults: z
+        .number()
+        .optional()
+        .default(5)
+        .describe("Maximum number of results to return"),
+      topic: z
+        .enum(["general", "news", "finance"])
+        .optional()
+        .default("general")
+        .describe("Search topic category"),
+      includeRawContent: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("Whether to include raw content"),
+    }),
+  }
+);
 
 const allServerNames: string[] = Object.keys(mcpServers);
 const hasMcpServers = allServerNames.length > 0;
@@ -101,11 +155,10 @@ export async function loadDefaultTools(): Promise<LoadedTool[]> {
   const tools: LoadedTool[] = [];
 
   if (process.env.TAVILY_API_KEY) {
-    tools.push(
-      new TavilySearch({
-        tavilyApiKey: process.env.TAVILY_API_KEY,
-        maxResults: 5,
-      }) as unknown as LoadedTool
+    tools.push(internetSearch as LoadedTool);
+  } else {
+    console.warn(
+      "TAVILY_API_KEY not set. The internet_search tool will be unavailable."
     );
   }
 

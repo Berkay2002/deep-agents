@@ -4,8 +4,8 @@ import { createDeepAgent } from "deepagents";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { coerceMessageLikeToMessage, type BaseMessageLike } from "@langchain/core/messages";
 
-import { DEFAULT_AGENT_INSTRUCTIONS } from "./utils/nodes.js";
 import { loadDefaultTools } from "./utils/tools.js";
+import { RESEARCH_AGENT_INSTRUCTIONS, subAgents } from "./utils/nodes.js";
 import type { AgentFile, AgentRunInput } from "./utils/state.js";
 
 export type DeepAgentGraph = Awaited<ReturnType<typeof createDeepAgent>>;
@@ -28,8 +28,9 @@ export async function initDeepAgent(): Promise<DeepAgentGraph> {
         model,
         tools,
         instructions:
-          process.env.DEEP_AGENT_INSTRUCTIONS ?? DEFAULT_AGENT_INSTRUCTIONS,
-      });
+          process.env.DEEP_AGENT_INSTRUCTIONS ?? RESEARCH_AGENT_INSTRUCTIONS,
+        subagents: subAgents,
+      }).withConfig({ recursionLimit: 1000 });
     })();
   }
 
