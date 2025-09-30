@@ -1,8 +1,8 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 
 const DEFAULT_MODEL_NAME = "gemini-2.5-pro";
-const DEFAULT_MAX_OUTPUT_TOKENS = 2048;
-const DEFAULT_TEMPERATURE = 0.25;
+const DEFAULT_MAX_OUTPUT_TOKENS = 16384;
+const DEFAULT_TEMPERATURE = 0.2;
 
 export function createAgentModel() {
   return new ChatGoogleGenerativeAI({

@@ -53,7 +53,7 @@ npm run format    # Format code with Prettier
 **Agent environment (`apps/agent/.env`):**
 ```bash
 GOOGLE_API_KEY=your_google_api_key_here           # Required: For Gemini 2.5 Pro model
-GOOGLE_GENAI_MODEL=gemini-2.5-pro                 # Optional: Override model (default: gemini-2.5-pro)
+GOOGLE_GENAI_MODEL=gemini-2.5-flash                 # Optional: Override model (default: gemini-2.5-flash)
 TAVILY_API_KEY=your_tavily_api_key_here          # Optional: Enable Tavily web search tool
 DEEP_AGENT_INSTRUCTIONS="custom instructions"    # Optional: Override default agent behavior
 ```

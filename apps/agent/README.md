@@ -27,7 +27,7 @@ cp .env.example .env
 Key settings include:
 
 - `GOOGLE_API_KEY` or `GOOGLE_GENAI_API_KEY` – Required to authenticate with Gemini.
-- `GOOGLE_GENAI_MODEL` – Optional override for the default `gemini-2.5-pro` model.
+- `GOOGLE_GENAI_MODEL` – Optional override for the default `gemini-2.5-flash` model.
 - `TAVILY_API_KEY` – Optional key to enable Tavily search integration.
 - `DEEP_AGENT_INSTRUCTIONS` – Custom top-level instructions if you want to replace the bundled research prompt.
 - `LANGGRAPH_SERVER_TOKEN` – Token used when deploying to LangGraph Cloud.

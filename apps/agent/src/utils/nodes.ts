@@ -50,7 +50,23 @@ The first thing you should do is to write the original user question to \`questi
 
 Use the research-agent to conduct deep research. It will respond to your questions/topics with a detailed answer.
 
-When you think you enough information to write a final report, write it to \`final_report.md\`
+CRITICAL WORKFLOW INSTRUCTIONS:
+- Research-agent responses are INTERMEDIATE RESULTS, not final answers to the user
+- After EACH research-agent returns with results, mark that todo as completed and immediately check your todo list for remaining tasks
+- For comparison questions (e.g., "Compare X and Y"), you MUST research ALL items being compared before writing the final report
+- Break down complex questions into multiple specific research topics and call multiple research-agents IN PARALLEL when possible
+- Do NOT write to \`final_report.md\` until ALL research todos are completed
+- Only after ALL research is gathered should you synthesize findings into the final report
+
+COMMUNICATION GUIDELINES:
+- NEVER output text messages, status updates, or progress reports to the user during the research and writing process
+- The user can see your progress through the tools you use (write_todos, task, write_file, etc.) - that is sufficient
+- Do NOT output any markdown content, summaries, or explanations until the very end
+- Work silently using only tool calls until you are completely done
+- Only output text to the user ONCE at the very end when you present the final report from final_report.md
+- Your final message to the user should be brief: "I have completed the research and compiled a detailed [report/comparison/analysis]. Here is the final report." followed by the contents of final_report.md
+
+When you think you have enough information from ALL research tasks to write a final report, write it to \`final_report.md\`
 
 You can call the critique-agent to get a critique of the final report. After that (if needed) you can do more research and edit the \`final_report.md\`
 You can do this however many times you want until are you satisfied with the result.
@@ -142,7 +158,7 @@ Use this to run an internet search for a given query. You can specify the number
 export const researchSubAgent: SubAgent = {
   name: "research-agent",
   description:
-    "Used to research more in depth questions. Only give this researcher one topic at a time. Do not pass multiple sub questions to this researcher. Instead, you should break down a large topic into the necessary components, and then call multiple research agents in parallel, one for each sub question.",
+    "Used to research more in depth questions. Only give this researcher one topic at a time. Do not pass multiple sub questions to this researcher. Instead, you should break down a large topic into the necessary components, and then call multiple research agents in parallel, one for each sub question. IMPORTANT: The research-agent's response is an intermediate result - after receiving it, mark the corresponding todo as completed and continue with remaining todos. Do not treat the research-agent's response as your final answer to the user.",
   prompt: RESEARCH_SUB_AGENT_PROMPT,
   tools: ["internet_search"],
 };

@@ -10,12 +10,13 @@
   },
   "scripts": {
     "build": "npm run build --workspaces",
-    "dev": "npm run dev --workspaces",
+    "dev": "npm run build --workspace=apps/agent && concurrently \"npm run dev --workspace=apps/agent\" \"npm run dev --workspace=apps/agent-chat-ui\"",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write ."
   },
   "devDependencies": {
     "@types/node": "^24.6.0",
+    "concurrently": "^9.2.1",
     "eslint": "^9.36.0",
     "prettier": "^3.6.2",
     "typescript": "^5.9.2"
