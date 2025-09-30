@@ -101,21 +101,68 @@ export async function createMultiMCPClient(
   const {
     useStandardContentBlocks = true,
     defaultToolTimeout = 30000,
-    throwOnLoadError = true,
     prefixToolNameWithServerName = true,
   } = clientConfig;
 
-  const mcpServers: Record<string, Connection> = {};
+  // Try to connect to each server individually to identify failures
+  const successfulServers: Record<string, Connection> = {};
+  const failedServers: string[] = [];
+
   for (const [name, options] of Object.entries(servers)) {
-    mcpServers[name] = buildServerConfig(options);
+    try {
+      // Test connection by creating a single-server client
+      const testClient = new MultiServerMCPClient({
+        useStandardContentBlocks,
+        defaultToolTimeout,
+        throwOnLoadError: true, // Throw on individual test to catch failures
+        prefixToolNameWithServerName: false,
+        mcpServers: {
+          [name]: buildServerConfig(options),
+        },
+      });
+
+      await testClient.getTools(); // Test if server is accessible
+      await testClient.close();
+
+      // Server works, add to successful list
+      successfulServers[name] = buildServerConfig(options);
+      console.log(`✅ Pre-validated MCP server: ${name}`);
+    } catch (error) {
+      failedServers.push(name);
+      console.warn(
+        `⚠️  MCP server '${name}' failed to connect: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
   }
 
+  // If no servers succeeded, return empty result
+  if (Object.keys(successfulServers).length === 0) {
+    console.error("❌ All MCP servers failed to connect");
+    // Create a dummy client that won't be used
+    const dummyClient = new MultiServerMCPClient({
+      useStandardContentBlocks,
+      defaultToolTimeout,
+      throwOnLoadError: false,
+      prefixToolNameWithServerName,
+      mcpServers: {},
+    });
+
+    return {
+      client: dummyClient,
+      tools: [],
+      toolsByServer: {},
+    };
+  }
+
+  // Create client with only successful servers
   const mcpClient = new MultiServerMCPClient({
     useStandardContentBlocks,
     defaultToolTimeout,
-    throwOnLoadError,
+    throwOnLoadError: false,
     prefixToolNameWithServerName,
-    mcpServers,
+    mcpServers: successfulServers,
   });
 
   try {
@@ -131,9 +178,17 @@ export async function createMultiMCPClient(
       toolsByServer[serverPrefix] = currentCount + 1;
     });
 
-    console.log(`✅ Connected to ${Object.keys(servers).length} MCP servers:`);
+    const successCount = Object.keys(successfulServers).length;
+    const totalCount = Object.keys(servers).length;
+    console.log(
+      `✅ Connected to ${successCount}/${totalCount} MCP servers (${failedServers.length} failed):`
+    );
     for (const [server, count] of Object.entries(toolsByServer)) {
       console.log(`   - ${server}: ${count} tools`);
+    }
+
+    if (failedServers.length > 0) {
+      console.log(`⚠️  Failed servers: ${failedServers.join(", ")}`);
     }
 
     return {
