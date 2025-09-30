@@ -3,6 +3,15 @@ import type { BaseMessage } from "@langchain/core/messages";
 import { createAgent } from "./agents/index.js";
 import type { AgentType, AgentSelectionResult } from "./shared/types.js";
 
+// TODO: Implement LLM-based agent routing
+// Currently using keyword-based routing, but should upgrade to:
+// 1. Use lightweight LLM (gemini-1.5-flash) for intent analysis
+// 2. Consider conversation context and user history
+// 3. Provide better confidence scoring
+// 4. Handle ambiguous queries more intelligently
+// 5. Cache routing decisions for performance
+// 6. A/B test against current keyword approach
+
 /**
  * Analyze message content to determine the best agent type
  * @param content Message content to analyze
@@ -59,6 +68,21 @@ function analyzeContent(content: string): Record<AgentType, number> {
   return scores;
 }
 
+// TODO: Implement LLM-based content analysis
+// async function llmBasedAnalyzeContent(messages: BaseMessage[]): Promise<AgentSelectionResult> {
+//   const routingModel = createAgentModel(0.1);
+//   const prompt = `Analyze this conversation and determine the best agent:
+//   - deep-research: For research, analysis, reports, academic work
+//   - code-assistant: For programming, debugging, code review
+//   - general-chat: For casual conversation, general questions
+//   
+//   Conversation: ${messages.map(m => m.content).join('\n')}
+//   
+//   Respond with JSON: {"agent": "agent-type", "confidence": 0.0-1.0, "reasoning": "explanation"}`;
+//   
+//   // Implementation would call LLM and parse response
+// }
+
 /**
  * Select the best agent for handling the given messages
  * @param messages Conversation messages
@@ -84,6 +108,11 @@ export async function selectAgent(
       // Fall through to automatic selection
     }
   }
+
+  // TODO: Add toggle between keyword-based and LLM-based routing
+  // if (process.env.USE_LLM_ROUTING === 'true') {
+  //   return llmBasedAnalyzeContent(messages);
+  // }
 
   // Analyze the latest messages to determine best agent
   const recentMessages = messages.slice(-3); // Look at last 3 messages
