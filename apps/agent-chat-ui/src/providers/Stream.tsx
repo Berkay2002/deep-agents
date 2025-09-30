@@ -25,6 +25,7 @@ import { getApiKey } from "@/lib/api-key";
 import { useThreads } from "./Thread";
 import { toast } from "sonner";
 import { useUser } from "@clerk/nextjs";
+import { useGithubSettings } from "./GithubSettings";
 
 export type StateType = { messages: Message[]; ui?: UIMessage[] };
 
@@ -81,12 +82,21 @@ const StreamSession = ({
   const [threadId, setThreadId] = useQueryState("threadId");
   const { getThreads, setThreads } = useThreads();
   const { isSignedIn, isLoaded } = useUser();
+  const { githubEnabled, githubPat } = useGithubSettings();
+
+  // Build custom headers for GitHub PAT
+  const customHeaders: Record<string, string> = {};
+  if (githubEnabled && githubPat) {
+    customHeaders["x-github-pat"] = githubPat;
+  }
+
   const streamValue = useTypedStream({
     apiUrl,
     apiKey: apiKey ?? undefined,
     assistantId,
     threadId: threadId ?? null,
     fetchStateHistory: true,
+    headers: customHeaders,
     onCustomEvent: (event, options) => {
       if (isUIMessage(event) || isRemoveUIMessage(event)) {
         options.mutate((prev) => {

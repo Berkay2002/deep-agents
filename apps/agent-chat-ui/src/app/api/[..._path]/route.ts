@@ -27,6 +27,7 @@ const ALLOWED_REQUEST_HEADERS = new Set([
   "x-user-role",
   "x-user-permissions",
   "x-organization-id",
+  "x-github-pat",
 ]);
 
 const SENSITIVE_HEADERS = new Set([
@@ -129,6 +130,7 @@ async function buildAuthorizationHeader(request: NextRequest, secret: string): P
   const metadata = collectUserMetadata(request);
   const permissions = collectUserPermissions(request);
   const displayName = request.headers.get("x-user-name") ?? identity.userId;
+  const githubPat = request.headers.get("x-github-pat");
 
   const payload: Record<string, unknown> = {
     display_name: displayName,
@@ -138,6 +140,9 @@ async function buildAuthorizationHeader(request: NextRequest, secret: string): P
   }
   if (permissions.length > 0) {
     payload.permissions = permissions;
+  }
+  if (githubPat) {
+    payload.github_pat = githubPat;
   }
 
   const issuer = process.env.LANGGRAPH_AUTH_ISSUER ?? "deep-agents";

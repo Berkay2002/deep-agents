@@ -6,7 +6,7 @@ This document explains how to add MCP (Model Context Protocol) servers to the De
 
 ## Current Status
 
-**MCP servers are currently disabled** due to compatibility issues with `npx` execution. The agent runs successfully without MCP servers but can be extended with them once properly configured with Node.js-based servers.
+**STDIO-based MCP support has been removed.** The agent currently runs without MCP tools while we migrate to an HTTP-based client. Use this guide as historical context and to plan the HTTP rollout; ignore STDIO-specific instructions.
 
 ## Why MCP Servers Are Disabled
 

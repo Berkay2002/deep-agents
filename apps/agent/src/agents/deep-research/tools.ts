@@ -1,14 +1,8 @@
-// src/utils/tools.ts
+// Deep Research Agent specific tools
 import { TavilySearch } from "@langchain/tavily";
 import { tool, type StructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
-import {
-  withRetry,
-  SearchTimeoutError,
-  ToolExecutionError,
-  formatErrorForUser,
-} from "./errors.js";
-import { loadMcpTools } from "./mcp.js";
+import { loadMcpTools } from "../../utils/mcp.js";
 
 export type LoadedTool = StructuredTool;
 
@@ -40,59 +34,20 @@ export const internetSearch = tool(
     }
 
     try {
-      // Execute search with retry logic and timeout
-      const result = await withRetry(
-        async () => {
-          const tavilySearch = new TavilySearch({
-            maxResults,
-            topic,
-            tavilyApiKey: process.env.TAVILY_API_KEY!,
-            includeRawContent,
-          });
+      const tavilySearch = new TavilySearch({
+        maxResults,
+        topic,
+        tavilyApiKey: process.env.TAVILY_API_KEY!,
+        includeRawContent,
+      });
 
-          return tavilySearch.invoke({ query });
-        },
-        {
-          maxAttempts: 3,
-          initialDelayMs: 1000,
-          timeoutMs: 30000, // 30 second timeout
-        }
-      );
-
-      return result;
+      return await tavilySearch.invoke({ query });
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-
-      // Log the error for debugging
       console.error(`Internet search failed for query "${query}":`, err);
 
-      // Check if it's a timeout error
-      if (err.message.includes("timed out")) {
-        const timeoutError = new SearchTimeoutError(query, 30000);
-        return {
-          error: formatErrorForUser(timeoutError),
-          results: [],
-          query,
-          message:
-            "The search took too long to complete. Try a more specific search query or continue with available information.",
-        };
-      }
-
-      // Handle rate limiting
-      if (err.message.includes("429") || err.message.includes("rate limit")) {
-        return {
-          error: "Search rate limit exceeded. Please wait a moment.",
-          results: [],
-          query,
-          message:
-            "Search service is temporarily rate-limited. Please continue with available information or try again shortly.",
-        };
-      }
-
-      // Generic error handling
-      const toolError = new ToolExecutionError("internet_search", err.message, err);
       return {
-        error: formatErrorForUser(toolError),
+        error: err.message,
         results: [],
         query,
         message:
@@ -125,8 +80,13 @@ export const internetSearch = tool(
   }
 );
 
-// === High-level tool loader (used by Deep Agent) ===
-export async function loadDefaultTools(): Promise<LoadedTool[]> {
+/**
+ * Load tools specific to research tasks
+ * Includes public MCP servers (Sequential Thinking, DeepWiki)
+ * Note: GitHub Copilot MCP requires per-user authentication and is configured
+ * separately through the UI settings
+ */
+export async function loadResearchTools(): Promise<LoadedTool[]> {
   const tools: LoadedTool[] = [];
 
   if (process.env.TAVILY_API_KEY) {
@@ -137,7 +97,8 @@ export async function loadDefaultTools(): Promise<LoadedTool[]> {
     );
   }
 
-  // Load MCP tools from configured servers (Sequential Thinking, DeepWiki, GitHub Copilot)
+  // Load public MCP servers (Sequential Thinking, DeepWiki)
+  // GitHub Copilot is handled separately through UI configuration
   const mcpTools = await loadMcpTools();
   tools.push(...mcpTools);
 
