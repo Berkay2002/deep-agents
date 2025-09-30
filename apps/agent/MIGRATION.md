@@ -5,6 +5,7 @@ This document explains the new multi-agent architecture and how to migrate from 
 ## What Changed
 
 ### Old Structure
+
 ```
 src/
 ├── agent.ts          # Single agent implementation
@@ -15,6 +16,7 @@ src/
 ```
 
 ### New Structure
+
 ```
 src/
 ├── agents/

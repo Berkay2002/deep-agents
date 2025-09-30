@@ -5,6 +5,7 @@ This document outlines planned enhancements and features to implement in the mul
 ## 🎯 High Priority TODOs
 
 ### 1. LLM-Based Agent Router
+
 **Current**: Keyword-based routing with basic scoring
 **Target**: Intelligent LLM-powered agent selection
 
@@ -19,11 +20,13 @@ This document outlines planned enhancements and features to implement in the mul
 ```
 
 **Files to modify:**
+
 - `src/router.ts` - Add `llmBasedSelection()` function
 - `src/shared/types.ts` - Add routing model configuration
 - `src/main.ts` - Add router selection toggle
 
 ### 2. Enhanced Code Tools via MCP
+
 **Current**: Basic internet search for code queries
 **Target**: Comprehensive code analysis and execution tools
 
@@ -39,6 +42,7 @@ This document outlines planned enhancements and features to implement in the mul
 ```
 
 **Files to modify:**
+
 - `src/agents/code-assistant/tools.ts` - Add MCP tool integrations
 - `src/shared/mcp-tools.ts` - Create shared MCP utilities
 - `apps/agent/package.json` - Add MCP dependencies
@@ -46,6 +50,7 @@ This document outlines planned enhancements and features to implement in the mul
 ## 🛠️ Medium Priority TODOs
 
 ### 3. General Chat Agent
+
 **Current**: Fallback to research agent for general queries
 **Target**: Dedicated conversational agent
 
@@ -59,11 +64,13 @@ This document outlines planned enhancements and features to implement in the mul
 ```
 
 **Files to create:**
+
 - `src/agents/general-chat/agent.ts`
 - `src/agents/general-chat/prompts.ts`
 - `src/agents/general-chat/tools.ts`
 
 ### 4. Agent Performance Monitoring
+
 **Current**: Basic console logging
 **Target**: Comprehensive analytics and monitoring
 
@@ -78,11 +85,13 @@ This document outlines planned enhancements and features to implement in the mul
 ```
 
 **Files to create:**
+
 - `src/monitoring/metrics.ts`
 - `src/monitoring/analytics.ts`
 - `src/monitoring/dashboard.ts`
 
 ### 5. Advanced Multi-Agent Collaboration
+
 **Current**: Single agent handles entire request
 **Target**: Agents can collaborate on complex tasks
 
@@ -98,6 +107,7 @@ This document outlines planned enhancements and features to implement in the mul
 ## 🔧 Technical TODOs
 
 ### 6. Caching and Performance
+
 ```typescript
 // TODO: Implement intelligent caching
 // - Cache agent instances for faster startup
@@ -108,6 +118,7 @@ This document outlines planned enhancements and features to implement in the mul
 ```
 
 ### 7. Configuration Management
+
 ```typescript
 // TODO: Enhanced configuration system
 // - Runtime agent configuration updates
@@ -118,6 +129,7 @@ This document outlines planned enhancements and features to implement in the mul
 ```
 
 ### 8. Error Handling and Resilience
+
 ```typescript
 // TODO: Robust error handling
 // - Graceful degradation when agents fail
@@ -130,6 +142,7 @@ This document outlines planned enhancements and features to implement in the mul
 ## 🎨 User Experience TODOs
 
 ### 9. Agent Selection UI
+
 ```typescript
 // TODO: User interface for agent selection
 // - Visual agent selector in chat UI
@@ -140,6 +153,7 @@ This document outlines planned enhancements and features to implement in the mul
 ```
 
 ### 10. Conversation Context Management
+
 ```typescript
 // TODO: Advanced context handling
 // - Cross-agent conversation continuity
@@ -152,6 +166,7 @@ This document outlines planned enhancements and features to implement in the mul
 ## 🔍 Specialized Agent TODOs
 
 ### 11. Domain-Specific Agents
+
 ```typescript
 // TODO: Additional specialized agents
 // - data-analyst: Statistical analysis and visualization
@@ -163,6 +178,7 @@ This document outlines planned enhancements and features to implement in the mul
 ```
 
 ### 12. Agent Customization
+
 ```typescript
 // TODO: User-customizable agents
 // - Custom agent creation interface
@@ -175,6 +191,7 @@ This document outlines planned enhancements and features to implement in the mul
 ## 🧪 Research TODOs
 
 ### 13. Advanced AI Techniques
+
 ```typescript
 // TODO: Experimental features
 // - Multi-modal agent support (text, code, images)
@@ -185,6 +202,7 @@ This document outlines planned enhancements and features to implement in the mul
 ```
 
 ### 14. Integration TODOs
+
 ```typescript
 // TODO: External service integrations
 // - Slack/Discord bot interfaces
@@ -196,7 +214,8 @@ This document outlines planned enhancements and features to implement in the mul
 
 ## 📋 Implementation Priority
 
-**Phase 1 (Next Sprint)**
+### Phase 1 (Next Sprint)
+
 1. LLM-based router implementation
 2. Basic MCP code tools integration
 
