@@ -1,21 +1,16 @@
 import { Buffer } from "node:buffer";
 
 import { createDeepAgent } from "deepagents";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { coerceMessageLikeToMessage, type BaseMessageLike } from "@langchain/core/messages";
 
 import { loadDefaultTools } from "./utils/tools.js";
+import { createAgentModel } from "./utils/model.js";
 import { RESEARCH_AGENT_INSTRUCTIONS, subAgents } from "./utils/nodes.js";
 import type { AgentFile, AgentRunInput } from "./utils/state.js";
 
 export type DeepAgentGraph = Awaited<ReturnType<typeof createDeepAgent>>;
 
-const model = new ChatGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_API_KEY ?? process.env.GOOGLE_GENAI_API_KEY ?? "",
-  model: process.env.GOOGLE_GENAI_MODEL ?? "gemini-2.5-pro",
-  temperature: 0.3,
-  maxOutputTokens: 2048,
-});
+const model = createAgentModel();
 
 let deepAgentGraphPromise: Promise<DeepAgentGraph> | null = null;
 
