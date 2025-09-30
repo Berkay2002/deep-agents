@@ -46,6 +46,7 @@ import {
   ArtifactTitle,
   useArtifactContext,
 } from "./artifact";
+import { GithubConfigDialog } from "../settings/github-config-dialog";
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -88,24 +89,23 @@ function ScrollToBottom(props: { className?: string }) {
   );
 }
 
-function OpenGitHubRepo() {
+function MCPServerConfigButton({ onClick }: { onClick: () => void }) {
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <a
-            href="https://github.com/langchain-ai/agent-chat-ui"
-            target="_blank"
-            className="flex items-center justify-center"
+          <button
+            onClick={onClick}
+            className="flex items-center justify-center cursor-pointer"
           >
             <GitHubSVG
               width="24"
               height="24"
             />
-          </a>
+          </button>
         </TooltipTrigger>
         <TooltipContent side="left">
-          <p>Open GitHub repo</p>
+          <p>MCP Server Settings</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -137,6 +137,7 @@ export function Thread() {
     handlePaste,
   } = useFileUpload();
   const [firstTokenReceived, setFirstTokenReceived] = useState(false);
+  const [githubDialogOpen, setGithubDialogOpen] = useState(false);
   const isLargeScreen = useMediaQuery("(min-width: 1024px)");
 
   const stream = useStreamContext();
@@ -327,10 +328,11 @@ export function Thread() {
                 )}
               </div>
               <div className="absolute top-2 right-4 flex items-center">
-                <OpenGitHubRepo />
+                <MCPServerConfigButton onClick={() => setGithubDialogOpen(true)} />
               </div>
             </div>
           )}
+          <GithubConfigDialog open={githubDialogOpen} onOpenChange={setGithubDialogOpen} />
           {chatStarted && (
             <div className="relative z-10 flex items-center justify-between gap-3 p-2">
               <div className="relative flex items-center justify-start gap-2">
@@ -373,7 +375,7 @@ export function Thread() {
 
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3">
-                  <OpenGitHubRepo />
+                  <MCPServerConfigButton onClick={() => setGithubDialogOpen(true)} />
                   <SignedOut>
                     <SignInButton mode="modal" />
                   </SignedOut>

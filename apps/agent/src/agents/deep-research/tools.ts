@@ -2,6 +2,7 @@
 import { TavilySearch } from "@langchain/tavily";
 import { tool, type StructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
+import { loadMcpTools } from "../../utils/mcp.js";
 
 export type LoadedTool = StructuredTool;
 
@@ -81,6 +82,9 @@ export const internetSearch = tool(
 
 /**
  * Load tools specific to research tasks
+ * Includes public MCP servers (Sequential Thinking, DeepWiki)
+ * Note: GitHub Copilot MCP requires per-user authentication and is configured
+ * separately through the UI settings
  */
 export async function loadResearchTools(): Promise<LoadedTool[]> {
   const tools: LoadedTool[] = [];
@@ -93,9 +97,10 @@ export async function loadResearchTools(): Promise<LoadedTool[]> {
     );
   }
 
-  // TODO: Add MCP tools loading when shared utilities are available
-  // const mcpTools = await loadMcpTools();
-  // tools.push(...mcpTools);
+  // Load public MCP servers (Sequential Thinking, DeepWiki)
+  // GitHub Copilot is handled separately through UI configuration
+  const mcpTools = await loadMcpTools();
+  tools.push(...mcpTools);
 
   return tools;
 }

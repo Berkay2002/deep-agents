@@ -13,7 +13,7 @@ Deep Agents is a **Node.js/TypeScript-only monorepo** for building LangGraph age
 **Key Technologies:**
 - LangGraph + LangChain Core for agent orchestration
 - Google Gemini 2.5 Pro via `@langchain/google-genai`
-- MCP (Model Context Protocol) for tool integration (currently disabled)
+- MCP (Model Context Protocol) for tool integration (HTTP client pending; STDIO removed)
 - Next.js 15 with App Router for chat UI
 - Clerk for user authentication
 - TypeScript with strict mode, ES2022 target
@@ -91,32 +91,21 @@ CLERK_SECRET_KEY=your_clerk_sk                           # Required: Clerk secre
    - Invokes `createDeepAgent()` from `deepagents` library with model, tools, and instructions
 
 3. **Tool Loading** (`apps/agent/src/utils/tools.ts`):
-   - Conditionally initializes `MultiServerMCPClient` only if MCP servers are configured
-   - **Currently**: MCP servers are disabled (`mcpServers = {}`) due to Python/npx compatibility issues
-   - Caches tools per server to avoid reloading on subsequent requests
-   - Gracefully handles server failures without blocking agent initialization
+   - Loads built-in tools such as Tavily search when configured
+   - MCP integration via HTTP will be added after the legacy STDIO client removal
 
 4. **Runtime**:
    - LangGraph dev server (`port 2024`) loads compiled JavaScript from `dist/agent.js`
    - Reads `langgraph.json` to find graph export: `"agent": "./dist/agent.js:deepAgentGraph"`
    - Graph is invoked for each user message, maintaining conversation state
 
-### MCP Tools Architecture (Currently Disabled)
+### MCP Tools Architecture (HTTP Migration Pending)
 
-**Current State**: MCP servers are **disabled** due to compatibility issues with Node.js package execution.
+**Current State**: The legacy STDIO client has been removed. The agent currently ships without MCP tools until the HTTP-based client lands.
 
-**Reason**: Most official Anthropic MCP servers are Python-based. Node.js alternatives like `mcp-node-fetch` lack proper `bin` configuration for `npx` execution.
+**Next Steps**: Implement the HTTP client in `apps/agent/src/utils/mcp.ts` (or a new helper) and reconnect it inside `loadDefaultTools()` when ready. See `docs/MCP-SERVERS.md` for ongoing migration notes.
 
-**To Enable MCP Servers**: See comprehensive guide in `MCP-SERVERS.md` for:
-- Local installation with `node` command
-- SSE transport (HTTP-based) servers
-- Custom server creation with `@modelcontextprotocol/sdk`
-
-**Implementation Pattern**:
-- MCP client uses **conditional initialization**: Only creates `MultiServerMCPClient` when `mcpServers` is non-empty
-- Tools are **cached per server** in `cachedToolsByServer` map
-- **Error isolation**: Individual server failures don't prevent other servers from loading
-- **Asynchronous loading**: Tools loaded on-demand with `loadMcpTools()`
+**Historical References**: Prior STDIO guidance remains in the docs for context but no longer reflects the runtime behavior.
 
 ### Authentication & Proxy Architecture
 
@@ -175,18 +164,11 @@ export async function initDeepAgent(): Promise<DeepAgentGraph> {
 }
 ```
 
-**Why**: Graph initialization loads tools, connects to MCP servers, and creates model instance. This can take several seconds. Caching prevents redundant initialization on subsequent requests.
+**Why**: Graph initialization loads tools and creates the Gemini model instance (HTTP MCP integration will connect additional clients once implemented). This can take several seconds. Caching prevents redundant initialization on subsequent requests.
 
-### MCP Client Conditional Initialization
+### MCP Client Integration Status
 
-```typescript
-const hasMcpServers = allServerNames.length > 0;
-export const mcpClient = hasMcpServers
-  ? new MultiServerMCPClient({ mcpServers })
-  : null;
-```
-
-**Why**: `MultiServerMCPClient` throws error if given empty object. Conditional initialization allows running without MCP servers while maintaining type safety.
+**Note**: The previous STDIO-based `MultiServerMCPClient` wiring has been removed. Reintroduce MCP support by adding an HTTP client wrapper and hooking it into `loadDefaultTools()` once available.
 
 ### LangGraph Configuration
 
@@ -219,6 +201,6 @@ export const mcpClient = hasMcpServers
 - **Node.js Only**: No Python dependencies. All MCP servers must be Node.js/TypeScript-based.
 - **Build Required**: Agent TypeScript must be compiled to `dist/` before LangGraph can load it.
 - **Singleton Pattern**: Graph initialization is cached to avoid expensive re-initialization.
-- **MCP Currently Disabled**: Enable by adding Node.js servers to `mcpServers` object in `tools.ts`.
+- **MCP HTTP Pending**: STDIO client removed; add the HTTP integration when it is ready.
 - **Port Conflicts**: If port 2024 is in use, kill the existing process before starting dev server.
 - **Never Run `npm run build`** if localhost is active (e.g., user has localhost:3000 running).

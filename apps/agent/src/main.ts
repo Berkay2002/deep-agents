@@ -2,10 +2,11 @@
 import { Buffer } from "node:buffer";
 import { coerceMessageLikeToMessage, type BaseMessageLike } from "@langchain/core/messages";
 import { createDeepResearchAgent } from "./agents/deep-research/agent.js";
-import { createCodeAssistantAgent } from "./agents/code-assistant/agent.js";
-import { createAgent, listAvailableAgents } from "./agents/index.js";
-import { selectAgent } from "./router.js";
-import type { AgentRunInput, AgentType, AgentFile } from "./shared/types.js";
+// Temporarily disabled: Code assistant and router
+// import { createCodeAssistantAgent } from "./agents/code-assistant/agent.js";
+// import { createAgent, listAvailableAgents } from "./agents/index.js";
+// import { selectAgent } from "./router.js";
+import type { AgentRunInput, AgentFile } from "./shared/types.js";
 
 // TODO: Add agent instance caching for better performance
 // TODO: Implement agent health monitoring and failover
@@ -16,7 +17,8 @@ import type { AgentRunInput, AgentType, AgentFile } from "./shared/types.js";
 
 // Export individual agents for LangGraph configuration
 export const deepResearchAgent = await createDeepResearchAgent();
-export const codeAssistantAgent = await createCodeAssistantAgent();
+// Temporarily disabled: Code assistant
+// export const codeAssistantAgent = await createCodeAssistantAgent();
 
 // Keep the original deepAgentGraph export for backward compatibility
 export const deepAgentGraph = deepResearchAgent;
@@ -41,24 +43,26 @@ function normalizeFileContent(file: AgentFile): string {
 
 /**
  * Router agent that automatically selects the best agent for the task
+ * TEMPORARILY DISABLED - using deep research agent only
  * @param input Agent run input
  * @returns Agent response
  */
+/*
 export async function routerAgent(input: AgentRunInput) {
   const messages = input.messages.map((message: BaseMessageLike) =>
     coerceMessageLikeToMessage(message)
   );
-  
+
   // TODO: Add request/response logging for analytics
   // TODO: Add execution time tracking
   // TODO: Add error handling with fallback agents
-  
+
   const selection = await selectAgent(messages, input.preferredAgent);
-  
+
   console.log(`🤖 Selected agent: ${selection.type}`);
   console.log(`📊 Confidence: ${(selection.confidence * 100).toFixed(1)}%`);
   console.log(`💭 Reasoning: ${selection.reasoning}`);
-  
+
   const files = input.files?.length
     ? Object.fromEntries(
         input.files
@@ -69,35 +73,38 @@ export async function routerAgent(input: AgentRunInput) {
 
   // TODO: Add response time monitoring
   // const startTime = Date.now();
-  
+
   const response = await selection.agent.invoke({
     messages,
     files,
   });
-  
+
   // TODO: Log completion metrics
   // const endTime = Date.now();
   // logAgentMetrics(selection.type, { responseTime: endTime - startTime, success: true });
-  
+
   return response;
 }
+*/
 
 /**
  * Invoke a specific agent directly
+ * TEMPORARILY DISABLED - using deep research agent only
  * @param agentType Type of agent to invoke
  * @param input Agent run input
  * @returns Agent response
  */
+/*
 export async function invokeSpecificAgent(agentType: AgentType, input: AgentRunInput) {
   // TODO: Add agent-specific caching
   // TODO: Add agent warm-up for cold starts
-  
+
   const agent = await createAgent(agentType);
-  
+
   const messages = input.messages.map((message: BaseMessageLike) =>
     coerceMessageLikeToMessage(message)
   );
-  
+
   const files = input.files?.length
     ? Object.fromEntries(
         input.files
@@ -111,6 +118,7 @@ export async function invokeSpecificAgent(agentType: AgentType, input: AgentRunI
     files,
   });
 }
+*/
 
 /**
  * Main invoke function with backward compatibility
@@ -118,22 +126,35 @@ export async function invokeSpecificAgent(agentType: AgentType, input: AgentRunI
  * @returns Agent response
  */
 export async function invokeDeepAgent(input: AgentRunInput) {
-  // If a specific agent is requested, use it
-  if (input.preferredAgent) {
-    return invokeSpecificAgent(input.preferredAgent, input);
-  }
-  
-  // Default to deep research agent for backward compatibility
-  return invokeSpecificAgent("deep-research", input);
+  // Simplified: Always use deep research agent
+  const messages = input.messages.map((message: BaseMessageLike) =>
+    coerceMessageLikeToMessage(message)
+  );
+
+  const files = input.files?.length
+    ? Object.fromEntries(
+        input.files
+          .filter((file: AgentFile) => file.name)
+          .map((file: AgentFile) => [file.name, normalizeFileContent(file)])
+      )
+    : undefined;
+
+  const agent = await createDeepResearchAgent();
+  return agent.invoke({
+    messages,
+    files,
+  });
 }
 
 /**
  * Enhanced invoke function with automatic agent selection
+ * TEMPORARILY DISABLED - using deep research agent only
  * @param input Agent run input
  * @returns Agent response
  */
 export async function invokeWithAgentSelection(input: AgentRunInput) {
-  return routerAgent(input);
+  // Temporarily use deep research agent only
+  return invokeDeepAgent(input);
 }
 
 // TODO: Add streaming response support
@@ -158,21 +179,26 @@ export async function invokeWithAgentSelection(input: AgentRunInput) {
 
 /**
  * Get information about available agents
+ * TEMPORARILY DISABLED - returning only deep research agent
  * @returns List of available agents with their configurations
  */
 export function getAvailableAgents() {
-  return listAvailableAgents();
+  return [
+    {
+      type: "deep-research" as const,
+      name: "Deep Research Agent",
+      description: "Research-focused agent for comprehensive analysis",
+    },
+  ];
 }
 
 // Export types for external use
 export type {
   AgentRunInput,
   AgentType,
-  AgentConfig,
-  AgentSelectionResult,
   AgentFile
 } from "./shared/types.js";
 
-// Export utilities
-export { createAgent, listAvailableAgents } from "./agents/index.js";
-export { selectAgent, analyzeRouting } from "./router.js";
+// Temporarily disabled exports
+// export { createAgent, listAvailableAgents } from "./agents/index.js";
+// export { selectAgent, analyzeRouting } from "./router.js";

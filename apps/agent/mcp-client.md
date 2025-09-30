@@ -1,5 +1,7 @@
 # `src/mcp/client.ts`
 
+> **Note:** The STDIO-based client described below has been removed from the runtime. Retain this document for reference while the HTTP client is implemented.
+
 ```typescript
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";
 import type { MCPServerConfig } from "@langchain/mcp-adapters";

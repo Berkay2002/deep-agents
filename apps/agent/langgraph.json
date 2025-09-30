@@ -3,9 +3,7 @@
   "node_version": "20",
   "graphs": {
     "agent": "./dist/main.js:deepAgentGraph",
-    "deep-research": "./dist/main.js:deepResearchAgent",
-    "code-assistant": "./dist/main.js:codeAssistantAgent",
-    "router": "./dist/main.js:routerAgent"
+    "deep-research": "./dist/main.js:deepResearchAgent"
   },
   "env": ".env",
   "auth": {

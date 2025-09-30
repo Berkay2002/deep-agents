@@ -30,6 +30,8 @@
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "src/router.ts",
+    "src/agents/code-assistant/**/*"
   ]
 }

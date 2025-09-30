@@ -2,13 +2,13 @@
 import { TavilySearch } from "@langchain/tavily";
 import { tool, type StructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
-import { loadMcpTools } from "./mcp.js";
 import {
   withRetry,
   SearchTimeoutError,
   ToolExecutionError,
   formatErrorForUser,
 } from "./errors.js";
+import { loadMcpTools } from "./mcp.js";
 
 export type LoadedTool = StructuredTool;
 
@@ -137,6 +137,7 @@ export async function loadDefaultTools(): Promise<LoadedTool[]> {
     );
   }
 
+  // Load MCP tools from configured servers (Sequential Thinking, DeepWiki, GitHub Copilot)
   const mcpTools = await loadMcpTools();
   tools.push(...mcpTools);
 
