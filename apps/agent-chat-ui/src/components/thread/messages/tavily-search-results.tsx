@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronDown, ChevronUp, Search, ExternalLink } from "lucide-react";
 
-interface SearchResult {
+interface TavilySearchResult {
   url: string;
   title: string;
   content: string;
@@ -12,9 +12,9 @@ interface SearchResult {
   raw_content?: string | null;
 }
 
-interface SearchResultsProps {
+interface TavilySearchResultsProps {
   query: string;
-  results: SearchResult[];
+  results: TavilySearchResult[];
   responseTime?: number;
 }
 
@@ -27,7 +27,7 @@ function extractDomain(url: string): string {
   }
 }
 
-function SearchResultCard({ result }: { result: SearchResult }) {
+function TavilySearchResultCard({ result }: { result: TavilySearchResult }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const domain = extractDomain(result.url);
   const hasExpandableContent = result.content.length > 200;
@@ -86,11 +86,11 @@ function SearchResultCard({ result }: { result: SearchResult }) {
   );
 }
 
-export function SearchResults({
+export function TavilySearchResults({
   query,
   results,
   responseTime,
-}: SearchResultsProps) {
+}: TavilySearchResultsProps) {
   const [isExpanded, setIsExpanded] = useState(false); // Start collapsed
   const validResults = results.filter((r) => r.url && r.title && r.content);
 
@@ -147,7 +147,7 @@ export function SearchResults({
         >
           <div className="max-h-[500px] overflow-y-auto">
             {validResults.map((result, idx) => (
-              <SearchResultCard key={idx} result={result} />
+              <TavilySearchResultCard key={idx} result={result} />
             ))}
           </div>
         </motion.div>

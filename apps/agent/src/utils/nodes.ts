@@ -20,7 +20,7 @@ CRITICAL OUTPUT INSTRUCTIONS:
 
 AVAILABLE TOOLS & WHEN TO USE THEM:
 
-1. **internet_search** - Use for general web searches, news, blog posts, tutorials
+1. **tavily_search** - Use for general web searches, news, blog posts, tutorials
    - When: Need current information, tutorials, community discussions
    - Example queries: "LangChain agent tutorials 2025", "deepagents library examples"
 
@@ -34,8 +34,8 @@ AVAILABLE TOOLS & WHEN TO USE THEM:
 
 RESEARCH PROCESS:
 1. Choose the right tool(s) for your research query (see guidance above)
-2. For framework/library questions: Start with official docs (deepwiki) or use internet_search
-3. For implementation examples: Use internet_search for tutorials and community content
+2. For framework/library questions: Start with official docs (deepwiki) or use tavily_search
+3. For implementation examples: Use tavily_search for tutorials and community content
 4. Extract key facts, data points, and insights from results
 5. Return findings in simple structured format (see below)
 
@@ -82,7 +82,7 @@ AVAILABLE TOOLS & WHEN TO USE THEM:
    - When: Always start by reading these files to understand the report and topic
    - You can ONLY read files, NOT write or edit them
 
-2. **internet_search** - Use to verify facts or find missing information
+2. **tavily_search** - Use to verify facts or find missing information
    - When: Need to fact-check claims, find additional context, or verify citations
    - Example: "Verify statistics about X", "Find latest information on Y"
 
@@ -220,9 +220,9 @@ Format the report in clear markdown with proper structure and include source ref
 
 You have access to a few tools.
 
-## \`internet_search\`
+## \`tavily_search\`
 
-Use this to run an internet search for a given query. You can specify the number of results, the topic, and whether raw content should be included.
+Use this to run a web search for a given query. You can specify the number of results, the topic, and whether raw content should be included.
 `;
 
 export const researchSubAgent: SubAgent = {
@@ -230,7 +230,7 @@ export const researchSubAgent: SubAgent = {
   description:
     "Used to extract raw research data for synthesis. This agent returns UNFORMATTED research findings, NOT polished reports. Only give this researcher one topic at a time. Do not pass multiple sub questions to this researcher. Instead, break down large topics into necessary components and call multiple research agents in parallel, one for each sub question. CRITICAL: The research-agent returns raw data in plain structured format (bullet points + source URLs). DO NOT echo its response to the user. DO NOT treat its response as a formatted report. ONLY use it as source material for your final_report.md. After receiving research results, mark the corresponding todo as completed and continue with remaining todos.",
   prompt: RESEARCH_SUB_AGENT_PROMPT,
-  // No tools specified = gets ALL available tools (internet_search + all MCP tools)
+  // No tools specified = gets ALL available tools (tavily_search + all MCP tools)
 };
 
 export const critiqueSubAgent: SubAgent = {
@@ -238,7 +238,7 @@ export const critiqueSubAgent: SubAgent = {
   description:
     "Used to critique the final report. Give this agent some information about how you want it to critique the report. This agent can ONLY read files and search for verification - it cannot edit or write files.",
   prompt: CRITIQUE_SUB_AGENT_PROMPT,
-  // No tools specified = gets ALL available tools (includes read_file, internet_search, MCP tools)
+  // No tools specified = gets ALL available tools (includes read_file, tavily_search, MCP tools)
   // Note: The prompt explicitly restricts to read-only operations
 };
 

@@ -1,6 +1,6 @@
 import { Message, ToolMessage } from "@langchain/langgraph-sdk";
 
-export interface SearchResultData {
+export interface TavilySearchResultData {
   query: string;
   results: Array<{
     url: string;
@@ -10,7 +10,29 @@ export interface SearchResultData {
     raw_content?: string | null;
   }>;
   responseTime?: number;
+  searchType: "tavily";
 }
+
+export interface ExaSearchResultData {
+  query: string;
+  results: Array<{
+    url: string;
+    title?: string | null;
+    summary?: string | null;
+    snippet?: string | null;
+    fullText?: string | null;
+    author?: string | null;
+    publishedDate?: string | null;
+    highlights?: Array<{
+      snippet?: string | null;
+      source?: string | null;
+    }>;
+  }>;
+  responseTime?: number;
+  searchType: "exa";
+}
+
+export type SearchResultData = TavilySearchResultData | ExaSearchResultData;
 
 export type ResearchAgentStatus = "pending" | "in_progress" | "completed";
 
@@ -22,6 +44,7 @@ export interface ResearchAgentGroup {
   status: ResearchAgentStatus;
   startIndex: number;
   endIndex: number;
+  statusUpdates?: string[];
 }
 
 /**
@@ -34,9 +57,9 @@ function isResearchAgentTask(toolCall: any): boolean {
 }
 
 /**
- * Extracts search result data from a tool message content
+ * Extracts Tavily search result data from a tool message content
  */
-function extractSearchResults(content: any): SearchResultData | null {
+function extractTavilySearchResults(content: any): TavilySearchResultData | null {
   try {
     let parsedContent: any;
 
@@ -46,23 +69,88 @@ function extractSearchResults(content: any): SearchResultData | null {
       parsedContent = content;
     }
 
+    // Tavily results have 'content' field
     if (
       typeof parsedContent === "object" &&
       "results" in parsedContent &&
       Array.isArray(parsedContent.results) &&
       parsedContent.results.length > 0 &&
       parsedContent.results[0].url &&
-      parsedContent.results[0].content
+      parsedContent.results[0].content !== undefined
     ) {
       return {
         query: parsedContent.query || "",
         results: parsedContent.results,
         responseTime: parsedContent.response_time,
+        searchType: "tavily",
       };
     }
   } catch {
-    // Not a valid search result
+    // Not a valid Tavily search result
   }
+  return null;
+}
+
+/**
+ * Extracts Exa search result data from a tool message content
+ */
+function extractExaSearchResults(content: any): ExaSearchResultData | null {
+  try {
+    let parsedContent: any;
+
+    if (typeof content === "string") {
+      parsedContent = JSON.parse(content);
+    } else {
+      parsedContent = content;
+    }
+
+    // Exa results have different structure (no 'content' field, but may have 'text', 'summary', 'snippet')
+    if (
+      typeof parsedContent === "object" &&
+      "results" in parsedContent &&
+      Array.isArray(parsedContent.results) &&
+      parsedContent.results.length > 0 &&
+      parsedContent.results[0].url &&
+      // Check for Exa-specific fields (not 'content' like Tavily)
+      (parsedContent.results[0].text !== undefined ||
+       parsedContent.results[0].summary !== undefined ||
+       parsedContent.results[0].snippet !== undefined ||
+       parsedContent.results[0].highlights !== undefined)
+    ) {
+      return {
+        query: parsedContent.query || "",
+        results: parsedContent.results.map((r: any) => ({
+          url: r.url,
+          title: r.title,
+          summary: r.summary,
+          snippet: r.snippet,
+          fullText: r.text || r.fullText,
+          author: r.author,
+          publishedDate: r.publishedDate,
+          highlights: r.highlights,
+        })),
+        responseTime: parsedContent.response_time,
+        searchType: "exa",
+      };
+    }
+  } catch {
+    // Not a valid Exa search result
+  }
+  return null;
+}
+
+/**
+ * Extracts search result data from a tool message content (tries both Tavily and Exa)
+ */
+function extractSearchResults(content: any): SearchResultData | null {
+  // Try Tavily first (most common)
+  const tavilyResults = extractTavilySearchResults(content);
+  if (tavilyResults) return tavilyResults;
+
+  // Try Exa
+  const exaResults = extractExaSearchResults(content);
+  if (exaResults) return exaResults;
+
   return null;
 }
 
@@ -104,6 +192,7 @@ export function groupResearchAgentMessages(messages: Message[]): ResearchAgentGr
         const searchResults: SearchResultData[] = [];
         let findings: string | undefined;
         let endIndex = i;
+        const statusUpdates: string[] = [];
 
         // Determine initial status
         let status: ResearchAgentStatus = "pending";
@@ -118,6 +207,24 @@ export function groupResearchAgentMessages(messages: Message[]): ResearchAgentGr
         // Look ahead for search results and findings
         for (let j = i + 1; j < messages.length; j++) {
           const nextMessage = messages[j];
+
+          // Check for AI messages that might contain status updates
+          if (nextMessage.type === "ai" && !("tool_calls" in nextMessage)) {
+            // This is an AI message without tool calls, likely a status update
+            const content = Array.isArray(nextMessage.content)
+              ? nextMessage.content.map(c => c.type === "text" ? c.text : "").join("")
+              : nextMessage.content;
+            
+            if (content && typeof content === "string" && content.trim().length > 0) {
+              statusUpdates.push(content);
+              endIndex = j;
+              // If we have status updates, agent is in progress
+              if (status === "pending") {
+                status = "in_progress";
+              }
+              continue;
+            }
+          }
 
           // Check for search results
           if (nextMessage.type === "tool") {
@@ -203,6 +310,7 @@ export function groupResearchAgentMessages(messages: Message[]): ResearchAgentGr
           status,
           startIndex: i,
           endIndex,
+          statusUpdates,
         });
       }
     }

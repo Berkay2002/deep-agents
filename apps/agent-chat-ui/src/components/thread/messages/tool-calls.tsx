@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { TodoList } from "../todo-list";
 import { WriteFileDiff } from "./write-file-diff";
-import { SearchResults } from "./search-results";
+import { TavilySearchResults } from "./tavily-search-results";
+import { ExaSearchResults } from "./exa-search-results";
 import { FileUpdateNotification } from "./file-update-notification";
 import { ReadFileDisplay } from "./read-file-display";
 
@@ -247,19 +248,42 @@ export function ToolResult({
     return null; // Will be displayed by CritiqueAgentContainer
   }
 
-  // Check if this is a search result (internet_search, tavily_search, etc.)
-  const isSearchResult =
+  // Check if this is a Tavily search result (has 'content' field)
+  const isTavilySearchResult =
     isJsonContent &&
     typeof parsedContent === "object" &&
     "results" in parsedContent &&
     Array.isArray(parsedContent.results) &&
     parsedContent.results.length > 0 &&
     parsedContent.results[0].url &&
-    parsedContent.results[0].content;
+    parsedContent.results[0].content !== undefined;
 
-  if (isSearchResult) {
+  if (isTavilySearchResult) {
     return (
-      <SearchResults
+      <TavilySearchResults
+        query={parsedContent.query || ""}
+        results={parsedContent.results}
+        responseTime={parsedContent.response_time}
+      />
+    );
+  }
+
+  // Check if this is an Exa search result (has 'text', 'summary', 'snippet', or 'highlights')
+  const isExaSearchResult =
+    isJsonContent &&
+    typeof parsedContent === "object" &&
+    "results" in parsedContent &&
+    Array.isArray(parsedContent.results) &&
+    parsedContent.results.length > 0 &&
+    parsedContent.results[0].url &&
+    (parsedContent.results[0].text !== undefined ||
+     parsedContent.results[0].summary !== undefined ||
+     parsedContent.results[0].snippet !== undefined ||
+     parsedContent.results[0].highlights !== undefined);
+
+  if (isExaSearchResult) {
+    return (
+      <ExaSearchResults
         query={parsedContent.query || ""}
         results={parsedContent.results}
         responseTime={parsedContent.response_time}

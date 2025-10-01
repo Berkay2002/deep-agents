@@ -18,7 +18,8 @@ import { FileUpdateNotification } from "./messages/file-update-notification";
 import { WriteFileDiff } from "./messages/write-file-diff";
 import { ToolCalls } from "./messages/tool-calls";
 import { ToolResult } from "./messages/tool-calls";
-import { SearchResults } from "./messages/search-results";
+import { TavilySearchResults } from "./messages/tavily-search-results";
+import { ExaSearchResults } from "./messages/exa-search-results";
 import { formatDistanceToNow } from "date-fns";
 
 interface TimelineAdapterProps {
@@ -182,11 +183,10 @@ export function TimelineAdapter({ messages, className, isLast = false }: Timelin
       if (toolCall) {
         const args = toolCall.args as any;
         
-        // Handle search results
+        // Handle Tavily search results
         if (
           toolCall.name === "tavily_search" ||
-          toolCall.name === "internet_search" ||
-          toolCall.name === "search"
+          toolCall.name === "internet_search"
         ) {
           try {
             const parsedContent = JSON.parse(message.content as string);
@@ -195,13 +195,39 @@ export function TimelineAdapter({ messages, className, isLast = false }: Timelin
                 createTimelineActivity(
                   `search-${index}`,
                   "search-result",
-                  <SearchResults
+                  <TavilySearchResults
                     query={parsedContent.query || ""}
                     results={parsedContent.results}
                     responseTime={parsedContent.response_time}
                   />,
                   {
-                    title: `Search: ${parsedContent.query || "Unknown query"}`,
+                    title: `Tavily Search: ${parsedContent.query || "Unknown query"}`,
+                    status: "completed",
+                  }
+                )
+              );
+            }
+          } catch {
+            // Skip if we can't parse the search results
+          }
+        }
+
+        // Handle Exa search results
+        if (toolCall.name === "exa_search") {
+          try {
+            const parsedContent = JSON.parse(message.content as string);
+            if (parsedContent?.results && Array.isArray(parsedContent.results)) {
+              activities.push(
+                createTimelineActivity(
+                  `search-${index}`,
+                  "search-result",
+                  <ExaSearchResults
+                    query={parsedContent.query || ""}
+                    results={parsedContent.results}
+                    responseTime={parsedContent.response_time}
+                  />,
+                  {
+                    title: `Exa Search: ${parsedContent.query || "Unknown query"}`,
                     status: "completed",
                   }
                 )

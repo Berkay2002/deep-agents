@@ -3,21 +3,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronDown, ChevronUp, Search, FileText, Loader2, CheckCircle2, Clock } from "lucide-react";
-import { SearchResults } from "./search-results";
-
-interface SearchResult {
-  url: string;
-  title: string;
-  content: string;
-  score?: number;
-  raw_content?: string | null;
-}
-
-interface SearchResultData {
-  query: string;
-  results: SearchResult[];
-  responseTime?: number;
-}
+import { TavilySearchResults } from "./tavily-search-results";
+import { ExaSearchResults } from "./exa-search-results";
+import type { SearchResultData } from "@/lib/research-agent-grouper";
 
 type ResearchAgentStatus = "pending" | "in_progress" | "completed";
 
@@ -26,6 +14,7 @@ interface ResearchAgent {
   searchResults: SearchResultData[];
   findings?: string;
   status: ResearchAgentStatus;
+  statusUpdates?: string[];
 }
 
 interface ResearchAgentContainerProps {
@@ -159,6 +148,29 @@ export function ResearchAgentContainer({
               </p>
             </div>
 
+            {/* Status Updates Section */}
+            {currentAgent.statusUpdates && currentAgent.statusUpdates.length > 0 && (
+              <div className="border-b border-gray-100 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Loader2 className="w-3.5 h-3.5 text-blue-500" />
+                  <h4 className="text-sm font-medium text-gray-700">
+                    Status Updates
+                  </h4>
+                </div>
+                <div className="space-y-3">
+                  {currentAgent.statusUpdates.map((update, idx) => (
+                    <div key={idx} className="pl-4">
+                      <div className="prose prose-sm max-w-none">
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          {update}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Search Results Section */}
             {currentAgent.searchResults.length > 0 && (
               <div className="border-b border-gray-100 p-4">
@@ -172,11 +184,19 @@ export function ResearchAgentContainer({
                 <div className="space-y-4">
                   {currentAgent.searchResults.map((searchData, idx) => (
                     <div key={idx} className="pl-4">
-                      <SearchResults
-                        query={searchData.query}
-                        results={searchData.results}
-                        responseTime={searchData.responseTime}
-                      />
+                      {searchData.searchType === "tavily" ? (
+                        <TavilySearchResults
+                          query={searchData.query}
+                          results={searchData.results}
+                          responseTime={searchData.responseTime}
+                        />
+                      ) : (
+                        <ExaSearchResults
+                          query={searchData.query}
+                          results={searchData.results}
+                          responseTime={searchData.responseTime}
+                        />
+                      )}
                     </div>
                   ))}
                 </div>

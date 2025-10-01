@@ -19,12 +19,12 @@ export type LoadedTool = StructuredTool;
 // 7. Code formatting and linting integration
 // 8. API documentation and testing tools
 
-// Reuse internet search for code-related queries (documentation, examples, etc.)
-export const internetSearch = tool(
+// Reuse Tavily search for code-related queries (documentation, examples, etc.)
+export const tavilySearch = tool(
   async (args: TavilySearchArgs) =>
-    performTavilySearch(args, { toolName: "internet_search" }),
+    performTavilySearch(args, { toolName: "tavily_search" }),
   {
-    name: "internet_search",
+    name: "tavily_search",
     description:
       "Run a web search to find information about coding topics, documentation, examples, or solutions. Returns structured Tavily search results, optional synthesized answers, and related images when requested.",
     schema: tavilySearchArgsSchema,
@@ -123,10 +123,10 @@ export async function loadCodeTools(): Promise<LoadedTool[]> {
   const tools: LoadedTool[] = [];
 
   if (process.env.TAVILY_API_KEY) {
-    tools.push(internetSearch as LoadedTool);
+    tools.push(tavilySearch as LoadedTool);
   } else {
     console.warn(
-      "TAVILY_API_KEY not set. The internet_search tool will be unavailable."
+      "TAVILY_API_KEY not set. The tavily_search tool will be unavailable."
     );
   }
 
