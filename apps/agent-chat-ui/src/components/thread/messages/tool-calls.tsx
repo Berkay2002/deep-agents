@@ -97,6 +97,22 @@ export function ToolCalls({
           return null; // Will be displayed by ReadFileDisplay in ToolResult
         }
 
+        // Check if this is a research agent task - don't show it here, it will be shown in ResearchAgentContainer
+        const isResearchAgentTask =
+          tc.name === "task" &&
+          args?.subagent_type === "research-agent";
+        if (isResearchAgentTask) {
+          return null; // Will be displayed by ResearchAgentContainer
+        }
+
+        // Check if this is a critique agent task - don't show it here, it will be shown in CritiqueAgentContainer
+        const isCritiqueAgentTask =
+          tc.name === "task" &&
+          args?.subagent_type === "critique-agent";
+        if (isCritiqueAgentTask) {
+          return null; // Will be displayed by CritiqueAgentContainer
+        }
+
         return (
           <div
             key={idx}
@@ -189,13 +205,17 @@ export function ToolResult({
     );
   }
 
-  // Check if this is an error result (but not for file operations, which show errors in WriteFileDiff)
+  // Check if this is a file operation - hide all file operation results (shown in WriteFileDiff)
   const isFileOperation = message.name &&
     (message.name === "write_file" || message.name === "edit_file" ||
      message.name === "Write" || message.name === "Edit" || message.name === "MultiEdit");
 
+  if (isFileOperation) {
+    return null; // Will be displayed by WriteFileDiff
+  }
+
+  // Check if this is an error result
   const isError =
-    !isFileOperation &&
     typeof message.content === "string" &&
     (message.content.toLowerCase().includes("error:") ||
      message.content.toLowerCase().includes("failed") ||
@@ -207,6 +227,24 @@ export function ToolResult({
   // Filter out tool errors - don't display them as they're internal mistakes
   if (isError) {
     return null;
+  }
+
+  // Check if this is a research agent task result - hide it since ResearchAgentContainer handles it
+  const isResearchAgentTaskResult =
+    toolCall?.name === "task" &&
+    toolCall?.args?.subagent_type === "research-agent";
+
+  if (isResearchAgentTaskResult) {
+    return null; // Will be displayed by ResearchAgentContainer
+  }
+
+  // Check if this is a critique agent task result - hide it since CritiqueAgentContainer handles it
+  const isCritiqueAgentTaskResult =
+    toolCall?.name === "task" &&
+    toolCall?.args?.subagent_type === "critique-agent";
+
+  if (isCritiqueAgentTaskResult) {
+    return null; // Will be displayed by CritiqueAgentContainer
   }
 
   // Check if this is a search result (internet_search, tavily_search, etc.)

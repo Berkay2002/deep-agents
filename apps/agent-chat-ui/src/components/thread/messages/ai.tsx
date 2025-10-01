@@ -184,6 +184,14 @@ export function AssistantMessage({
     (message.name === "write_file" || message.name === "edit_file" ||
      message.name === "Write" || message.name === "Edit" || message.name === "MultiEdit");
 
+  // Also hide file operation results based on content
+  const isFileOperationContentResult =
+    isToolResult &&
+    typeof message.content === "string" &&
+    (message.content.startsWith("Updated file ") ||
+     message.content.startsWith("Created file ") ||
+     message.content.startsWith("Edited file "));
+
   // Check if message contains TodoList tool calls
   const hasTodoListToolCalls =
     hasToolCalls &&
@@ -194,11 +202,19 @@ export function AssistantMessage({
       Array.isArray(tc.args.todos)
     );
 
+  // Determine if this is a final report message that should show Copy/Refresh buttons
+  // Hide buttons for intermediate tool-related messages, show only for substantial final content
+  const shouldHideCommandButtons =
+    hasToolCalls || // Hide if message has active tool calls
+    isToolResult || // Hide for tool result messages
+    hasTodoListToolCalls || // Hide for todo list updates
+    (contentString.length < 500 && !isLastMessage); // Hide short messages unless it's the last one
+
   if (isToolResult && hideToolCalls) {
     return null;
   }
 
-  if (isTodoWriteResult || isTodoListContentResult || isSubAgentResult || isFileOperationResult) {
+  if (isTodoWriteResult || isTodoListContentResult || isSubAgentResult || isFileOperationResult || isFileOperationContentResult) {
     return null;
   }
 
@@ -275,6 +291,7 @@ export function AssistantMessage({
                   content={contentString}
                   isLoading={isLoading}
                   isAiMessage={true}
+                  hideButtons={shouldHideCommandButtons}
                   handleRegenerate={() => handleRegenerate(parentCheckpoint)}
                 />
               </div>

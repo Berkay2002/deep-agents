@@ -13,6 +13,18 @@ import {
   ensureToolCallsHaveResponses,
 } from "@/lib/ensure-tool-responses";
 import { filterSubagentResponses } from "@/lib/subagent-filter";
+import {
+  groupResearchAgentMessages,
+  isMessageInResearchGroup,
+  type ResearchAgentGroup,
+} from "@/lib/research-agent-grouper";
+import { ResearchAgentContainer } from "./messages/research-agent-container";
+import {
+  groupCritiqueAgentMessages,
+  isMessageInCritiqueGroup,
+  type CritiqueAgentGroup,
+} from "@/lib/critique-agent-grouper";
+import { CritiqueAgentContainer } from "./messages/critique-agent-container";
 import { LangGraphLogoSVG } from "../icons/langgraph";
 import { TooltipIconButton } from "./tooltip-icon-button";
 import {
@@ -409,32 +421,97 @@ export function Thread() {
               contentClassName="pt-8 pb-16  max-w-3xl mx-auto flex flex-col gap-4 w-full"
               content={
                 <>
-                  {messages
-                    .filter((m) => !m.id?.startsWith(DO_NOT_RENDER_ID_PREFIX))
-                    .filter((m) => {
-                      const filtered = filterSubagentResponses([m]);
-                      return filtered.length > 0;
-                    })
-                    .map((message, index) => {
-                      // Use index-based key to prevent re-mounting during streaming
-                      // when message IDs change from undefined to actual values
-                      const stableKey = `${message.type}-${index}`;
+                  {(() => {
+                    // Filter messages first
+                    const filteredMessages = messages
+                      .filter((m) => !m.id?.startsWith(DO_NOT_RENDER_ID_PREFIX))
+                      .filter((m) => {
+                        const filtered = filterSubagentResponses([m]);
+                        return filtered.length > 0;
+                      });
 
-                      return message.type === "human" ? (
-                        <HumanMessage
-                          key={stableKey}
-                          message={message}
-                          isLoading={isLoading}
-                        />
-                      ) : (
-                        <AssistantMessage
-                          key={stableKey}
-                          message={message}
-                          isLoading={isLoading}
-                          handleRegenerate={handleRegenerate}
-                        />
+                    // Group research and critique agent messages
+                    const researchGroups = groupResearchAgentMessages(messages);
+                    const critiqueGroups = groupCritiqueAgentMessages(messages);
+
+                    // Track if we've rendered agent containers
+                    let researchAgentsRendered = false;
+                    let critiqueAgentsRendered = false;
+
+                    const result: JSX.Element[] = [];
+
+                    // Iterate through all messages and render in order
+                    filteredMessages.forEach((message, filteredIndex) => {
+                      // Find the original index in the messages array
+                      const originalIndex = messages.findIndex((m) => m === message);
+
+                      // Check if this is the start of the first research group and we haven't rendered the container yet
+                      if (!researchAgentsRendered && researchGroups.length > 0 && originalIndex === researchGroups[0].startIndex) {
+                        // Render all research agents in one container
+                        const agents = researchGroups.map((group) => ({
+                          taskDescription: group.taskDescription,
+                          searchResults: group.searchResults,
+                          findings: group.findings,
+                          status: group.status,
+                        }));
+
+                        result.push(
+                          <ResearchAgentContainer
+                            key="research-agents-container"
+                            agents={agents}
+                          />
+                        );
+                        researchAgentsRendered = true;
+                        return;
+                      }
+
+                      // Check if this is the start of the first critique group and we haven't rendered the container yet
+                      if (!critiqueAgentsRendered && critiqueGroups.length > 0 && originalIndex === critiqueGroups[0].startIndex) {
+                        // Render all critique agents in one container
+                        const agents = critiqueGroups.map((group) => ({
+                          taskDescription: group.taskDescription,
+                          critique: group.critique,
+                        }));
+
+                        result.push(
+                          <CritiqueAgentContainer
+                            key="critique-agents-container"
+                            agents={agents}
+                          />
+                        );
+                        critiqueAgentsRendered = true;
+                        return;
+                      }
+
+                      // Skip if this message is part of a research or critique group
+                      if (isMessageInResearchGroup(originalIndex, researchGroups) ||
+                          isMessageInCritiqueGroup(originalIndex, critiqueGroups)) {
+                        return;
+                      }
+
+                      // Render individual message
+                      const stableKey = `${message.type}-${filteredIndex}`;
+
+                      result.push(
+                        message.type === "human" ? (
+                          <HumanMessage
+                            key={stableKey}
+                            message={message}
+                            isLoading={isLoading}
+                          />
+                        ) : (
+                          <AssistantMessage
+                            key={stableKey}
+                            message={message}
+                            isLoading={isLoading}
+                            handleRegenerate={handleRegenerate}
+                          />
+                        )
                       );
-                    })}
+                    });
+
+                    return result;
+                  })()}
                   {/* Special rendering case where there are no AI/tool messages, but there is an interrupt.
                     We need to render it outside of the messages list, since there are no messages to render */}
                   {hasNoAIOrToolMessages && !!stream.interrupt && (
