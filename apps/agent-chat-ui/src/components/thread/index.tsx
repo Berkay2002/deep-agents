@@ -12,6 +12,7 @@ import {
   DO_NOT_RENDER_ID_PREFIX,
   ensureToolCallsHaveResponses,
 } from "@/lib/ensure-tool-responses";
+import { filterSubagentResponses } from "@/lib/subagent-filter";
 import { LangGraphLogoSVG } from "../icons/langgraph";
 import { TooltipIconButton } from "./tooltip-icon-button";
 import {
@@ -410,6 +411,10 @@ export function Thread() {
                 <>
                   {messages
                     .filter((m) => !m.id?.startsWith(DO_NOT_RENDER_ID_PREFIX))
+                    .filter((m) => {
+                      const filtered = filterSubagentResponses([m]);
+                      return filtered.length > 0;
+                    })
                     .map((message, index) => {
                       // Use index-based key to prevent re-mounting during streaming
                       // when message IDs change from undefined to actual values

@@ -100,6 +100,9 @@ export function WriteFileDiff({ toolName, args }: WriteFileDiffProps) {
 
   const filePath = args.file_path || "unknown";
   const isWriteOperation = toolName === "Write" || toolName === "write_file";
+  
+  // Note: This component intentionally does not render copy content or refresh buttons
+  // to keep the diff view clean and focused on the content changes
 
   // Determine old and new content
   let oldContent = "";
