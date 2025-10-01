@@ -1,9 +1,16 @@
 import { Message, AIMessage, ToolMessage } from "@langchain/langgraph-sdk";
 
+export interface FileRead {
+  filePath: string;
+  content: string;
+  toolCallId: string;
+}
+
 export interface CritiqueAgentGroup {
   taskDescription: string;
   taskToolCallId: string;
   critique?: string;
+  fileReads: FileRead[];
   startIndex: number;
   endIndex: number;
 }
@@ -54,6 +61,7 @@ export function groupCritiqueAgentMessages(messages: Message[]): CritiqueAgentGr
         // Now collect all subsequent messages related to this critique task
         let critique: string | undefined;
         let endIndex = i;
+        const fileReads: FileRead[] = [];
 
         // Collect all AI message content between task invocation and completion
         const allAIContent: string[] = [];
@@ -61,6 +69,39 @@ export function groupCritiqueAgentMessages(messages: Message[]): CritiqueAgentGr
         // Look ahead for critique response
         for (let j = i + 1; j < messages.length; j++) {
           const nextMessage = messages[j];
+
+          // Check for file read operations
+          if (nextMessage.type === "tool") {
+            const toolMsg = nextMessage as ToolMessage;
+
+            // Check if this is a file read (from any AI message, not just critique task)
+            // File reads can come from intermediate AI messages during critique execution
+            if (toolMsg.name === "Read" || toolMsg.name === "read_file" || toolMsg.name === "ReadFile") {
+              // Find the corresponding tool call in previous AI messages
+              for (let k = j - 1; k >= i; k--) {
+                const prevMsg = messages[k];
+                if (prevMsg.type === "ai" && "tool_calls" in prevMsg && prevMsg.tool_calls) {
+                  const matchingToolCall = prevMsg.tool_calls.find(
+                    (tc: any) => tc.id === toolMsg.tool_call_id
+                  );
+
+                  if (matchingToolCall) {
+                    const args = matchingToolCall.args as any;
+                    const filePath = args.file_path || args.filePath || "unknown";
+
+                    fileReads.push({
+                      filePath,
+                      content: typeof toolMsg.content === "string" ? toolMsg.content : "",
+                      toolCallId: toolMsg.tool_call_id || "",
+                    });
+
+                    endIndex = j;
+                    break;
+                  }
+                }
+              }
+            }
+          }
 
           // Collect AI message content (might contain the actual critique)
           if (nextMessage.type === "ai") {
@@ -133,6 +174,7 @@ export function groupCritiqueAgentMessages(messages: Message[]): CritiqueAgentGr
           taskDescription,
           taskToolCallId,
           critique,
+          fileReads,
           startIndex: i,
           endIndex,
         });
@@ -152,5 +194,17 @@ export function isMessageInCritiqueGroup(
 ): boolean {
   return groups.some(
     (group) => messageIndex >= group.startIndex && messageIndex <= group.endIndex
+  );
+}
+
+/**
+ * Checks if a tool_call_id belongs to a file read operation in a critique agent group
+ */
+export function isToolCallInCritiqueGroup(
+  toolCallId: string,
+  groups: CritiqueAgentGroup[]
+): boolean {
+  return groups.some((group) =>
+    group.fileReads.some((fileRead) => fileRead.toolCallId === toolCallId)
   );
 }

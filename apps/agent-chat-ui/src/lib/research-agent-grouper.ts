@@ -12,7 +12,7 @@ export interface SearchResultData {
   responseTime?: number;
 }
 
-export type ResearchAgentStatus = "pending" | "in_progress" | "completed" | "failed";
+export type ResearchAgentStatus = "pending" | "in_progress" | "completed";
 
 export interface ResearchAgentGroup {
   taskDescription: string;
@@ -109,6 +109,12 @@ export function groupResearchAgentMessages(messages: Message[]): ResearchAgentGr
         let status: ResearchAgentStatus = "pending";
         let hasToolResult = false;
 
+        // Debug logging
+        if (process.env.NODE_ENV === "development") {
+          console.log(`[Research Agent] Processing task: ${taskDescription.substring(0, 50)}...`);
+          console.log(`[Research Agent] Looking for tool_call_id: ${taskToolCallId}`);
+        }
+
         // Look ahead for search results and findings
         for (let j = i + 1; j < messages.length; j++) {
           const nextMessage = messages[j];
@@ -126,6 +132,14 @@ export function groupResearchAgentMessages(messages: Message[]): ResearchAgentGr
               continue;
             }
 
+            // Debug: log all tool messages to see what we're getting
+            if (process.env.NODE_ENV === "development" && "tool_call_id" in nextMessage) {
+              console.log(`[Research Agent] Found tool message with tool_call_id: ${nextMessage.tool_call_id}`);
+              console.log(`[Research Agent] Matches expected? ${nextMessage.tool_call_id === taskToolCallId}`);
+              console.log(`[Research Agent] Content type: ${typeof nextMessage.content}`);
+              console.log(`[Research Agent] Content preview: ${typeof nextMessage.content === "string" ? nextMessage.content.substring(0, 100) : "non-string"}`);
+            }
+
             // Check for research findings (final response from research agent)
             if (
               "tool_call_id" in nextMessage &&
@@ -134,23 +148,16 @@ export function groupResearchAgentMessages(messages: Message[]): ResearchAgentGr
               hasToolResult = true;
               const researchFindings = extractResearchFindings(nextMessage as ToolMessage);
 
-              // Check if this is an error message
-              // Use word boundary checks to avoid false positives (e.g., "solitary" contains "itar")
-              const content = nextMessage.content;
-              const isError = typeof content === "string" && (
-                /\berror\b/i.test(content) ||
-                /\bfailed\b/i.test(content) ||
-                /\btimeout\b/i.test(content) ||
-                content.toLowerCase().startsWith("error:") ||
-                content.toLowerCase().startsWith("failed:")
-              );
+              // Debug: log when we find a matching tool result
+              if (process.env.NODE_ENV === "development") {
+                console.log(`[Research Agent] Found result for task ${taskToolCallId.substring(0, 8)}:`, {
+                  hasFindings: !!researchFindings,
+                  contentLength: typeof nextMessage.content === "string" ? nextMessage.content.length : 0,
+                });
+              }
 
-              if (isError) {
-                status = "failed";
-                findings = researchFindings ?? undefined;
-                endIndex = j;
-                break;
-              } else if (researchFindings) {
+              // If we have research findings (tool result with matching ID), mark as completed
+              if (researchFindings) {
                 findings = researchFindings;
                 status = "completed";
                 endIndex = j;
@@ -178,6 +185,14 @@ export function groupResearchAgentMessages(messages: Message[]): ResearchAgentGr
         // If we have search results but no final result, agent is still in progress
         if (searchResults.length > 0 && !hasToolResult) {
           status = "in_progress";
+        }
+
+        // Debug: log final status
+        if (process.env.NODE_ENV === "development") {
+          console.log(`[Research Agent] Final status for task: ${status}`);
+          console.log(`[Research Agent] Has findings: ${!!findings}`);
+          console.log(`[Research Agent] Search results count: ${searchResults.length}`);
+          console.log("---");
         }
 
         groups.push({

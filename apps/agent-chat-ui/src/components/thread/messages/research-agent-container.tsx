@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronDown, ChevronUp, Search, FileText, Loader2, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, FileText, Loader2, CheckCircle2, Clock } from "lucide-react";
 import { SearchResults } from "./search-results";
 
 interface SearchResult {
@@ -19,7 +19,7 @@ interface SearchResultData {
   responseTime?: number;
 }
 
-type ResearchAgentStatus = "pending" | "in_progress" | "completed" | "failed";
+type ResearchAgentStatus = "pending" | "in_progress" | "completed";
 
 interface ResearchAgent {
   taskDescription: string;
@@ -40,8 +40,6 @@ function getStatusIcon(status: ResearchAgentStatus) {
       return <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />;
     case "completed":
       return <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />;
-    case "failed":
-      return <XCircle className="w-3.5 h-3.5 text-red-600" />;
   }
 }
 
@@ -53,8 +51,6 @@ function getStatusColor(status: ResearchAgentStatus) {
       return "text-blue-600 border-blue-400 bg-blue-50";
     case "completed":
       return "text-green-600 border-green-500 bg-green-50";
-    case "failed":
-      return "text-red-600 border-red-500 bg-red-50";
   }
 }
 

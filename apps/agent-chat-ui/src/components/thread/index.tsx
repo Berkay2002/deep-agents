@@ -22,6 +22,7 @@ import { ResearchAgentContainer } from "./messages/research-agent-container";
 import {
   groupCritiqueAgentMessages,
   isMessageInCritiqueGroup,
+  isToolCallInCritiqueGroup,
   type CritiqueAgentGroup,
 } from "@/lib/critique-agent-grouper";
 import { CritiqueAgentContainer } from "./messages/critique-agent-container";
@@ -471,6 +472,7 @@ export function Thread() {
                         const agents = critiqueGroups.map((group) => ({
                           taskDescription: group.taskDescription,
                           critique: group.critique,
+                          fileReads: group.fileReads,
                         }));
 
                         result.push(
@@ -486,6 +488,17 @@ export function Thread() {
                       // Skip if this message is part of a research or critique group
                       if (isMessageInResearchGroup(originalIndex, researchGroups) ||
                           isMessageInCritiqueGroup(originalIndex, critiqueGroups)) {
+                        return;
+                      }
+
+                      // Skip if this is a file read tool message that belongs to a critique agent
+                      if (
+                        message.type === "tool" &&
+                        "tool_call_id" in message &&
+                        message.tool_call_id &&
+                        (message.name === "Read" || message.name === "read_file" || message.name === "ReadFile") &&
+                        isToolCallInCritiqueGroup(message.tool_call_id, critiqueGroups)
+                      ) {
                         return;
                       }
 
