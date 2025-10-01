@@ -202,12 +202,20 @@ export function AssistantMessage({
     return null;
   }
 
+  // Find the corresponding tool call for this tool result
+  const correspondingToolCall = isToolResult && "tool_call_id" in message
+    ? thread.messages
+        .filter((m): m is AIMessage => m.type === "ai" && "tool_calls" in m)
+        .flatMap((m) => m.tool_calls || [])
+        .find((tc) => tc.id === message.tool_call_id)
+    : undefined;
+
   return (
     <div className="group mr-auto flex items-start gap-2">
       <div className="flex flex-col gap-2">
         {isToolResult ? (
           <>
-            <ToolResult message={message} />
+            <ToolResult message={message} toolCall={correspondingToolCall} />
             <Interrupt
               interruptValue={threadInterrupt?.value}
               isLastMessage={isLastMessage}
@@ -216,12 +224,7 @@ export function AssistantMessage({
           </>
         ) : (
           <>
-            {contentString.length > 0 && (
-              <div className="py-1">
-                <MarkdownText>{contentString}</MarkdownText>
-              </div>
-            )}
-
+            {/* Render tool calls first (includes TodoList, read_file, write_file, etc.) */}
             {!hideToolCalls && (
               <>
                 {(hasToolCalls && toolCallsHaveContents && (
@@ -242,6 +245,14 @@ export function AssistantMessage({
                 thread={thread}
               />
             )}
+
+            {/* Render markdown content after tool calls */}
+            {contentString.length > 0 && (
+              <div className="py-1">
+                <MarkdownText>{contentString}</MarkdownText>
+              </div>
+            )}
+
             <Interrupt
               interruptValue={threadInterrupt?.value}
               isLastMessage={isLastMessage}

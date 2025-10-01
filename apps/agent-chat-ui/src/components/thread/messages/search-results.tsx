@@ -91,7 +91,7 @@ export function SearchResults({
   results,
   responseTime,
 }: SearchResultsProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false); // Start collapsed
   const validResults = results.filter((r) => r.url && r.title && r.content);
 
   if (validResults.length === 0) {

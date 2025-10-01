@@ -5,7 +5,8 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { TodoList } from "../todo-list";
 import { WriteFileDiff } from "./write-file-diff";
 import { SearchResults } from "./search-results";
-import { ErrorResult } from "./error-result";
+import { FileUpdateNotification } from "./file-update-notification";
+import { ReadFileDisplay } from "./read-file-display";
 
 function isComplexValue(value: any): boolean {
   return Array.isArray(value) || (typeof value === "object" && value !== null);
@@ -25,6 +26,16 @@ function isFileWriteArgs(toolName: string, args: Record<string, any>): boolean {
     fileWriteTools.includes(toolName) &&
     "file_path" in args &&
     (("old_string" in args && "new_string" in args) || "content" in args)
+  );
+}
+function isFileUpdateNotificationArgs(toolName: string, args: Record<string, any>): boolean {
+  // Check if this is a collaborative file update with metadata
+  return (
+    (toolName === "file_update_notification" || toolName === "collaborative_file_update") &&
+    "file_name" in args &&
+    "editor_name" in args &&
+    "timestamp" in args &&
+    ("change_type" in args || "changeType" in args)
   );
 }
 
@@ -59,6 +70,31 @@ export function ToolCalls({
         // Check if this is a file write/edit tool call
         if (isFileWriteArgs(tc.name, args)) {
           return <WriteFileDiff key={idx} toolName={tc.name} args={args} error={error} success={success} />;
+        }
+
+        // Check if this is a file update notification
+        if (isFileUpdateNotificationArgs(tc.name, args)) {
+          // Normalize args to match the component interface
+          const notificationProps = {
+            fileName: args.file_name,
+            editorName: args.editor_name,
+            timestamp: args.timestamp,
+            oldContent: args.old_content || args.oldContent,
+            newContent: args.new_content || args.newContent,
+            changeType: args.change_type || args.changeType || "modified",
+            collaborators: args.collaborators || [],
+            branch: args.branch,
+            isRealTime: args.is_real_time || args.isRealTime || false,
+            error: error,
+            success: success
+          };
+          return <FileUpdateNotification key={idx} {...notificationProps} />;
+        }
+
+        // Check if this is a read_file tool call - don't show it here, it will be shown in ToolResult
+        const isReadFile = tc.name === "read_file" || tc.name === "Read" || tc.name === "ReadFile";
+        if (isReadFile) {
+          return null; // Will be displayed by ReadFileDisplay in ToolResult
         }
 
         return (
@@ -107,7 +143,18 @@ export function ToolCalls({
   );
 }
 
-export function ToolResult({ message }: { message: ToolMessage }) {
+export function ToolResult({ 
+  message, 
+  toolCall 
+}: { 
+  message: ToolMessage; 
+  toolCall?: { 
+    name: string; 
+    args: Record<string, any>; 
+    id?: string; 
+    type?: string; 
+  }
+}) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   let parsedContent: any;
@@ -121,6 +168,25 @@ export function ToolResult({ message }: { message: ToolMessage }) {
   } catch {
     // Content is not JSON, use as is
     parsedContent = message.content;
+  }
+
+  // Check if this is a read_file result
+  const isReadFile = message.name &&
+    (message.name === "read_file" || message.name === "Read" || message.name === "ReadFile");
+
+  if (isReadFile && typeof message.content === "string" && message.content.length > 0) {
+    // Use the tool call args if available
+    const fileReadArgs = toolCall?.args || {
+      file_path: "unknown",
+    };
+    
+    return (
+      <ReadFileDisplay
+        toolName={message.name}
+        args={fileReadArgs}
+        content={message.content}
+      />
+    );
   }
 
   // Check if this is an error result (but not for file operations, which show errors in WriteFileDiff)
@@ -138,13 +204,9 @@ export function ToolResult({ message }: { message: ToolMessage }) {
      message.content.toLowerCase().includes("timeout") ||
      message.content.toLowerCase().includes("timed out"));
 
+  // Filter out tool errors - don't display them as they're internal mistakes
   if (isError) {
-    return (
-      <ErrorResult
-        toolName={message.name || "Unknown Tool"}
-        errorMessage={String(message.content)}
-      />
-    );
+    return null;
   }
 
   // Check if this is a search result (internet_search, tavily_search, etc.)
