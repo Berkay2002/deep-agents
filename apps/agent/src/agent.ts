@@ -9,6 +9,7 @@ import { RESEARCH_AGENT_INSTRUCTIONS, subAgents } from "./utils/nodes.js";
 import type { AgentFile, AgentRunInput } from "./utils/state.js";
 
 export type DeepAgentGraph = Awaited<ReturnType<typeof createDeepAgent>>;
+export type DeepAgentRunResult = Awaited<ReturnType<DeepAgentGraph["invoke"]>>;
 
 const model = createAgentModel();
 
@@ -49,7 +50,9 @@ function normalizeFileContent(file: AgentFile): string {
   return `data:${mimeType};base64,${buffer.toString("base64")}`;
 }
 
-export async function invokeDeepAgent(input: AgentRunInput) {
+export async function invokeDeepAgent(
+  input: AgentRunInput
+): Promise<DeepAgentRunResult> {
   const agent = await initDeepAgent();
   const files = input.files?.length
     ? Object.fromEntries(
@@ -70,4 +73,4 @@ export async function invokeDeepAgent(input: AgentRunInput) {
 export type { AgentRunInput } from "./utils/state.js";
 
 // Export for LangGraph Server consumption (required by langgraph.json)
-export const deepAgentGraph = await initDeepAgent();
+export const deepAgentGraph: DeepAgentGraph = await initDeepAgent();
