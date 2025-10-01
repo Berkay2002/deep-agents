@@ -16,7 +16,7 @@ export const researchSubAgent: SubAgent = {
 export const critiqueSubAgent: SubAgent = {
   name: "critique-agent",
   description:
-    "Used to critique the final report. Give this agent some information about how you want it to critique the report. This agent can ONLY read files and search for verification - it cannot edit or write files.",
+    "Used to critique the final report. Give this agent some information about how you want it to critique the report. This agent can ONLY read files and search for verification - it cannot edit or write files. CRITICAL: DO NOT echo its response to the user. DO NOT treat its response as a formatted report. ONLY use it as source material for your final_report.md.",
   prompt: CRITIQUE_SUB_AGENT_PROMPT,
   // No tools specified = gets ALL available tools (includes read_file, internet_search, MCP tools)
   // Note: The prompt explicitly restricts to read-only operations
