@@ -182,7 +182,7 @@ export function ToolResult({
     
     return (
       <ReadFileDisplay
-        toolName={message.name}
+        toolName={message.name || "read_file"}
         args={fileReadArgs}
         content={message.content}
       />

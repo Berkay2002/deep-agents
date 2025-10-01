@@ -9,8 +9,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "npm run build --workspaces",
-    "dev": "npm run build --workspace=apps/agent && concurrently \"npm run dev --workspace=apps/agent\" \"npm run dev --workspace=apps/agent-chat-ui\"",
+    "build": "yarn workspaces run build",
+    "dev": "yarn workspace apps/agent build && concurrently \"yarn workspace apps/agent dev\" \"yarn workspace apps/agent-chat-ui dev\"",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write ."
   },
