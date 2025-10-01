@@ -103,7 +103,7 @@ export const exaSearch = tool(
       if (typeof subpages === "number" && subpages > 0) {
         searchOptions.subpages = subpages;
         if (subpageTargets?.length) {
-          searchOptions.subpageTarget = subpageTargets;
+          searchOptions.subpageTargets = subpageTargets;
         }
       }
 
