@@ -133,7 +133,7 @@ export const exaSearch = tool(
           highlights: r.highlights ?? [],
           summary: r.summary,
           fullText: includeText ? r.text : undefined,
-          snippet: r.text ? `${r.text.slice(0, 500)}...` : undefined,
+          snippet: r.text ? (r.text.length > 500 ? r.text.slice(0, 500) + '...' : r.text) : undefined,
           subpages: r.subpages?.map((subpage: ExaSubpage) => ({
             title: subpage.title,
             url: subpage.url,
