@@ -61,6 +61,7 @@ import {
   useArtifactContext,
 } from "./artifact";
 import { GithubConfigDialog } from "../settings/github-config-dialog";
+import { TimelineAdapter } from "./timeline-adapter";
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -432,78 +433,126 @@ export function Thread() {
                       });
 
                     // Group research and critique agent messages
-                    const researchGroups = groupResearchAgentMessages(messages);
-                    const critiqueGroups = groupCritiqueAgentMessages(messages);
+                    const researchGroups = groupResearchAgentMessages(filteredMessages);
+                    const critiqueGroups = groupCritiqueAgentMessages(filteredMessages);
 
-                    // Track if we've rendered agent containers
-                    let researchAgentsRendered = false;
-                    let critiqueAgentsRendered = false;
+                    // Track which indices have been processed
+                    const processedIndices = new Set<number>();
+                    const result: React.ReactElement[] = [];
 
-                    const result: JSX.Element[] = [];
+                    // Collect all timeline activities to render them in a single timeline
+                    const allTimelineActivities: Array<{
+                      key: string;
+                      messages: Message[];
+                      startIndex: number;
+                      endIndex: number;
+                    }> = [];
 
-                    // Iterate through all messages and render in order
-                    filteredMessages.forEach((message, filteredIndex) => {
-                      // Find the original index in the messages array
-                      const originalIndex = messages.findIndex((m) => m === message);
+                    // First pass: collect all timeline activities
+                    filteredMessages.forEach((message, index) => {
+                      // Check if this is the start of a research group
+                      if (researchGroups.length > 0 && index === researchGroups[0].startIndex) {
+                        allTimelineActivities.push({
+                          key: "research-agents-timeline",
+                          messages: filteredMessages.slice(
+                            researchGroups[0].startIndex,
+                            researchGroups[researchGroups.length - 1].endIndex + 1
+                          ),
+                          startIndex: researchGroups[0].startIndex,
+                          endIndex: researchGroups[researchGroups.length - 1].endIndex
+                        });
 
-                      // Check if this is the start of the first research group and we haven't rendered the container yet
-                      if (!researchAgentsRendered && researchGroups.length > 0 && originalIndex === researchGroups[0].startIndex) {
-                        // Render all research agents in one container
-                        const agents = researchGroups.map((group) => ({
-                          taskDescription: group.taskDescription,
-                          searchResults: group.searchResults,
-                          findings: group.findings,
-                          status: group.status,
-                        }));
+                        // Mark all research-related messages as processed
+                        researchGroups.forEach(group => {
+                          for (let i = group.startIndex; i <= group.endIndex; i++) {
+                            processedIndices.add(i);
+                          }
+                        });
+                        return;
+                      }
 
+                      // Check if this is the start of a critique group
+                      if (critiqueGroups.length > 0 && index === critiqueGroups[0].startIndex) {
+                        allTimelineActivities.push({
+                          key: "critique-agents-timeline",
+                          messages: filteredMessages.slice(
+                            critiqueGroups[0].startIndex,
+                            critiqueGroups[critiqueGroups.length - 1].endIndex + 1
+                          ),
+                          startIndex: critiqueGroups[0].startIndex,
+                          endIndex: critiqueGroups[critiqueGroups.length - 1].endIndex
+                        });
+
+                        // Mark all critique-related messages as processed
+                        critiqueGroups.forEach(group => {
+                          for (let i = group.startIndex; i <= group.endIndex; i++) {
+                            processedIndices.add(i);
+                          }
+                        });
+                        return;
+                      }
+
+                      // Skip if this message is part of a processed group
+                      if (processedIndices.has(index)) {
+                        return;
+                      }
+
+                      // Process AI messages with tool calls
+                      if (message.type === "ai" && message.tool_calls && message.tool_calls.length > 0) {
+                        // Find the end of this AI message's tool activities
+                        let endIndex = index;
+                        for (let i = index + 1; i < filteredMessages.length; i++) {
+                          if (filteredMessages[i].type === "human" ||
+                              filteredMessages[i].type === "ai") {
+                            break;
+                          }
+                          endIndex = i;
+                        }
+
+                        allTimelineActivities.push({
+                          key: `timeline-${index}`,
+                          messages: filteredMessages.slice(index, endIndex + 1),
+                          startIndex: index,
+                          endIndex: endIndex
+                        });
+
+                        // Mark these messages as processed
+                        for (let i = index; i <= endIndex; i++) {
+                          processedIndices.add(i);
+                        }
+                        return;
+                      }
+                    });
+
+                    // Second pass: render everything in chronological order
+                    let timelineActivityIndex = 0;
+                    filteredMessages.forEach((message, index) => {
+                      // Check if this is the start of a timeline activity
+                      if (timelineActivityIndex < allTimelineActivities.length &&
+                          index === allTimelineActivities[timelineActivityIndex].startIndex) {
+                        // Render the timeline activity
+                        const activity = allTimelineActivities[timelineActivityIndex];
                         result.push(
-                          <ResearchAgentContainer
-                            key="research-agents-container"
-                            agents={agents}
+                          <TimelineAdapter
+                            key={activity.key}
+                            messages={activity.messages}
+                            isLast={timelineActivityIndex === allTimelineActivities.length - 1}
                           />
                         );
-                        researchAgentsRendered = true;
+                        timelineActivityIndex++;
+                        
+                        // Skip to the end of this activity
+                        index = activity.endIndex;
                         return;
                       }
 
-                      // Check if this is the start of the first critique group and we haven't rendered the container yet
-                      if (!critiqueAgentsRendered && critiqueGroups.length > 0 && originalIndex === critiqueGroups[0].startIndex) {
-                        // Render all critique agents in one container
-                        const agents = critiqueGroups.map((group) => ({
-                          taskDescription: group.taskDescription,
-                          critique: group.critique,
-                          fileReads: group.fileReads,
-                        }));
-
-                        result.push(
-                          <CritiqueAgentContainer
-                            key="critique-agents-container"
-                            agents={agents}
-                          />
-                        );
-                        critiqueAgentsRendered = true;
-                        return;
-                      }
-
-                      // Skip if this message is part of a research or critique group
-                      if (isMessageInResearchGroup(originalIndex, researchGroups) ||
-                          isMessageInCritiqueGroup(originalIndex, critiqueGroups)) {
-                        return;
-                      }
-
-                      // Skip if this is a file read tool message that belongs to a critique agent
-                      if (
-                        message.type === "tool" &&
-                        "tool_call_id" in message &&
-                        message.tool_call_id &&
-                        (message.name === "Read" || message.name === "read_file" || message.name === "ReadFile") &&
-                        isToolCallInCritiqueGroup(message.tool_call_id, critiqueGroups)
-                      ) {
+                      // Skip if this message is part of a processed group
+                      if (processedIndices.has(index)) {
                         return;
                       }
 
                       // Render individual message
-                      const stableKey = `${message.type}-${filteredIndex}`;
+                      const stableKey = `${message.type}-${index}`;
 
                       result.push(
                         message.type === "human" ? (
