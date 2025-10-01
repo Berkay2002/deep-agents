@@ -331,7 +331,7 @@ export async function performExaSearch(
     return {
       query,
       results: [],
-      error: classified.message,
+      error: userMessage,
       message: userMessage,
     };
   }
