@@ -272,7 +272,7 @@ function classifyError(
 ): Error {
   const message = error.message.toLowerCase();
 
-  if (message.includes("timeout")) {
+  if (message.includes("timeout") || message.includes("timed out")) {
     return new SearchTimeoutError(query, timeoutMs, { toolName });
   }
 
