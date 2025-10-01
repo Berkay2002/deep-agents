@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { ChevronDown, ChevronUp, FileText, AlertCircle, CheckCircle } from "lucide-react";
 import { diffLines as diffLinesUtil, Change } from "diff";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,8 @@ interface WriteFileDiffProps {
     new_string?: string;
     content?: string;
   };
+  error?: string; // Error message if the operation failed
+  success?: boolean; // Whether the operation succeeded
 }
 
 enum DiffType {
@@ -95,11 +97,14 @@ function calculateStats(diffLines: DiffLine[]) {
   return { additions, deletions };
 }
 
-export function WriteFileDiff({ toolName, args }: WriteFileDiffProps) {
+export function WriteFileDiff({ toolName, args, error, success }: WriteFileDiffProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showErrorDetails, setShowErrorDetails] = useState(false);
 
   const filePath = args.file_path || "unknown";
   const isWriteOperation = toolName === "Write" || toolName === "write_file";
+  const hasFailed = !!error;
+  const hasSucceeded = success === true;
   
   // Note: This component intentionally does not render copy content or refresh buttons
   // to keep the diff view clean and focused on the content changes
@@ -136,15 +141,40 @@ export function WriteFileDiff({ toolName, args }: WriteFileDiffProps) {
 
   return (
     <div className="mx-auto grid max-w-3xl grid-rows-[1fr_auto] gap-2">
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <div className={cn(
+        "overflow-hidden rounded-lg border-2 bg-white",
+        hasFailed ? "border-red-300" : "border-gray-200"
+      )}>
         {/* Header */}
-        <div className="border-b border-gray-200 bg-gray-50 px-4 py-2">
+        <div className={cn(
+          "border-b px-4 py-2",
+          hasFailed ? "border-red-200 bg-red-50" : "border-gray-200 bg-gray-50"
+        )}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-gray-500" />
-              <code className="text-sm font-medium text-gray-900">
+              {hasFailed ? (
+                <AlertCircle className="h-4 w-4 text-red-500" />
+              ) : hasSucceeded ? (
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              ) : (
+                <FileText className="h-4 w-4 text-gray-500" />
+              )}
+              <code className={cn(
+                "text-sm font-medium",
+                hasFailed ? "text-red-900" : "text-gray-900"
+              )}>
                 {filePath}
               </code>
+              {hasFailed && (
+                <span className="text-xs font-medium text-red-700 bg-red-100 px-2 py-0.5 rounded">
+                  Failed
+                </span>
+              )}
+              {hasSucceeded && (
+                <span className="text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded">
+                  Success
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-3">
               {additions > 0 && (
@@ -157,7 +187,10 @@ export function WriteFileDiff({ toolName, args }: WriteFileDiffProps) {
                   -{deletions}
                 </span>
               )}
-              <span className="text-xs text-gray-500">
+              <span className={cn(
+                "text-xs",
+                hasFailed ? "text-red-600" : "text-gray-500"
+              )}>
                 {isWriteOperation ? "Created" : "Modified"}
               </span>
             </div>
@@ -283,6 +316,41 @@ export function WriteFileDiff({ toolName, args }: WriteFileDiffProps) {
             </motion.button>
           )}
         </div>
+
+        {/* Error Section */}
+        {hasFailed && error && (
+          <div className="border-t-2 border-red-200 bg-red-50 px-4 py-3">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-red-900 mb-1">
+                  Operation Failed
+                </p>
+                <p className="text-sm text-red-800">
+                  {error.length > 150 ? error.slice(0, 150) + "..." : error}
+                </p>
+                {error.length > 150 && (
+                  <button
+                    onClick={() => setShowErrorDetails(!showErrorDetails)}
+                    className="text-xs text-red-700 hover:text-red-900 font-medium mt-2 underline"
+                  >
+                    {showErrorDetails ? "Show less" : "Show full error"}
+                  </button>
+                )}
+                {showErrorDetails && error.length > 150 && (
+                  <div className="mt-2 rounded bg-red-100 p-2">
+                    <code className="text-xs text-red-900 whitespace-pre-wrap break-all">
+                      {error}
+                    </code>
+                  </div>
+                )}
+                <p className="text-xs text-red-700 mt-2">
+                  💡 <strong>Tip:</strong> The file content may have changed since it was last read. The agent may retry with a different approach.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

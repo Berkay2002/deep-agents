@@ -19,7 +19,7 @@ export function TodoList({ todos }: TodoListProps) {
   const totalCount = todos.length;
 
   return (
-    <div className="max-w-3xl w-full justify-self-start">
+    <div className="w-full min-w-3xl">
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-gray-50/80">
         {/* Header with progress */}
         <div className="border-b border-gray-200 bg-white/50 px-4 py-3">

@@ -118,6 +118,26 @@ export function AssistantMessage({
   const meta = message ? thread.getMessagesMetadata(message) : undefined;
   const threadInterrupt = thread.interrupt;
 
+  // Collect tool results that follow this message's tool calls
+  const toolResults = message && "tool_calls" in message && message.tool_calls
+    ? message.tool_calls.map((tc) => {
+        // Find the corresponding tool result message
+        const resultMessage = thread.messages.find(
+          (m) => m.type === "tool" && "tool_call_id" in m && m.tool_call_id === tc.id
+        );
+        const isError = resultMessage && typeof resultMessage.content === "string" &&
+          (resultMessage.content.toLowerCase().includes("error:") ||
+           resultMessage.content.toLowerCase().includes("string not found"));
+        const isSuccess = resultMessage && typeof resultMessage.content === "string" &&
+          resultMessage.content.toLowerCase().includes("updated file");
+        return {
+          id: tc.id || "",
+          error: isError ? String(resultMessage.content) : undefined,
+          success: isSuccess && !isError,
+        };
+      })
+    : undefined;
+
   const parentCheckpoint = meta?.firstSeenState?.parent_checkpoint;
   const anthropicStreamedToolCalls = Array.isArray(content)
     ? parseAnthropicStreamedToolCalls(content)
@@ -148,6 +168,22 @@ export function AssistantMessage({
     typeof message.content === "string" &&
     message.content.includes("Updated todo list to");
 
+  // Hide sub-agent responses (research-agent, critique-agent) since they are intermediate results
+  // The main agent synthesizes these into the final report, so users shouldn't see raw sub-agent output
+  const isSubAgentResult =
+    isToolResult &&
+    message?.name &&
+    (message.name === "research-agent" ||
+     message.name === "critique-agent" ||
+     message.name === "task"); // "task" is the generic name for sub-agent calls
+
+  // Hide file operation results since they're shown in WriteFileDiff component
+  const isFileOperationResult =
+    isToolResult &&
+    message?.name &&
+    (message.name === "write_file" || message.name === "edit_file" ||
+     message.name === "Write" || message.name === "Edit" || message.name === "MultiEdit");
+
   // Check if message contains TodoList tool calls
   const hasTodoListToolCalls =
     hasToolCalls &&
@@ -162,7 +198,7 @@ export function AssistantMessage({
     return null;
   }
 
-  if (isTodoWriteResult || isTodoListContentResult) {
+  if (isTodoWriteResult || isTodoListContentResult || isSubAgentResult || isFileOperationResult) {
     return null;
   }
 
@@ -189,13 +225,13 @@ export function AssistantMessage({
             {!hideToolCalls && (
               <>
                 {(hasToolCalls && toolCallsHaveContents && (
-                  <ToolCalls toolCalls={message.tool_calls} />
+                  <ToolCalls toolCalls={message.tool_calls} toolResults={toolResults} />
                 )) ||
                   (hasAnthropicToolCalls && (
-                    <ToolCalls toolCalls={anthropicStreamedToolCalls} />
+                    <ToolCalls toolCalls={anthropicStreamedToolCalls} toolResults={toolResults} />
                   )) ||
                   (hasToolCalls && (
-                    <ToolCalls toolCalls={message.tool_calls} />
+                    <ToolCalls toolCalls={message.tool_calls} toolResults={toolResults} />
                   ))}
               </>
             )}

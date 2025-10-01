@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { TodoList } from "../todo-list";
 import { WriteFileDiff } from "./write-file-diff";
 import { SearchResults } from "./search-results";
+import { ErrorResult } from "./error-result";
 
 function isComplexValue(value: any): boolean {
   return Array.isArray(value) || (typeof value === "object" && value !== null);
@@ -29,16 +30,26 @@ function isFileWriteArgs(toolName: string, args: Record<string, any>): boolean {
 
 export function ToolCalls({
   toolCalls,
+  toolResults,
 }: {
   toolCalls: AIMessage["tool_calls"];
+  toolResults?: Array<{ id: string; error?: string; success?: boolean }>;
 }) {
   if (!toolCalls || toolCalls.length === 0) return null;
+
+  // Create a map of tool call IDs to their results
+  const resultsMap = new Map(
+    toolResults?.map((r) => [r.id, { error: r.error, success: r.success }]) || []
+  );
 
   return (
     <div className="mx-auto grid max-w-3xl grid-rows-[1fr_auto] gap-2">
       {toolCalls.map((tc, idx) => {
         const args = tc.args as Record<string, any>;
         const hasArgs = Object.keys(args).length > 0;
+        const result = tc.id ? resultsMap.get(tc.id) : undefined;
+        const error = result?.error;
+        const success = result?.success;
 
         // Check if this is a todo list tool call
         if (isTodoListArgs(tc.name, args)) {
@@ -47,7 +58,7 @@ export function ToolCalls({
 
         // Check if this is a file write/edit tool call
         if (isFileWriteArgs(tc.name, args)) {
-          return <WriteFileDiff key={idx} toolName={tc.name} args={args} />;
+          return <WriteFileDiff key={idx} toolName={tc.name} args={args} error={error} success={success} />;
         }
 
         return (
@@ -112,6 +123,30 @@ export function ToolResult({ message }: { message: ToolMessage }) {
     parsedContent = message.content;
   }
 
+  // Check if this is an error result (but not for file operations, which show errors in WriteFileDiff)
+  const isFileOperation = message.name &&
+    (message.name === "write_file" || message.name === "edit_file" ||
+     message.name === "Write" || message.name === "Edit" || message.name === "MultiEdit");
+
+  const isError =
+    !isFileOperation &&
+    typeof message.content === "string" &&
+    (message.content.toLowerCase().includes("error:") ||
+     message.content.toLowerCase().includes("failed") ||
+     message.content.toLowerCase().includes("string not found") ||
+     message.content.toLowerCase().includes("permission denied") ||
+     message.content.toLowerCase().includes("timeout") ||
+     message.content.toLowerCase().includes("timed out"));
+
+  if (isError) {
+    return (
+      <ErrorResult
+        toolName={message.name || "Unknown Tool"}
+        errorMessage={String(message.content)}
+      />
+    );
+  }
+
   // Check if this is a search result (internet_search, tavily_search, etc.)
   const isSearchResult =
     isJsonContent &&
@@ -129,30 +164,6 @@ export function ToolResult({ message }: { message: ToolMessage }) {
         results={parsedContent.results}
         responseTime={parsedContent.response_time}
       />
-    );
-  }
-
-  // If content looks like natural language text (not structured data), it's likely
-  // misclassified and should be rendered as AI message, not tool result
-  const looksLikeNaturalText =
-    !isJsonContent &&
-    typeof message.content === "string" &&
-    message.content.length > 100 &&
-    (message.content.includes(". ") || message.content.includes(".\n")) &&
-    !message.content.startsWith("{") &&
-    !message.content.startsWith("[");
-
-  if (looksLikeNaturalText) {
-    // This is likely AI-generated text incorrectly marked as tool result
-    // Render it as plain text without the "Tool Result" wrapper
-    return (
-      <div className="mx-auto max-w-3xl">
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-          <p className="text-sm text-gray-700 whitespace-pre-wrap">
-            {String(message.content)}
-          </p>
-        </div>
-      </div>
     );
   }
 
