@@ -3,6 +3,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { TodoList } from "../todo-list";
+import { WriteFileDiff } from "./write-file-diff";
+import { SearchResults } from "./search-results";
 
 function isComplexValue(value: any): boolean {
   return Array.isArray(value) || (typeof value === "object" && value !== null);
@@ -13,6 +15,15 @@ function isTodoListArgs(toolName: string, args: Record<string, any>): boolean {
     (toolName === "write_todos" || toolName === "TodoWrite") &&
     "todos" in args &&
     Array.isArray(args.todos)
+  );
+}
+
+function isFileWriteArgs(toolName: string, args: Record<string, any>): boolean {
+  const fileWriteTools = ["Write", "Edit", "MultiEdit", "write_file", "edit_file"];
+  return (
+    fileWriteTools.includes(toolName) &&
+    "file_path" in args &&
+    (("old_string" in args && "new_string" in args) || "content" in args)
   );
 }
 
@@ -32,6 +43,11 @@ export function ToolCalls({
         // Check if this is a todo list tool call
         if (isTodoListArgs(tc.name, args)) {
           return <TodoList key={idx} todos={args.todos} />;
+        }
+
+        // Check if this is a file write/edit tool call
+        if (isFileWriteArgs(tc.name, args)) {
+          return <WriteFileDiff key={idx} toolName={tc.name} args={args} />;
         }
 
         return (
@@ -94,6 +110,50 @@ export function ToolResult({ message }: { message: ToolMessage }) {
   } catch {
     // Content is not JSON, use as is
     parsedContent = message.content;
+  }
+
+  // Check if this is a search result (internet_search, tavily_search, etc.)
+  const isSearchResult =
+    isJsonContent &&
+    typeof parsedContent === "object" &&
+    "results" in parsedContent &&
+    Array.isArray(parsedContent.results) &&
+    parsedContent.results.length > 0 &&
+    parsedContent.results[0].url &&
+    parsedContent.results[0].content;
+
+  if (isSearchResult) {
+    return (
+      <SearchResults
+        query={parsedContent.query || ""}
+        results={parsedContent.results}
+        responseTime={parsedContent.response_time}
+      />
+    );
+  }
+
+  // If content looks like natural language text (not structured data), it's likely
+  // misclassified and should be rendered as AI message, not tool result
+  const looksLikeNaturalText =
+    !isJsonContent &&
+    typeof message.content === "string" &&
+    message.content.length > 100 &&
+    (message.content.includes(". ") || message.content.includes(".\n")) &&
+    !message.content.startsWith("{") &&
+    !message.content.startsWith("[");
+
+  if (looksLikeNaturalText) {
+    // This is likely AI-generated text incorrectly marked as tool result
+    // Render it as plain text without the "Tool Result" wrapper
+    return (
+      <div className="mx-auto max-w-3xl">
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <p className="text-sm text-gray-700 whitespace-pre-wrap">
+            {String(message.content)}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   const contentStr = isJsonContent

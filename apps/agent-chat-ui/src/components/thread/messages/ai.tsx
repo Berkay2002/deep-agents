@@ -136,7 +136,33 @@ export function AssistantMessage({
   const hasAnthropicToolCalls = !!anthropicStreamedToolCalls?.length;
   const isToolResult = message?.type === "tool";
 
+  // Hide tool results for TodoWrite since TodoList component already shows this
+  const isTodoWriteResult =
+    isToolResult &&
+    message?.name &&
+    (message.name === "TodoWrite" || message.name === "write_todos");
+
+  // Also hide tool results that contain todo list updates in the content
+  const isTodoListContentResult =
+    isToolResult &&
+    typeof message.content === "string" &&
+    message.content.includes("Updated todo list to");
+
+  // Check if message contains TodoList tool calls
+  const hasTodoListToolCalls =
+    hasToolCalls &&
+    message.tool_calls?.some(tc =>
+      (tc.name === "write_todos" || tc.name === "TodoWrite") &&
+      tc.args &&
+      "todos" in tc.args &&
+      Array.isArray(tc.args.todos)
+    );
+
   if (isToolResult && hideToolCalls) {
+    return null;
+  }
+
+  if (isTodoWriteResult || isTodoListContentResult) {
     return null;
   }
 
@@ -185,25 +211,27 @@ export function AssistantMessage({
               isLastMessage={isLastMessage}
               hasNoAIOrToolMessages={hasNoAIOrToolMessages}
             />
-            <div
-              className={cn(
-                "mr-auto flex items-center gap-2 transition-opacity",
-                "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100",
-              )}
-            >
-              <BranchSwitcher
-                branch={meta?.branch}
-                branchOptions={meta?.branchOptions}
-                onSelect={(branch) => thread.setBranch(branch)}
-                isLoading={isLoading}
-              />
-              <CommandBar
-                content={contentString}
-                isLoading={isLoading}
-                isAiMessage={true}
-                handleRegenerate={() => handleRegenerate(parentCheckpoint)}
-              />
-            </div>
+            {!hasTodoListToolCalls && (
+              <div
+                className={cn(
+                  "mr-auto flex items-center gap-2 transition-opacity",
+                  "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100",
+                )}
+              >
+                <BranchSwitcher
+                  branch={meta?.branch}
+                  branchOptions={meta?.branchOptions}
+                  onSelect={(branch) => thread.setBranch(branch)}
+                  isLoading={isLoading}
+                />
+                <CommandBar
+                  content={contentString}
+                  isLoading={isLoading}
+                  isAiMessage={true}
+                  handleRegenerate={() => handleRegenerate(parentCheckpoint)}
+                />
+              </div>
+            )}
           </>
         )}
       </div>

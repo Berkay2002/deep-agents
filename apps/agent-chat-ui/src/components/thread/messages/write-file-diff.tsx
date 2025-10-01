@@ -1,219 +1,285 @@
-import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, FileText } from "lucide-react";
+"use client";
 
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { diffLines as diffLinesUtil, Change } from "diff";
 import { cn } from "@/lib/utils";
 
-type DiffLineType = "context" | "add" | "remove";
+interface WriteFileDiffProps {
+  toolName: string;
+  args: {
+    file_path?: string;
+    old_string?: string;
+    new_string?: string;
+    content?: string;
+  };
+}
+
+enum DiffType {
+  DEFAULT = 0,
+  ADDED = 1,
+  REMOVED = 2,
+}
 
 interface DiffLine {
-  type: DiffLineType;
-  beforeNumber: number | null;
-  afterNumber: number | null;
-  text: string;
+  type: DiffType;
+  value: string;
+  leftLineNumber?: number;
+  rightLineNumber?: number;
 }
 
-const SNIPPET_LINE_THRESHOLD = 60;
+const COLLAPSED_LINES = 10;
 
-function normalizeLineEndings(value: string): string {
-  return value.replace(/\r\n/g, "\n");
+function constructLines(value: string): string[] {
+  if (value === "") return [];
+  const lines = value.replace(/\n$/, "").split("\n");
+  return lines;
 }
 
-function computeDiff(before: string, after: string): DiffLine[] {
-  const beforeLines = before.length ? normalizeLineEndings(before).split("") : [];
-  const afterLines = after.length ? normalizeLineEndings(after).split("") : [];
-  const m = beforeLines.length;
-  const n = afterLines.length;
+function computeDiffLines(oldContent: string, newContent: string): DiffLine[] {
+  const changes: Change[] = diffLinesUtil(oldContent, newContent, {
+    newlineIsToken: false,
+  });
 
-  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
-  for (let i = m - 1; i >= 0; i -= 1) {
-    for (let j = n - 1; j >= 0; j -= 1) {
-      if (beforeLines[i] === afterLines[j]) {
-        dp[i][j] = dp[i + 1][j + 1] + 1;
-      } else {
-        dp[i][j] = Math.max(dp[i + 1][j], dp[i][j + 1]);
-      }
-    }
-  }
-
+  let leftLineNumber = 0;
+  let rightLineNumber = 0;
   const result: DiffLine[] = [];
-  let i = 0;
-  let j = 0;
-  let beforeNumber = 1;
-  let afterNumber = 1;
 
-  while (i < m && j < n) {
-    if (beforeLines[i] === afterLines[j]) {
-      result.push({
-        type: "context",
-        beforeNumber,
-        afterNumber,
-        text: beforeLines[i],
-      });
-      i += 1;
-      j += 1;
-      beforeNumber += 1;
-      afterNumber += 1;
-    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
-      result.push({
-        type: "remove",
-        beforeNumber,
-        afterNumber: null,
-        text: beforeLines[i],
-      });
-      i += 1;
-      beforeNumber += 1;
-    } else {
-      result.push({
-        type: "add",
-        beforeNumber: null,
-        afterNumber,
-        text: afterLines[j],
-      });
-      j += 1;
-      afterNumber += 1;
-    }
-  }
+  changes.forEach((change) => {
+    const changeLines = constructLines(change.value);
 
-  while (i < m) {
-    result.push({
-      type: "remove",
-      beforeNumber,
-      afterNumber: null,
-      text: beforeLines[i],
+    changeLines.forEach((line) => {
+      if (change.added) {
+        rightLineNumber += 1;
+        result.push({
+          type: DiffType.ADDED,
+          value: line,
+          rightLineNumber,
+        });
+      } else if (change.removed) {
+        leftLineNumber += 1;
+        result.push({
+          type: DiffType.REMOVED,
+          value: line,
+          leftLineNumber,
+        });
+      } else {
+        leftLineNumber += 1;
+        rightLineNumber += 1;
+        result.push({
+          type: DiffType.DEFAULT,
+          value: line,
+          leftLineNumber,
+          rightLineNumber,
+        });
+      }
     });
-    i += 1;
-    beforeNumber += 1;
-  }
-
-  while (j < n) {
-    result.push({
-      type: "add",
-      beforeNumber: null,
-      afterNumber,
-      text: afterLines[j],
-    });
-    j += 1;
-    afterNumber += 1;
-  }
+  });
 
   return result;
 }
 
-function DiffRow({ line }: { line: DiffLine }) {
-  const base = "grid grid-cols-[3.5rem_3.5rem_1fr] gap-3 px-4 py-1.5 text-xs";
-  const lineNumberClasses = "font-mono text-right text-gray-500";
-  const contentClasses = "whitespace-pre-wrap break-words";
-  const symbol = line.type === "add" ? "+" : line.type === "remove" ? "-" : "";
+function calculateStats(diffLines: DiffLine[]) {
+  let additions = 0;
+  let deletions = 0;
 
-  const typeStyles =
-    line.type === "add"
-      ? "border-l-2 border-emerald-500 bg-emerald-500/10 text-emerald-200"
-      : line.type === "remove"
-        ? "border-l-2 border-rose-500 bg-rose-500/10 text-rose-200"
-        : "border-l-2 border-transparent bg-gray-950 text-gray-200";
+  diffLines.forEach((line) => {
+    if (line.type === DiffType.ADDED) {
+      additions += 1;
+    } else if (line.type === DiffType.REMOVED) {
+      deletions += 1;
+    }
+  });
 
-  return (
-    <div className={cn(base, typeStyles)}>
-      <span className={lineNumberClasses}>{line.beforeNumber ?? ""}</span>
-      <span className={lineNumberClasses}>{line.afterNumber ?? ""}</span>
-      <span className={cn(contentClasses, "font-mono text-xs")}>
-        <span className="mr-2 text-gray-500">{symbol}</span>
-        {line.text === "" ? " " : line.text}
-      </span>
-    </div>
-  );
+  return { additions, deletions };
 }
 
-export interface WriteFileDiffProps {
-  filePath: string;
-  beforeContent: string;
-  afterContent: string;
-}
-
-export function WriteFileDiff({ filePath, beforeContent, afterContent }: WriteFileDiffProps) {
+export function WriteFileDiff({ toolName, args }: WriteFileDiffProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const { diffLines, addedCount, removedCount } = useMemo(() => {
-    const beforeValue = beforeContent ?? "";
-    const afterValue = afterContent ?? "";
-    const diff = computeDiff(beforeValue, afterValue);
-    const added = diff.filter((line) => line.type === "add").length;
-    const removed = diff.filter((line) => line.type === "remove").length;
-    return { diffLines: diff, addedCount: added, removedCount: removed };
-  }, [beforeContent, afterContent]);
+  const filePath = args.file_path || "unknown";
+  const isWriteOperation = toolName === "Write" || toolName === "write_file";
 
-  const hasLargeDiff = diffLines.length > SNIPPET_LINE_THRESHOLD;
-  const showToggle = hasLargeDiff || isExpanded;
-  const containerClasses = cn(
-    "relative font-mono text-sm",
-    isExpanded ? "max-h-[65vh] overflow-auto" : "max-h-64 overflow-hidden",
-  );
-  const showGradient = !isExpanded && hasLargeDiff;
+  // Determine old and new content
+  let oldContent = "";
+  let newContent = "";
 
-  const isNewFile = beforeContent.length === 0 && afterContent.length > 0;
-  const isDeletedFile = beforeContent.length > 0 && afterContent.length === 0;
+  if (isWriteOperation) {
+    // For Write operations, show the entire content as new
+    oldContent = "";
+    newContent = args.content || "";
+  } else {
+    // For Edit operations
+    oldContent = args.old_string || "";
+    newContent = args.new_string || "";
+  }
+
+  // Handle empty content case
+  if (!oldContent && !newContent) {
+    return null;
+  }
+
+  // Compute diff lines
+  const diffLines = computeDiffLines(oldContent, newContent);
+  const { additions, deletions } = calculateStats(diffLines);
+
+  // Determine which lines to show
+  const totalLines = diffLines.length;
+  const shouldShowExpand = totalLines > COLLAPSED_LINES;
+  const displayedLines = isExpanded
+    ? diffLines
+    : diffLines.slice(0, COLLAPSED_LINES);
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="overflow-hidden rounded-lg border border-gray-800 bg-gray-950 text-gray-100 shadow">
-        <div className="flex items-center justify-between gap-4 border-b border-gray-800 bg-gray-900 px-4 py-2">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <FileText className="h-4 w-4 text-gray-400" />
-            <span className="font-mono">{filePath}</span>
-            {(isNewFile || isDeletedFile) && (
-              <span
-                className={cn(
-                  "rounded-full px-2 py-0.5 text-xs font-semibold",
-                  isNewFile
-                    ? "bg-emerald-500/20 text-emerald-200"
-                    : "bg-rose-500/20 text-rose-200",
-                )}
-              >
-                {isNewFile ? "New file" : "Deleted"}
+    <div className="mx-auto grid max-w-3xl grid-rows-[1fr_auto] gap-2">
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+        {/* Header */}
+        <div className="border-b border-gray-200 bg-gray-50 px-4 py-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-gray-500" />
+              <code className="text-sm font-medium text-gray-900">
+                {filePath}
+              </code>
+            </div>
+            <div className="flex items-center gap-3">
+              {additions > 0 && (
+                <span className="text-sm font-medium text-green-600">
+                  +{additions}
+                </span>
+              )}
+              {deletions > 0 && (
+                <span className="text-sm font-medium text-red-600">
+                  -{deletions}
+                </span>
+              )}
+              <span className="text-xs text-gray-500">
+                {isWriteOperation ? "Created" : "Modified"}
               </span>
-            )}
-          </div>
-          <div className="flex items-center gap-3 text-xs font-semibold">
-            <span className="text-emerald-400">+{addedCount}</span>
-            <span className="text-rose-400">-{removedCount}</span>
+            </div>
           </div>
         </div>
-        {diffLines.length === 0 ? (
-          <div className="px-4 py-6 text-sm text-gray-400">No changes detected.</div>
-        ) : (
-          <div className={containerClasses}>
-            <div className="flex flex-col">
-              {diffLines.map((line, idx) => (
-                <DiffRow
-                  key={`${line.type}-${idx}`}
-                  line={line}
-                />
-              ))}
-            </div>
-            {showGradient && (
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-gray-950 to-transparent" />
-            )}
+
+        {/* Diff Content */}
+        <div className="overflow-hidden bg-white">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1000px] border-collapse font-mono text-[13px]">
+              <tbody>
+                {displayedLines.map((line, index) => {
+                  const isAdded = line.type === DiffType.ADDED;
+                  const isRemoved = line.type === DiffType.REMOVED;
+
+                  return (
+                    <tr
+                      key={index}
+                      className={cn("align-baseline", {
+                        "bg-[#e6ffed]": isAdded,
+                        "bg-[#ffeef0]": isRemoved,
+                      })}
+                    >
+                      {/* Left line number */}
+                      <td
+                        className={cn(
+                          "select-none px-[10px] py-0 text-right",
+                          "min-w-[50px] w-[50px] bg-[#f7f7f7]",
+                          {
+                            "bg-[#cdffd8]": isAdded,
+                            "bg-[#ffdce0]": isRemoved,
+                          }
+                        )}
+                      >
+                        <pre className="m-0 p-0 text-[#212529] opacity-50 hover:opacity-100">
+                          {line.leftLineNumber || ""}
+                        </pre>
+                      </td>
+
+                      {/* Right line number */}
+                      <td
+                        className={cn(
+                          "select-none px-[10px] py-0 text-right",
+                          "min-w-[50px] w-[50px] bg-[#f7f7f7]",
+                          {
+                            "bg-[#cdffd8]": isAdded,
+                            "bg-[#ffdce0]": isRemoved,
+                          }
+                        )}
+                      >
+                        <pre className="m-0 p-0 text-[#212529] opacity-50 hover:opacity-100">
+                          {line.rightLineNumber || ""}
+                        </pre>
+                      </td>
+
+                      {/* Marker (+/-) */}
+                      <td
+                        className={cn(
+                          "w-[28px] px-[10px] py-0 select-none",
+                          {
+                            "bg-[#cdffd8] text-[#24292e]": isAdded,
+                            "bg-[#ffdce0] text-[#24292e]": isRemoved,
+                            "bg-[#f7f7f7]": !isAdded && !isRemoved,
+                          }
+                        )}
+                      >
+                        <pre className="m-0 p-0">
+                          {isAdded ? "+" : isRemoved ? "-" : " "}
+                        </pre>
+                      </td>
+
+                      {/* Content */}
+                      <td
+                        className={cn("px-0 py-0", {
+                          "bg-[#e6ffed]": isAdded,
+                          "bg-[#ffeef0]": isRemoved,
+                        })}
+                      >
+                        {isAdded ? (
+                          <ins className="no-underline">
+                            <pre className="m-0 px-2 py-0 text-[#24292e] whitespace-pre-wrap break-anywhere leading-[1.6em]">
+                              {line.value || " "}
+                            </pre>
+                          </ins>
+                        ) : isRemoved ? (
+                          <del className="no-underline">
+                            <pre className="m-0 px-2 py-0 text-[#24292e] whitespace-pre-wrap break-anywhere leading-[1.6em]">
+                              {line.value || " "}
+                            </pre>
+                          </del>
+                        ) : (
+                          <pre className="m-0 px-2 py-0 text-[#24292e] whitespace-pre-wrap break-anywhere leading-[1.6em]">
+                            {line.value || " "}
+                          </pre>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        )}
-        {diffLines.length > 0 && showToggle && (
-          <button
-            type="button"
-            onClick={() => setIsExpanded((value) => !value)}
-            className="flex w-full items-center justify-center gap-2 border-t border-gray-800 bg-gray-900/70 px-4 py-2 text-sm font-medium text-gray-300 transition hover:bg-gray-900 hover:text-white"
-          >
-            {isExpanded ? (
-              <>
-                Collapse
+
+          {/* Expand/Collapse Button */}
+          {shouldShowExpand && (
+            <motion.button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="flex w-full cursor-pointer items-center justify-center border-t border-gray-200 bg-gray-50 py-2 text-gray-500 transition-all duration-200 ease-in-out hover:bg-gray-100 hover:text-gray-600"
+              initial={{ scale: 1 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <span className="mr-2 text-sm">
+                {isExpanded
+                  ? "Show less"
+                  : `Show all ${totalLines} lines (${totalLines - COLLAPSED_LINES} more)`}
+              </span>
+              {isExpanded ? (
                 <ChevronUp className="h-4 w-4" />
-              </>
-            ) : (
-              <>
-                Expand
+              ) : (
                 <ChevronDown className="h-4 w-4" />
-              </>
-            )}
-          </button>
-        )}
+              )}
+            </motion.button>
+          )}
+        </div>
       </div>
     </div>
   );

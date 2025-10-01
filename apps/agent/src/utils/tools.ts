@@ -1,5 +1,4 @@
 // src/utils/tools.ts
-import { TavilySearch } from "@langchain/tavily";
 import { tool, type StructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
 import {
@@ -43,14 +42,28 @@ export const internetSearch = tool(
       // Execute search with retry logic and timeout
       const result = await withRetry(
         async () => {
-          const tavilySearch = new TavilySearch({
-            maxResults,
-            topic,
-            tavilyApiKey: process.env.TAVILY_API_KEY!,
-            includeRawContent,
+          // Call Tavily API directly to get structured results
+          // TavilySearch wrapper returns plain text, we need the JSON structure
+          const response = await fetch("https://api.tavily.com/search", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              api_key: process.env.TAVILY_API_KEY!,
+              query,
+              max_results: maxResults,
+              topic,
+              include_raw_content: includeRawContent,
+              include_answer: false, // We don't need Tavily's AI answer
+            }),
           });
 
-          return tavilySearch.invoke({ query });
+          if (!response.ok) {
+            throw new Error(`Tavily API error: ${response.status} ${response.statusText}`);
+          }
+
+          return await response.json();
         },
         {
           maxAttempts: 3,
