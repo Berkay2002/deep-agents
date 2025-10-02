@@ -145,6 +145,11 @@ export function ToolCalls({
           return null; // Will be displayed by PlannerAgentContainer
         }
 
+        // Check if this is an exa_search tool call - don't show it here, it will be shown in ToolResult with ExaSearchResults
+        if (tc.name === "exa_search") {
+          return null; // Will be displayed by ExaSearchResults in ToolResult
+        }
+
         return (
           <div
             className="overflow-hidden rounded-lg border border-gray-200"

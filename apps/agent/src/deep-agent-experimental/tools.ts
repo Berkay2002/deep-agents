@@ -22,18 +22,19 @@ const MAX_LINE_LENGTH = 2000;
 const LINE_NUMBER_PADDING = 6;
 const DEFAULT_LIMIT = 2000;
 
+// Type for todo items
+type TodoItem = {
+  content: string;
+  status: "pending" | "in_progress" | "completed";
+};
+
 /**
  * Write todos tool - manages todo list with Command return
  * Uses getCurrentTaskInput() instead of Python's InjectedState
  */
 export const writeTodos = tool(
   (input: unknown, config: ToolRunnableConfig) => {
-    const { todos } = input as {
-      todos: Array<{
-        content: string;
-        status: "pending" | "in_progress" | "completed";
-      }>;
-    };
+    const { todos } = input as { todos: TodoItem[] };
     return new Command({
       update: {
         todos,
@@ -72,7 +73,6 @@ export const writeTodos = tool(
 export const ls = tool(
   () => {
     const state = getCurrentTaskInput<DeepAgentStateType>();
-    // @ts-expect-error - getCurrentTaskInput returns unknown but we know the type
     const files = state.files || {};
     return Object.keys(files);
   },
@@ -90,7 +90,6 @@ export const ls = tool(
 export const readFile = tool(
   (input: unknown) => {
     const state = getCurrentTaskInput<DeepAgentStateType>();
-    // @ts-expect-error - getCurrentTaskInput returns unknown but we know the type
     const mockFilesystem = state.files || {};
     const {
       filePath,
@@ -124,20 +123,23 @@ export const readFile = tool(
 
     // Format output with line numbers (cat -n format)
     const resultLines: string[] = [];
-    for (const [i, lineContent] of lines.slice(startIdx, endIdx).entries()) {
+    for (let i = startIdx; i < endIdx; i++) {
+      let lineContent = lines[i];
+
       // Handle undefined line content
-      const processedLine = lineContent === undefined ? "" : lineContent;
+      if (lineContent === undefined) {
+        lineContent = "";
+      }
 
       // Truncate lines longer than MAX_LINE_LENGTH characters
-      const truncatedLine =
-        processedLine.length > MAX_LINE_LENGTH
-          ? processedLine.slice(0, MAX_LINE_LENGTH)
-          : processedLine;
+      if (lineContent.length > MAX_LINE_LENGTH) {
+        lineContent = lineContent.substring(0, MAX_LINE_LENGTH);
+      }
 
-      // Line numbers start at 1, so add 1 to the index plus startIdx
-      const lineNumber = startIdx + i + 1;
+      // Line numbers start at 1, so add 1 to the index
+      const lineNumber = i + 1;
       resultLines.push(
-        `${lineNumber.toString().padStart(LINE_NUMBER_PADDING)}	${truncatedLine}`
+        `${lineNumber.toString().padStart(LINE_NUMBER_PADDING)}	${lineContent}`
       );
     }
 
@@ -169,7 +171,6 @@ export const readFile = tool(
 export const writeFile = tool(
   (input: unknown, config: ToolRunnableConfig) => {
     const state = getCurrentTaskInput<DeepAgentStateType>();
-    // @ts-expect-error - getCurrentTaskInput returns unknown but we know the type
     const files = { ...(state.files || {}) };
     const { filePath, content } = input as {
       filePath: string;
@@ -207,7 +208,6 @@ export const writeFile = tool(
 export const editFile = tool(
   (input: unknown, config: ToolRunnableConfig) => {
     const state = getCurrentTaskInput<DeepAgentStateType>();
-    // @ts-expect-error - getCurrentTaskInput returns unknown but we know the type
     const mockFilesystem = { ...(state.files || {}) };
     const {
       filePath,
@@ -243,10 +243,10 @@ export const editFile = tool(
     if (!replaceAll) {
       const escapedOldString = oldString.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const occurrences = (
-        content.match(new RegExp(escapedOldString, "gu")) || []
+        content.match(new RegExp(escapedOldString, "g")) || []
       ).length;
       if (occurrences > 1) {
-        return `Error: String '${oldString}' appears ${occurrences} times in file. Use replaceAll=true to replace all instances, or provide a more specific string with surrounding context.`;
+        return `Error: String '${oldString}' appears ${occurrences} times in file. Use replace_all=True to replace all instances, or provide a more specific string with surrounding context.`;
       }
       if (occurrences === 0) {
         return `Error: String not found in file: '${oldString}'`;
@@ -259,7 +259,7 @@ export const editFile = tool(
     if (replaceAll) {
       const escapedOldString = oldString.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       newContent = content.replace(
-        new RegExp(escapedOldString, "gu"),
+        new RegExp(escapedOldString, "g"),
         newString
       );
     } else {

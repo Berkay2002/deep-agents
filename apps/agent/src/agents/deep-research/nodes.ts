@@ -1,5 +1,5 @@
 // Deep Research Agent subagents configuration
-import type { SubAgent } from "../../deep-agent/types.js";
+import type { SubAgent } from "../../deep-agent-experimental/types.js";
 import {
   CRITIQUE_SUB_AGENT_PROMPT,
   PLANNER_SUB_AGENT_PROMPT,

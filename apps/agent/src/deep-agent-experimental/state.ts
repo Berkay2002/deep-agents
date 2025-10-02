@@ -17,10 +17,10 @@ export function fileReducer(
   left: Record<string, string> | null | undefined,
   right: Record<string, string> | null | undefined
 ): Record<string, string> {
-  if (left == null) {
+  if (left === null || left === undefined) {
     return right || {};
   }
-  if (right == null) {
+  if (right === null || right === undefined) {
     return left;
   }
   return { ...left, ...right };
@@ -34,7 +34,7 @@ export function todoReducer(
   left: Todo[] | null | undefined,
   right: Todo[] | null | undefined
 ): Todo[] {
-  if (right != null) {
+  if (right !== null && right !== undefined) {
     return right;
   }
   return left || [];
@@ -77,3 +77,10 @@ export const DeepAgentStateAnnotation = Annotation.Root({
     default: () => ({}),
   }),
 });
+
+// Export the inferred type for use in other files
+export type DeepAgentStateType = {
+  messages: BaseMessage[];
+  todos: Todo[];
+  files: Record<string, string>;
+};

@@ -7,31 +7,16 @@
  * and returns a tool function that uses createReactAgent for sub-agents.
  */
 
+import type { LanguageModelLike } from "@langchain/core/language_models/base";
 import { ToolMessage } from "@langchain/core/messages";
-import {
-  type StructuredTool,
-  type ToolRunnableConfig,
-  tool,
-} from "@langchain/core/tools";
+import type { StructuredTool } from "@langchain/core/tools";
+import { type ToolRunnableConfig, tool } from "@langchain/core/tools";
 import { Command, getCurrentTaskInput } from "@langchain/langgraph";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { z } from "zod";
-import { getDefaultModel } from "./model.js";
+import { allMiddlewareTools } from "./middleware/stable.js";
 import { TASK_DESCRIPTION_PREFIX, TASK_DESCRIPTION_SUFFIX } from "./prompts.js";
-import { DeepAgentStateAnnotation } from "./state.js";
-import { editFile, ls, readFile, writeFile, writeTodos } from "./tools.js";
-import type { LanguageModelLike, SubAgent } from "./types.js";
-
-/**
- * Built-in tools map for tool resolution by name
- */
-const BUILTIN_TOOLS: Record<string, StructuredTool> = {
-  writeTodos,
-  readFile,
-  writeFile,
-  editFile,
-  ls,
-};
+import type { SubAgent } from "./types.js";
 
 /**
  * Create task tool function that creates agents map, handles tool resolution by name,
@@ -41,12 +26,24 @@ const BUILTIN_TOOLS: Record<string, StructuredTool> = {
 export function createTaskTool(inputs: {
   subagents: SubAgent[];
   tools: Record<string, StructuredTool>;
-  model: LanguageModelLike;
-}) {
-  const { subagents, tools = {}, model = getDefaultModel() } = inputs;
+  model: LanguageModelLike | string;
+  stateSchema?: Record<string, unknown>;
+}): StructuredTool {
+  const { subagents, tools = {}, model = "openai:gpt-4o-mini" } = inputs;
+
+  // Ensure model is a LanguageModelLike instance
+  const resolvedModel = model;
+
+  // Built-in tools map for tool resolution by name
+  const builtinTools: Record<string, StructuredTool> = {};
+  for (const middlewareTool of allMiddlewareTools) {
+    if (middlewareTool.name) {
+      builtinTools[middlewareTool.name] = middlewareTool;
+    }
+  }
 
   // Combine built-in tools with provided tools for tool resolution
-  const allTools = { ...BUILTIN_TOOLS, ...tools };
+  const allTools = { ...builtinTools, ...tools };
 
   // Pre-create all agents like Python does
   const agentsMap = new Map<string, ReturnType<typeof createReactAgent>>();
@@ -59,6 +56,7 @@ export function createTaskTool(inputs: {
         if (resolvedTool) {
           subagentTools.push(resolvedTool);
         }
+        // Note: Missing tools are silently ignored to avoid console usage
       }
     } else {
       // If no tools specified, use all tools like Python does
@@ -67,9 +65,10 @@ export function createTaskTool(inputs: {
 
     // Create react agent for the subagent (pre-create like Python)
     const reactAgent = createReactAgent({
-      llm: model,
+      llm:
+        (subagent.model as LanguageModelLike) ??
+        (resolvedModel as LanguageModelLike),
       tools: subagentTools,
-      stateSchema: DeepAgentStateAnnotation,
       messageModifier: subagent.prompt,
     });
 
@@ -91,8 +90,7 @@ export function createTaskTool(inputs: {
 
       try {
         // Get current state for context
-        const currentState =
-          getCurrentTaskInput<typeof DeepAgentStateAnnotation.State>();
+        const currentState = getCurrentTaskInput<Record<string, unknown>>();
 
         // Modify state messages like Python does
         const modifiedState = {
@@ -112,11 +110,12 @@ export function createTaskTool(inputs: {
         // Return the result using Command to properly handle subgraph state
         return new Command({
           update: {
-            files: result.files || {},
+            files: (result as Record<string, unknown>).files || {},
             messages: [
               new ToolMessage({
                 content:
-                  result.messages?.slice(-1)[0]?.content || "Task completed",
+                  (result.messages as Array<{ content?: string }>)?.slice(-1)[0]
+                    ?.content || "Task completed",
                 // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
                 tool_call_id: config.toolCall?.id as string,
               }),

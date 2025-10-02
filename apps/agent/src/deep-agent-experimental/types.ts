@@ -13,14 +13,34 @@ import type {
 } from "@langchain/core/language_models/base";
 import type { Runnable } from "@langchain/core/runnables";
 import type { StructuredTool } from "@langchain/core/tools";
-import type { InteropZodObject } from "@langchain/core/utils/types";
-import type { AnnotationRoot } from "@langchain/langgraph";
 import type { HumanInterruptConfig } from "@langchain/langgraph/prebuilt";
 import type { z } from "zod";
-import type { DeepAgentState } from "./state.js";
 
-// biome-ignore lint/suspicious/noExplicitAny: Required by LangGraph API
-export type AnyAnnotationRoot = AnnotationRoot<any>;
+// Define LangGraphRunnableConfig locally since it's not exported properly
+export type LangGraphRunnableConfig<ContextType = Record<string, unknown>> = {
+  callbacks?: unknown;
+  configurable?: ContextType;
+  context?: ContextType;
+  maxConcurrency?: number;
+  metadata?: Record<string, unknown>;
+  recursionLimit?: number;
+  runId?: string;
+  runName?: string;
+  signal?: AbortSignal;
+  store?: unknown;
+  tags?: string[];
+  timeout?: number;
+  writer?: (chunk: unknown) => void;
+};
+
+// Import the actual state types from the state file
+import type {
+  DeepAgentStateAnnotation,
+  DeepAgentStateType as ImportedDeepAgentStateType,
+} from "./state.js";
+
+// Use the actual state annotation type
+export type AnyAnnotationRoot = typeof DeepAgentStateAnnotation;
 
 export type InferZodObjectShape<T> = T extends z.ZodObject<infer Shape>
   ? Shape
@@ -34,6 +54,8 @@ export type SubAgent = {
   description: string;
   prompt: string;
   tools?: string[];
+  model?: LanguageModelLike | string;
+  middleware?: Record<string, unknown>[];
 };
 
 export type TodoStatus = "pending" | "in_progress" | "completed";
@@ -43,43 +65,41 @@ export type Todo = {
   status: TodoStatus;
 };
 
-export type DeepAgentStateType = z.infer<typeof DeepAgentState>;
-
 export type LanguageModelLike = Runnable<
   BaseLanguageModelInput,
   LanguageModelOutput
 >;
 
 export type PostModelHook = (
-  state: DeepAgentStateType,
-  model: LanguageModelLike
-) => Promise<Partial<DeepAgentStateType> | undefined>;
+  state: Record<string, unknown>,
+  options:
+    | Record<string, unknown>
+    | LangGraphRunnableConfig<Record<string, unknown>>
+    | (Record<string, unknown> &
+        LangGraphRunnableConfig<Record<string, unknown>>)
+) => Promise<Partial<Record<string, unknown>> | undefined>;
 
 export type ToolInterruptConfig = Record<
   string,
   HumanInterruptConfig | boolean
 >;
 
-export type CreateDeepAgentParams<
-  StateSchema extends z.ZodObject,
-  ContextSchema extends
-    | AnyAnnotationRoot
-    | InteropZodObject = AnyAnnotationRoot,
-> = {
+export type CreateDeepAgentParams = {
   tools?: StructuredTool[];
   instructions?: string;
-  model?: LanguageModelLike;
+  model?: LanguageModelLike | string;
   subagents?: SubAgent[];
-  stateSchema?: StateSchema;
-  contextSchema?: ContextSchema;
-  postModelHook?: PostModelHook;
   interruptConfig?: ToolInterruptConfig;
   builtinTools?: string[];
+  stateSchema?: unknown;
 };
 
-export type CreateTaskToolParams<StateSchema extends z.ZodObject> = {
+export type CreateTaskToolParams = {
   subagents: SubAgent[];
   tools?: Record<string, StructuredTool>;
-  model?: LanguageModelLike;
-  stateSchema?: StateSchema;
+  model?: LanguageModelLike | string;
+  stateSchema?: unknown;
 };
+
+// Re-export the state type for use in other files
+export type DeepAgentStateType = ImportedDeepAgentStateType;

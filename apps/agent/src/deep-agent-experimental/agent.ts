@@ -6,16 +6,20 @@
  * provided tools, creates task tool using createTaskTool(), and returns createReactAgent
  * with proper configuration. Ensures exact parameter matching and behavior with Python version.
  */
+/** biome-ignore-all lint/correctness/noUnusedImports: <> */
 
+import type { Runnable } from "@langchain/core/runnables";
 import type { StructuredTool } from "@langchain/core/tools";
-import type { InteropZodObject } from "@langchain/core/utils/types";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
-import type { z } from "zod";
+import { createInterruptHook } from "./interrupt.js";
+import {
+  allMiddlewareMessageModifier,
+  allMiddlewareTools,
+} from "./middleware/stable.js";
 import { getDefaultModel } from "./model.js";
-import { DeepAgentStateAnnotation } from "./state.js";
+import { DeepAgentState, DeepAgentStateAnnotation } from "./state.js";
 import { createTaskTool } from "./sub-agent.js";
-import { editFile, ls, readFile, writeFile, writeTodos } from "./tools.js";
-import type { AnyAnnotationRoot, CreateDeepAgentParams } from "./types.js";
+import type { CreateDeepAgentParams, PostModelHook } from "./types.js";
 
 /**
  * Base prompt that provides instructions about available tools
@@ -36,13 +40,7 @@ It is critical that you mark todos as completed as soon as you are done with a t
 /**
  * Built-in tools that are always available in Deep Agents
  */
-const BUILTIN_TOOLS: StructuredTool[] = [
-  writeTodos,
-  readFile,
-  writeFile,
-  editFile,
-  ls,
-];
+const BUILTIN_TOOLS: StructuredTool[] = allMiddlewareTools;
 
 /**
  * Create a Deep Agent with TypeScript types for all parameters.
@@ -51,24 +49,22 @@ const BUILTIN_TOOLS: StructuredTool[] = [
  * Ensures exact parameter matching and behavior with Python version.
  *
  */
-export function createDeepAgent<
-  StateSchema extends z.ZodObject,
-  ContextSchema extends
-    | AnyAnnotationRoot
-    | InteropZodObject = AnyAnnotationRoot,
->(params: CreateDeepAgentParams<StateSchema, ContextSchema> = {}) {
+export function createDeepAgent(
+  params: CreateDeepAgentParams = {}
+): Runnable<Record<string, unknown>, Record<string, unknown>> {
   const {
     tools = [],
     instructions,
     model = getDefaultModel(),
     subagents = [],
-    postModelHook,
     interruptConfig = {},
     builtinTools,
   } = params;
 
-  // Use AnnotationRoot version for createReactAgent
-  const stateAnnotation = DeepAgentStateAnnotation;
+  // Ensure model is a LanguageModelLike instance
+  const resolvedModel = typeof model === "string" ? getDefaultModel() : model;
+
+  const stateSchema = params.stateSchema || DeepAgentState;
 
   // Filter built-in tools if builtinTools parameter is provided
   const selectedBuiltinTools = builtinTools
@@ -92,28 +88,33 @@ export function createDeepAgent<
     const taskTool = createTaskTool({
       subagents,
       tools: toolsMap,
-      model,
+      model: resolvedModel,
+      stateSchema: stateSchema as Record<string, unknown>,
     });
     allTools.push(taskTool);
   }
 
-  // Combine instructions with base prompt like Python implementation
+  // Combine instructions with base prompt and middleware system prompts
   const finalInstructions = instructions
-    ? `${instructions}${BASE_PROMPT}`
-    : BASE_PROMPT;
+    ? instructions + BASE_PROMPT + allMiddlewareMessageModifier("")
+    : BASE_PROMPT + allMiddlewareMessageModifier("");
 
-  // Should never be the case that both are specified
-  if (postModelHook && Object.keys(interruptConfig).length > 0) {
-    throw new Error(
-      "Cannot specify both postModelHook and interruptConfig together. Use either interruptConfig for tool interrupts or postModelHook for custom post-processing."
-    );
+  let selectedPostModelHook: PostModelHook | undefined;
+  if (Object.keys(interruptConfig).length > 0) {
+    selectedPostModelHook = createInterruptHook(interruptConfig);
+  } else {
+    selectedPostModelHook = undefined;
   }
 
   // Return createReactAgent with proper configuration
   return createReactAgent({
-    llm: model,
+    llm: resolvedModel,
     tools: allTools,
-    stateSchema: stateAnnotation,
+    stateSchema:
+      (stateSchema as typeof DeepAgentStateAnnotation) ||
+      DeepAgentStateAnnotation,
     messageModifier: finalInstructions,
+    // biome-ignore lint/suspicious/noExplicitAny: <no other solution>
+    postModelHook: selectedPostModelHook as any,
   });
 }

@@ -42,7 +42,9 @@ async function initializeDeepResearchAgent(): Promise<AgentRunnable> {
 
 async function createBasicAgent(): Promise<AgentRunnable> {
   // Import here to avoid circular dependencies
-  const { createDeepAgent } = await import("./deep-agent/agent.js");
+  const { createDeepAgent } = await import(
+    "./deep-agent-experimental/agent.js"
+  );
   const { createAgentModel } = await import("./shared/model.js");
   const { RESEARCH_AGENT_INSTRUCTIONS } = await import(
     "./agents/deep-research/prompts.js"
