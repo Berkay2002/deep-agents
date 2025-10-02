@@ -6,7 +6,7 @@
  */
 
 import "@langchain/langgraph/zod";
-import { MessagesZodState } from "@langchain/langgraph";
+import { MessagesZodState, Annotation, messagesStateReducer } from "@langchain/langgraph";
 import type { Todo } from "./types.js";
 import { withLangGraph } from "@langchain/langgraph/zod";
 import { z } from "zod";
@@ -59,5 +59,24 @@ export const DeepAgentState = MessagesZodState.extend({
       schema: z.custom<Record<string, string>>(),
       fn: fileReducer,
     },
+  }),
+});
+
+/**
+ * DeepAgentStateAnnotation using LangGraph's Annotation.Root() pattern
+ * This is the AnnotationRoot version that can be used with createReactAgent
+ */
+export const DeepAgentStateAnnotation = Annotation.Root({
+  messages: Annotation<any[]>({
+    reducer: messagesStateReducer,
+    default: () => [],
+  }),
+  todos: Annotation<Todo[]>({
+    reducer: todoReducer,
+    default: () => [],
+  }),
+  files: Annotation<Record<string, string>>({
+    reducer: fileReducer,
+    default: () => ({}),
   }),
 });

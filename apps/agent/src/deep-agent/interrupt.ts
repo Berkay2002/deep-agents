@@ -43,6 +43,7 @@ export function createInterruptHook(
 
     const lastMessage = messages[messages.length - 1];
     if (
+      !lastMessage ||
       !isAIMessage(lastMessage) ||
       !lastMessage.tool_calls ||
       !lastMessage.tool_calls.length
@@ -75,6 +76,9 @@ export function createInterruptHook(
     }
 
     const toolCall = interruptToolCalls[0];
+    if (!toolCall) {
+      throw new Error("Tool call is undefined");
+    }
     const toolName = toolCall.name;
     const toolArgs = toolCall.args;
     const description = `${messagePrefix}\n\nTool: ${toolName}\nArgs: ${JSON.stringify(toolArgs, null, 2)}`;
@@ -103,6 +107,9 @@ export function createInterruptHook(
     }
 
     const response = responses[0];
+    if (!response) {
+      throw new Error("Response is undefined");
+    }
 
     if (response.type === "accept") {
       approvedToolCalls.push(toolCall);

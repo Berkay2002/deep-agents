@@ -17,6 +17,7 @@ import type { LanguageModelLike, SubAgent } from "./types.js";
 import { getDefaultModel } from "./model.js";
 import { writeTodos, readFile, writeFile, editFile, ls } from "./tools.js";
 import { TASK_DESCRIPTION_PREFIX, TASK_DESCRIPTION_SUFFIX } from "./prompts.js";
+import { DeepAgentStateAnnotation } from "./state.js";
 
 /**
  * Built-in tools map for tool resolution by name
@@ -34,19 +35,15 @@ const BUILTIN_TOOLS: Record<string, StructuredTool> = {
  * and returns a tool function that uses createReactAgent for sub-agents.
  * Uses Command for state updates and navigation between agents.
  */
-export function createTaskTool<
-  StateSchema extends z.ZodObject<any, any, any, any, any>,
->(inputs: {
+export function createTaskTool(inputs: {
   subagents: SubAgent[];
   tools: Record<string, StructuredTool>;
   model: LanguageModelLike;
-  stateSchema: StateSchema;
 }) {
   const {
     subagents,
     tools = {},
     model = getDefaultModel(),
-    stateSchema,
   } = inputs;
 
   // Combine built-in tools with provided tools for tool resolution
@@ -78,7 +75,7 @@ export function createTaskTool<
     const reactAgent = createReactAgent({
       llm: model,
       tools: subagentTools,
-      stateSchema,
+      stateSchema: DeepAgentStateAnnotation,
       messageModifier: subagent.prompt,
     });
 
@@ -100,7 +97,7 @@ export function createTaskTool<
 
       try {
         // Get current state for context
-        const currentState = getCurrentTaskInput<z.infer<typeof stateSchema>>();
+        const currentState = getCurrentTaskInput<typeof DeepAgentStateAnnotation.State>();
 
         // Modify state messages like Python does
         const modifiedState = {

@@ -1,5 +1,5 @@
 // Code Assistant Agent subagents configuration
-import type { SubAgent } from "deepagents";
+import type { SubAgent } from "../../deep-agent/index.js";
 import {
   CODE_ANALYZER_PROMPT,
   BUG_FIXER_PROMPT,

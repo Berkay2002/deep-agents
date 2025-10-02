@@ -1,5 +1,5 @@
 // Code Assistant Agent - Expert coding assistant for development tasks
-import { createDeepAgent } from "deepagents";
+import { createDeepAgent } from "../../deep-agent/index.js";
 import { createAgentModel } from "../../shared/model.js";
 import { loadCodeTools } from "./tools.js";
 import { codeSubAgents } from "./nodes.js";

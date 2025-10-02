@@ -1,6 +1,6 @@
 // Shared types for all agents
 import type { BaseMessage } from "@langchain/core/messages";
-import type { SubAgent } from "deepagents";
+import type { SubAgent } from "../deep-agent/index.js";
 
 // Agent configuration interface
 export interface AgentConfig {

@@ -109,6 +109,11 @@ export const readFile = tool(
     for (let i = startIdx; i < endIdx; i++) {
       let lineContent = lines[i];
 
+      // Handle undefined line content
+      if (lineContent === undefined) {
+        lineContent = "";
+      }
+
       // Truncate lines longer than 2000 characters
       if (lineContent.length > 2000) {
         lineContent = lineContent.substring(0, 2000);
@@ -201,6 +206,11 @@ export const editFile = tool(
     // Get current file content
     const content = mockFilesystem[file_path];
 
+    // Handle undefined content
+    if (content === undefined) {
+      return `Error: File '${file_path}' has undefined content`;
+    }
+
     // Check if old_string exists in the file
     if (!content.includes(old_string)) {
       return `Error: String not found in file: '${old_string}'`;
@@ -236,6 +246,11 @@ export const editFile = tool(
       );
     } else {
       newContent = content.replace(old_string, new_string);
+    }
+
+    // Handle undefined newContent
+    if (newContent === undefined) {
+      return `Error: Failed to replace content in file '${file_path}'`;
     }
 
     // Update the mock filesystem

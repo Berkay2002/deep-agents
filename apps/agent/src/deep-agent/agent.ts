@@ -14,14 +14,12 @@ import { getDefaultModel } from "./model.js";
 import { writeTodos, readFile, writeFile, editFile, ls } from "./tools.js";
 import { InteropZodObject } from "@langchain/core/utils/types";
 import type {
-  PostModelHook,
   AnyAnnotationRoot,
   CreateDeepAgentParams,
 } from "./types.js";
 import type { StructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
-import { DeepAgentState } from "./state.js";
-import { createInterruptHook } from "./interrupt.js";
+import { DeepAgentStateAnnotation } from "./state.js";
 
 /**
  * Base prompt that provides instructions about available tools
@@ -69,14 +67,12 @@ export function createDeepAgent<
     model = getDefaultModel(),
     subagents = [],
     postModelHook,
-    contextSchema,
     interruptConfig = {},
     builtinTools,
   } = params;
 
-  const stateSchema = params.stateSchema
-    ? DeepAgentState.extend(params.stateSchema.shape)
-    : DeepAgentState;
+  // Use AnnotationRoot version for createReactAgent
+  const stateAnnotation = DeepAgentStateAnnotation;
 
   // Filter built-in tools if builtinTools parameter is provided
   const selectedBuiltinTools = builtinTools
@@ -101,7 +97,6 @@ export function createDeepAgent<
       subagents,
       tools: toolsMap,
       model,
-      stateSchema,
     });
     allTools.push(taskTool);
   }
@@ -119,26 +114,11 @@ export function createDeepAgent<
     );
   }
 
-  let selectedPostModelHook: PostModelHook | undefined;
-  if (postModelHook !== undefined) {
-    selectedPostModelHook = postModelHook;
-  } else if (Object.keys(interruptConfig).length > 0) {
-    selectedPostModelHook = createInterruptHook(interruptConfig);
-  } else {
-    selectedPostModelHook = undefined;
-  }
-
   // Return createReactAgent with proper configuration
-  return createReactAgent<
-    stateSchema,
-    Record<string, any>,
-    ContextSchema
-  >({
+  return createReactAgent({
     llm: model,
     tools: allTools,
-    stateSchema,
+    stateSchema: stateAnnotation,
     messageModifier: finalInstructions,
-    contextSchema,
-    postModelHook: selectedPostModelHook,
   });
 }

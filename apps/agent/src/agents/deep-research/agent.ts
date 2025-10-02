@@ -1,5 +1,5 @@
 // Deep Research Agent - Expert researcher for in-depth analysis and report generation
-import { createDeepAgent } from "deepagents";
+import { createDeepAgent } from "../../deep-agent/index.js";
 import { createAgentModel } from "../../shared/model.js";
 import { loadResearchTools } from "./tools.js";
 import { researchSubAgents } from "./nodes.js";
