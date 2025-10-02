@@ -2,12 +2,20 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 
-function isComplexValue(value: any): boolean {
+// Constants for magic numbers
+const MAX_CONTENT_LINES = 4;
+const MAX_CONTENT_LENGTH = 500;
+const MAX_STRING_LENGTH = 100;
+const MAX_ARRAY_ITEMS = 5;
+
+function isComplexValue(value: unknown): boolean {
   return Array.isArray(value) || (typeof value === "object" && value !== null);
 }
 
-function isUrl(value: any): boolean {
-  if (typeof value !== "string") return false;
+function isUrl(value: unknown): boolean {
+  if (typeof value !== "string") {
+    return false;
+  }
   try {
     new URL(value);
     return value.startsWith("http://") || value.startsWith("https://");
@@ -16,7 +24,7 @@ function isUrl(value: any): boolean {
   }
 }
 
-function renderInterruptStateItem(value: any): React.ReactNode {
+function renderInterruptStateItem(value: unknown): React.ReactNode {
   if (isComplexValue(value)) {
     return (
       <code className="rounded bg-gray-50 px-2 py-1 font-mono text-sm">
@@ -28,11 +36,11 @@ function renderInterruptStateItem(value: any): React.ReactNode {
     return (
       <a
         className="break-all text-blue-600 underline hover:text-blue-800"
-        href={value}
+        href={value as string}
         rel="noopener noreferrer"
         target="_blank"
       >
-        {value}
+        {String(value)}
       </a>
     );
   }
@@ -42,22 +50,22 @@ function renderInterruptStateItem(value: any): React.ReactNode {
 export function GenericInterruptView({
   interrupt,
 }: {
-  interrupt: Record<string, any> | Record<string, any>[];
+  interrupt: Record<string, unknown> | Record<string, unknown>[];
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const contentStr = JSON.stringify(interrupt, null, 2);
   const contentLines = contentStr.split("\n");
-  const shouldTruncate = contentLines.length > 4 || contentStr.length > 500;
+  const shouldTruncate = contentLines.length > MAX_CONTENT_LINES || contentStr.length > MAX_CONTENT_LENGTH;
 
   // Function to truncate long string values (but preserve URLs)
-  const truncateValue = (value: any): any => {
-    if (typeof value === "string" && value.length > 100) {
+  const truncateValue = (value: unknown): unknown => {
+    if (typeof value === "string" && value.length > MAX_STRING_LENGTH) {
       // Don't truncate URLs so they remain clickable
       if (isUrl(value)) {
         return value;
       }
-      return value.substring(0, 100) + "...";
+      return `${value.slice(0, MAX_STRING_LENGTH)}...`;
     }
 
     if (Array.isArray(value) && !isExpanded) {
@@ -66,7 +74,7 @@ export function GenericInterruptView({
 
     if (isComplexValue(value) && !isExpanded) {
       const strValue = JSON.stringify(value, null, 2);
-      if (strValue.length > 100) {
+      if (strValue.length > MAX_STRING_LENGTH) {
         // Return plain text for truncated content instead of a JSON object
         return `Truncated ${strValue.length} characters...`;
       }
@@ -78,7 +86,7 @@ export function GenericInterruptView({
   // Process entries based on expanded state
   const processEntries = () => {
     if (Array.isArray(interrupt)) {
-      return isExpanded ? interrupt : interrupt.slice(0, 5);
+      return isExpanded ? interrupt : interrupt.slice(0, MAX_ARRAY_ITEMS);
     }
     const entries = Object.entries(interrupt);
     if (!isExpanded && shouldTruncate) {
@@ -121,9 +129,11 @@ export function GenericInterruptView({
                   {displayEntries.map((item, argIdx) => {
                     const [key, value] = Array.isArray(interrupt)
                       ? [argIdx.toString(), item]
-                      : (item as [string, any]);
+                      : (item as [string, unknown]);
+                    // Create a unique key using the key/value combination
+                    const uniqueKey = `${key}-${JSON.stringify(value)}`;
                     return (
-                      <tr key={argIdx}>
+                      <tr key={uniqueKey}>
                         <td className="whitespace-nowrap px-4 py-2 font-medium text-gray-900 text-sm">
                           {key}
                         </td>
@@ -139,11 +149,18 @@ export function GenericInterruptView({
           </AnimatePresence>
         </div>
         {(shouldTruncate ||
-          (Array.isArray(interrupt) && interrupt.length > 5)) && (
+          (Array.isArray(interrupt) && interrupt.length > MAX_ARRAY_ITEMS)) && (
           <motion.button
             className="flex w-full cursor-pointer items-center justify-center border-gray-200 border-t-[1px] py-2 text-gray-500 transition-all duration-200 ease-in-out hover:bg-gray-50 hover:text-gray-600"
             initial={{ scale: 1 }}
             onClick={() => setIsExpanded(!isExpanded)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setIsExpanded(!isExpanded);
+              }
+            }}
+            type="button"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >

@@ -24,10 +24,8 @@
     "dev": "langgraphjs dev -c langgraph.json",
     "dev:server": "langgraphjs dev -c langgraph.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
-    "format": "prettier --write \"src/**/*.{ts,js,json,md}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,js,json,md}\"",
+    "lint": "ultracite check",
+    "format": "ultracite fix",
     "prepublishOnly": "yarn build",
     "test": "echo \"Error: no test specified\" && exit 0",
     "start": "node dist/agent.js"
@@ -46,20 +44,14 @@
     "zod": "^4.1.11"
   },
   "devDependencies": {
-    "@eslint/js": "^9.36.0",
+    "@biomejs/biome": "^2.2.5",
     "@langchain/langgraph-cli": "^0.0.69",
     "@tsconfig/recommended": "^1.0.10",
     "@types/node": "^24.6.1",
     "dotenv": "^17.2.3",
-    "eslint": "^9.36.0",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-no-instanceof": "^1.0.1",
-    "eslint-plugin-prettier": "^5.5.4",
-    "globals": "^16.4.0",
-    "prettier": "^3.6.2",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.45.0"
+    "ultracite": "^5.5.0"
   },
   "engines": {
     "node": ">=20"

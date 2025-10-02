@@ -10,21 +10,21 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-interface FileRead {
+type FileRead = {
   filePath: string;
   content: string;
   toolCallId: string;
-}
+};
 
-interface CritiqueAgent {
+type CritiqueAgent = {
   taskDescription: string;
   critique?: string;
   fileReads: FileRead[];
-}
+};
 
-interface CritiqueAgentContainerProps {
+type CritiqueAgentContainerProps = {
   agents: CritiqueAgent[];
-}
+};
 
 export function CritiqueAgentContainer({
   agents,
@@ -32,7 +32,9 @@ export function CritiqueAgentContainer({
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
 
-  if (agents.length === 0) return null;
+  if (agents.length === 0) {
+    return null;
+  }
 
   const currentAgent = agents[activeTab];
 
@@ -60,6 +62,7 @@ export function CritiqueAgentContainer({
               aria-label={isExpanded ? "Collapse" : "Expand"}
               className="flex-shrink-0 text-gray-500 hover:text-gray-700"
               onClick={() => setIsExpanded(!isExpanded)}
+              type="button"
             >
               {isExpanded ? (
                 <ChevronUp className="h-4 w-4" />
@@ -74,15 +77,16 @@ export function CritiqueAgentContainer({
         {agents.length > 1 && (
           <div className="border-gray-200 border-b bg-white">
             <div className="flex overflow-x-auto">
-              {agents.map((agent, idx) => (
+              {agents.map((_agent, idx) => (
                 <button
                   className={`flex-shrink-0 border-b-2 px-4 py-2 font-medium text-sm transition-colors ${
                     activeTab === idx
                       ? "border-purple-600 bg-purple-50 text-purple-600"
                       : "border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   }`}
-                  key={idx}
+                  key={`agent-tab-${idx}-${_agent.taskDescription.slice(0, 10)}`}
                   onClick={() => setActiveTab(idx)}
+                  type="button"
                 >
                   <div className="flex items-center gap-2">
                     <span>Agent {idx + 1}</span>
@@ -104,6 +108,7 @@ export function CritiqueAgentContainer({
               <button
                 className="inline-flex items-center gap-2 font-medium text-purple-600 text-sm transition-colors hover:text-purple-700"
                 onClick={() => setIsExpanded(true)}
+                type="button"
               >
                 <FileCheck className="h-4 w-4" />
                 Read Critique
@@ -142,7 +147,10 @@ export function CritiqueAgentContainer({
                 </div>
                 <div className="space-y-3">
                   {currentAgent.fileReads.map((fileRead, idx) => (
-                    <FileReadItem fileRead={fileRead} key={idx} />
+                    <FileReadItem
+                      fileRead={fileRead}
+                      key={`file-${idx}-${fileRead.filePath}`}
+                    />
                   ))}
                 </div>
               </div>
@@ -174,6 +182,7 @@ export function CritiqueAgentContainer({
 function FileReadItem({ fileRead }: { fileRead: FileRead }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const PreviewLines = 3;
+  const LinePreviewLength = 5;
 
   const contentLines = fileRead.content.split("\n");
   const totalLines = contentLines.length;
@@ -186,9 +195,16 @@ function FileReadItem({ fileRead }: { fileRead: FileRead }) {
   return (
     <div className="overflow-hidden rounded-md border border-purple-200 bg-purple-50/30">
       {/* File path header */}
-      <div
-        className="flex cursor-pointer items-center justify-between border-purple-200 border-b bg-purple-100/50 px-3 py-2 transition-colors hover:bg-purple-100"
+      <button
+        className="flex w-full cursor-pointer items-center justify-between border-purple-200 border-b bg-purple-100/50 px-3 py-2 transition-colors hover:bg-purple-100"
         onClick={() => setIsExpanded(!isExpanded)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setIsExpanded(!isExpanded);
+          }
+        }}
+        type="button"
       >
         <code className="font-medium text-purple-900 text-xs">
           {fileRead.filePath}
@@ -203,7 +219,7 @@ function FileReadItem({ fileRead }: { fileRead: FileRead }) {
             <ChevronDown className="h-3 w-3 text-purple-500" />
           )}
         </div>
-      </div>
+      </button>
 
       {/* File content */}
       <div className="bg-white">
@@ -213,7 +229,7 @@ function FileReadItem({ fileRead }: { fileRead: FileRead }) {
               {displayedLines.map((line, index) => (
                 <tr
                   className="transition-colors hover:bg-purple-50"
-                  key={index}
+                  key={`${fileRead.filePath}-line-${index}-${line.slice(0, LinePreviewLength)}`}
                 >
                   <td className="w-[40px] min-w-[40px] select-none border-purple-100 border-r bg-gray-50 px-2 py-0 text-right">
                     <pre className="m-0 p-0 text-gray-500 text-xs">
@@ -239,6 +255,7 @@ function FileReadItem({ fileRead }: { fileRead: FileRead }) {
               e.stopPropagation();
               setIsExpanded(!isExpanded);
             }}
+            type="button"
           >
             <span className="mr-1">
               {isExpanded

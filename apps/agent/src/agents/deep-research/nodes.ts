@@ -11,17 +11,35 @@ export const researchSubAgent: SubAgent = {
   description:
     "Used to extract raw research data for synthesis. This agent returns UNFORMATTED research findings, NOT polished reports. Only give this researcher one topic at a time. Do not pass multiple sub questions to this researcher. Instead, break down large topics into necessary components and call multiple research agents in parallel, one for each sub question. CRITICAL: The research-agent returns raw data in plain structured format (bullet points + source URLs). DO NOT echo its response to the user. DO NOT treat its response as a formatted report. ONLY use it as source material for your final_report.md. After receiving research results, mark the corresponding todo as completed and continue with remaining todos.",
   prompt: RESEARCH_SUB_AGENT_PROMPT,
-  tools: ["tavily_search", "exa_search"],
+  tools: [
+    "tavily_search",        // Refactored with Command pattern
+    "exa_search",           // Refactored with Command pattern
+    "save_research_findings", // NEW: Structure findings
+    "ls",                   // List mock filesystem
+    "read_file",            // Read cached searches/findings
+    "write_file",           // Write custom artifacts
+    "edit_file"             // Edit existing artifacts
+  ],
 };
 
 export const critiqueSubAgent: SubAgent = {
   name: "critique-agent",
   description:
-    "Used to critique the final report. Give this agent some information about how you want it to critique the report. This agent can ONLY read files and search for verification - it cannot edit or write files. CRITICAL: DO NOT echo its response to the user. DO NOT treat its response as a formatted report. ONLY use it as source material for your final_report.md.",
+    "Used to critique the final report using specialized critique tools. This agent performs structured analysis of report structure, completeness, accuracy, and clarity. It can fact-check claims, evaluate organization, analyze coverage, and save structured critique findings. The agent outputs STRUCTURED CRITIQUE DATA for synthesis by the main agent. CRITICAL: DO NOT echo its response to the user. DO NOT treat its response as a formatted report. ONLY use it as source material for improving your final_report.md.",
   prompt: CRITIQUE_SUB_AGENT_PROMPT,
-  tools: ["tavily_search", "exa_search"],
+  tools: [
+    "tavily_search",          // For manual fact-checking
+    "exa_search",             // For manual fact-checking
+    "fact_check",             // Automated fact verification
+    "evaluate_structure",     // Structure analysis
+    "analyze_completeness",   // Completeness assessment
+    "save_critique",          // Save structured critique
+    "read_file",              // Read report, question, cached analyses
+    "ls"                      // List available files
+  ],
   /**
-   * Note: The prompt explicitly restricts to read-only operations
+   * Note: The agent now has access to specialized critique tools that perform
+   * structured analysis and store results in the mock filesystem at /research/critiques/
    */
 };
 
@@ -30,7 +48,16 @@ export const plannerSubAgent: SubAgent = {
   description:
     "Used to create comprehensive research plans and todo lists for complex research topics. This agent specializes in pre-research planning, topic analysis, scope estimation, and plan optimization. Use this agent when you need to break down complex research topics into structured plans. The planner-agent returns structured research plans with todo lists that can be used to guide the research process. DO NOT echo its response to the user. ONLY use its response as source material for organizing your research approach.",
   prompt: PLANNER_SUB_AGENT_PROMPT,
-  tools: ["topic_analysis", "scope_estimation", "plan_optimization"],
+  tools: [
+    "topic_analysis",
+    "scope_estimation",
+    "plan_optimization",
+    "ls",
+    "read_file",
+    "write_file",
+    "edit_file",
+    "write_todos",
+  ],
 };
 
 export const researchSubAgents: SubAgent[] = [

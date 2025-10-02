@@ -15,28 +15,44 @@ import type { SearchResultData } from "@/lib/research-agent-grouper";
 import { ExaSearchResults } from "./exa-search-results";
 import { TavilySearchResults } from "./tavily-search-results";
 
+const KEY_PREFIX_LENGTH = 20;
+
 type ResearchAgentStatus = "pending" | "in_progress" | "completed";
 
-interface ResearchAgent {
+type ResearchAgent = {
   taskDescription: string;
   searchResults: SearchResultData[];
   findings?: string;
   status: ResearchAgentStatus;
   statusUpdates?: string[];
-}
+};
 
-interface ResearchAgentContainerProps {
+type ResearchAgentContainerProps = {
   agents: ResearchAgent[];
-}
+};
 
 function getStatusIcon(status: ResearchAgentStatus) {
   switch (status) {
     case "pending":
-      return <Clock className="h-3.5 w-3.5 text-gray-400" />;
+      return (
+        <Clock className="h-3.5 w-3.5 text-gray-400">
+          <title>Pending</title>
+        </Clock>
+      );
     case "in_progress":
-      return <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />;
+      return (
+        <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500">
+          <title>In Progress</title>
+        </Loader2>
+      );
     case "completed":
-      return <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />;
+      return (
+        <CheckCircle2 className="h-3.5 w-3.5 text-green-600">
+          <title>Completed</title>
+        </CheckCircle2>
+      );
+    default:
+      return null;
   }
 }
 
@@ -48,6 +64,8 @@ function getStatusColor(status: ResearchAgentStatus) {
       return "text-blue-600 border-blue-400 bg-blue-50";
     case "completed":
       return "text-green-600 border-green-500 bg-green-50";
+    default:
+      return "text-gray-500 border-gray-300";
   }
 }
 
@@ -57,7 +75,9 @@ export function ResearchAgentContainer({
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
 
-  if (agents.length === 0) return null;
+  if (agents.length === 0) {
+    return null;
+  }
 
   const currentAgent = agents[activeTab];
 
@@ -68,7 +88,9 @@ export function ResearchAgentContainer({
         <div className="border-gray-200 border-b bg-gray-50 px-4 py-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <Search className="h-4 w-4 flex-shrink-0 text-blue-600" />
+              <Search className="h-4 w-4 flex-shrink-0 text-blue-600">
+                <title>Search</title>
+              </Search>
               <div className="min-w-0 flex-1">
                 <h3 className="font-semibold text-gray-900 text-sm">
                   Research Agents
@@ -85,11 +107,22 @@ export function ResearchAgentContainer({
               aria-label={isExpanded ? "Collapse" : "Expand"}
               className="flex-shrink-0 text-gray-500 hover:text-gray-700"
               onClick={() => setIsExpanded(!isExpanded)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setIsExpanded(!isExpanded);
+                }
+              }}
+              type="button"
             >
               {isExpanded ? (
-                <ChevronUp className="h-4 w-4" />
+                <ChevronUp className="h-4 w-4">
+                  <title>Collapse</title>
+                </ChevronUp>
               ) : (
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown className="h-4 w-4">
+                  <title>Expand</title>
+                </ChevronDown>
               )}
             </button>
           </div>
@@ -106,8 +139,15 @@ export function ResearchAgentContainer({
                       ? `border-blue-600 ${getStatusColor(agent.status)}`
                       : "border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   }`}
-                  key={idx}
+                  key={`agent-${agent.taskDescription}-${idx}`}
                   onClick={() => setActiveTab(idx)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setActiveTab(idx);
+                    }
+                  }}
+                  type="button"
                 >
                   <div className="flex items-center gap-2">
                     {getStatusIcon(agent.status)}
@@ -130,8 +170,17 @@ export function ResearchAgentContainer({
               <button
                 className="inline-flex items-center gap-2 font-medium text-blue-600 text-sm transition-colors hover:text-blue-700"
                 onClick={() => setIsExpanded(true)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setIsExpanded(true);
+                  }
+                }}
+                type="button"
               >
-                <FileText className="h-4 w-4" />
+                <FileText className="h-4 w-4">
+                  <title>File</title>
+                </FileText>
                 Read Research Findings
               </button>
             )}
@@ -162,14 +211,16 @@ export function ResearchAgentContainer({
               currentAgent.statusUpdates.length > 0 && (
                 <div className="border-gray-100 border-b p-4">
                   <div className="mb-3 flex items-center gap-2">
-                    <Loader2 className="h-3.5 w-3.5 text-blue-500" />
+                    <Loader2 className="h-3.5 w-3.5 text-blue-500">
+                      <title>Loading</title>
+                    </Loader2>
                     <h4 className="font-medium text-gray-700 text-sm">
                       Status Updates
                     </h4>
                   </div>
                   <div className="space-y-3">
                     {currentAgent.statusUpdates.map((update, idx) => (
-                      <div className="pl-4" key={idx}>
+                      <div className="pl-4" key={`status-update-${update.substring(0, KEY_PREFIX_LENGTH)}-${idx}`}>
                         <div className="prose prose-sm max-w-none">
                           <p className="text-gray-700 text-sm leading-relaxed">
                             {update}
@@ -185,7 +236,9 @@ export function ResearchAgentContainer({
             {currentAgent.searchResults.length > 0 && (
               <div className="border-gray-100 border-b p-4">
                 <div className="mb-3 flex items-center gap-2">
-                  <Search className="h-3.5 w-3.5 text-gray-500" />
+                  <Search className="h-3.5 w-3.5 text-gray-500">
+                    <title>Search</title>
+                  </Search>
                   <h4 className="font-medium text-gray-700 text-sm">
                     Search Results ({currentAgent.searchResults.length}{" "}
                     {currentAgent.searchResults.length === 1
@@ -196,7 +249,7 @@ export function ResearchAgentContainer({
                 </div>
                 <div className="space-y-4">
                   {currentAgent.searchResults.map((searchData, idx) => (
-                    <div className="pl-4" key={idx}>
+                    <div className="pl-4" key={`search-result-${searchData.searchType}-${idx}`}>
                       {searchData.searchType === "tavily" ? (
                         <TavilySearchResults
                           query={searchData.query}
@@ -220,7 +273,9 @@ export function ResearchAgentContainer({
             {currentAgent.findings && (
               <div className="p-4">
                 <div className="mb-3 flex items-center gap-2">
-                  <FileText className="h-3.5 w-3.5 text-green-600" />
+                  <FileText className="h-3.5 w-3.5 text-green-600">
+                    <title>File</title>
+                  </FileText>
                   <h4 className="font-medium text-gray-700 text-sm">
                     Research Findings
                   </h4>

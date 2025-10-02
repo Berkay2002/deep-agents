@@ -14,7 +14,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Agent Chat",
-  description: "Agent Chat UX by LangChain",
+  description: "Agent Chat UX",
 };
 
 export default function RootLayout({

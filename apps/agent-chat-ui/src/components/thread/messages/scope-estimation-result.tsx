@@ -1,15 +1,14 @@
 "use client";
 
 import { AlertCircle, Briefcase, CheckCircle2, Clock } from "lucide-react";
-import React from "react";
 
-interface ResearchTask {
+type ResearchTask = {
   area: string;
   estimatedTime: number;
   priority: "high" | "medium" | "low";
-}
+};
 
-interface ScopeEstimationResultProps {
+type ScopeEstimationResultProps = {
   result: {
     estimatedTotalHours?: number;
     researchTasks?: ResearchTask[];
@@ -37,7 +36,6 @@ function getPriorityIcon(priority: string) {
       return <AlertCircle className="h-3 w-3" />;
     case "low":
       return <CheckCircle2 className="h-3 w-3" />;
-    case "medium":
     default:
       return <Clock className="h-3 w-3" />;
   }
@@ -96,22 +94,22 @@ export function ScopeEstimationResult({ result }: ScopeEstimationResultProps) {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-2 text-left font-medium text-gray-500 text-xs uppercase tracking-wide">
+                      <th scope="col" className="px-4 py-2 text-left font-medium text-gray-500 text-xs uppercase tracking-wide">
                         Area
                       </th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-500 text-xs uppercase tracking-wide">
+                      <th scope="col" className="px-4 py-2 text-left font-medium text-gray-500 text-xs uppercase tracking-wide">
                         Time
                       </th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-500 text-xs uppercase tracking-wide">
+                      <th scope="col" className="px-4 py-2 text-left font-medium text-gray-500 text-xs uppercase tracking-wide">
                         Priority
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
-                    {researchTasks.map((task, index) => (
+                    {researchTasks.map((task) => (
                       <tr
                         className="transition-colors hover:bg-gray-50"
-                        key={index}
+                        key={`${task.area}-${task.priority}-${task.estimatedTime}`}
                       >
                         <td className="px-4 py-3 text-gray-700 text-sm">
                           {task.area}
@@ -152,7 +150,7 @@ export function ScopeEstimationResult({ result }: ScopeEstimationResultProps) {
                 {suggestedMilestones.map((milestone, index) => (
                   <li
                     className="flex items-start gap-3 text-gray-600 text-sm"
-                    key={index}
+                    key={`milestone-${index}-${milestone.substring(0, 10)}`}
                   >
                     <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 font-semibold text-emerald-700 text-xs">
                       {index + 1}

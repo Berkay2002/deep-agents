@@ -2,10 +2,18 @@
 
 import { AlertCircle, FileX, RefreshCw } from "lucide-react";
 
-interface ErrorResultProps {
+type ErrorResultProps = {
   toolName: string;
   errorMessage: string;
-}
+};
+
+// Constants for magic numbers
+const PREVIEW_LENGTH = 100;
+const LONG_MESSAGE_LENGTH = 200;
+
+// Regex literals at top level for performance
+const STRING_NOT_FOUND_REGEX = /String not found in file: '(.+?)'/;
+const ERROR_MESSAGE_REGEX = /^Error:\s*(.+)$/i;
 
 function parseErrorType(message: string): {
   type:
@@ -84,14 +92,12 @@ function extractErrorDetails(message: string): {
   // Check for common error patterns
 
   // Pattern: "Error: String not found in file: '...'"
-  const stringNotFoundMatch = message.match(
-    /String not found in file: '(.+?)'/
-  );
+  const stringNotFoundMatch = message.match(STRING_NOT_FOUND_REGEX);
   if (stringNotFoundMatch) {
     const attemptedString = stringNotFoundMatch[1];
     const preview =
-      attemptedString.length > 100
-        ? attemptedString.slice(0, 100) + "..."
+      attemptedString.length > PREVIEW_LENGTH
+        ? `${attemptedString.slice(0, PREVIEW_LENGTH)}...`
         : attemptedString;
     return {
       summary: "The text to replace was not found in the file",
@@ -100,7 +106,7 @@ function extractErrorDetails(message: string): {
   }
 
   // Pattern: "Error: [message]"
-  const errorMatch = message.match(/^Error:\s*(.+)$/i);
+  const errorMatch = message.match(ERROR_MESSAGE_REGEX);
   if (errorMatch) {
     return {
       summary: errorMatch[1],
@@ -108,9 +114,9 @@ function extractErrorDetails(message: string): {
   }
 
   // If message is very long, split into summary and details
-  if (message.length > 200) {
+  if (message.length > LONG_MESSAGE_LENGTH) {
     return {
-      summary: message.slice(0, 200) + "...",
+      summary: `${message.slice(0, LONG_MESSAGE_LENGTH)}...`,
       details: message,
     };
   }

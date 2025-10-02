@@ -2,11 +2,11 @@ import type { FC } from "react";
 import { Prism as SyntaxHighlighterPrism } from "react-syntax-highlighter";
 import { coldarkDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
-interface SyntaxHighlighterProps {
+type SyntaxHighlighterProps = {
   children: string;
   language: string;
   className?: string;
-}
+};
 
 export const SyntaxHighlighter: FC<SyntaxHighlighterProps> = ({
   children,

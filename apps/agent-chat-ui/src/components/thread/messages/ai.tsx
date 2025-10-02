@@ -28,7 +28,9 @@ function CustomComponent({
     (ui) => ui.metadata?.message_id === message.id
   );
 
-  if (!customComponents?.length) return null;
+  if (!customComponents?.length) {
+    return null;
+  }
   return (
     <Fragment key={message.id}>
       {customComponents.map((customComponent) => (
@@ -49,9 +51,9 @@ function parseAnthropicStreamedToolCalls(
   const toolCallContents = content.filter((c) => c.type === "tool_use" && c.id);
 
   return toolCallContents.map((tc) => {
-    const toolCall = tc as Record<string, any>;
-    let json: Record<string, any> = {};
-    if (toolCall?.input) {
+    const toolCall = tc as Record<string, unknown>;
+    let json: Record<string, unknown> = {};
+    if (toolCall?.input && typeof toolCall.input === "string") {
       try {
         json = parsePartialJson(toolCall.input) ?? {};
       } catch {
@@ -59,49 +61,178 @@ function parseAnthropicStreamedToolCalls(
       }
     }
     return {
-      name: toolCall.name ?? "",
-      id: toolCall.id ?? "",
+      name: (toolCall.name as string) ?? "",
+      id: (toolCall.id as string) ?? "",
       args: json,
       type: "tool_call",
     };
   });
 }
 
-interface InterruptProps {
+type InterruptProps = {
   interruptValue?: unknown;
   isLastMessage: boolean;
-  hasNoAIOrToolMessages: boolean;
-}
+  hasNoAiOrToolMessages: boolean;
+};
 
 function Interrupt({
   interruptValue,
   isLastMessage,
-  hasNoAIOrToolMessages,
+  hasNoAiOrToolMessages,
 }: InterruptProps) {
   return (
     <>
       {isAgentInboxInterruptSchema(interruptValue) &&
-        (isLastMessage || hasNoAIOrToolMessages) && (
+        (isLastMessage || hasNoAiOrToolMessages) && (
           <ThreadView interrupt={interruptValue} />
         )}
       {interruptValue &&
       !isAgentInboxInterruptSchema(interruptValue) &&
-      (isLastMessage || hasNoAIOrToolMessages) ? (
-        <GenericInterruptView interrupt={interruptValue} />
+      (isLastMessage || hasNoAiOrToolMessages) ? (
+        <GenericInterruptView
+          interrupt={
+            (typeof interruptValue === 'object' && interruptValue !== null)
+              ? interruptValue as Record<string, unknown> | Record<string, unknown>[]
+              : {}
+          }
+        />
       ) : null}
     </>
   );
 }
 
-export function AssistantMessage({
-  message,
-  isLoading,
-  handleRegenerate,
-}: {
-  message: Message | undefined;
-  isLoading: boolean;
-  handleRegenerate: (parentCheckpoint: Checkpoint | null | undefined) => void;
-}) {
+// Minimum content length to show command buttons
+const MIN_CONTENT_LENGTH = 500;
+
+function getToolResults(
+  message: Message | undefined,
+  thread: ReturnType<typeof useStreamContext>
+): { id: string; error?: string; success: boolean }[] | undefined {
+  if (!(message && "tool_calls" in message && message.tool_calls)) {
+    return;
+  }
+
+  return message.tool_calls.map((tc) => {
+    // Find the corresponding tool result message
+    const resultMessage = thread.messages.find(
+      (m) =>
+        m.type === "tool" && "tool_call_id" in m && m.tool_call_id === tc.id
+    );
+    const isError =
+      resultMessage &&
+      typeof resultMessage.content === "string" &&
+      (resultMessage.content.toLowerCase().includes("error:") ||
+        resultMessage.content.toLowerCase().includes("string not found"));
+    const isSuccess =
+      resultMessage &&
+      typeof resultMessage.content === "string" &&
+      resultMessage.content.toLowerCase().includes("updated file");
+    return {
+      id: tc.id || "",
+      error: isError ? String(resultMessage.content) : undefined,
+      success: Boolean(isSuccess && !isError),
+    };
+  });
+}
+
+function shouldHideToolResult(message: Message | undefined): boolean {
+  if (!message || message.type !== "tool") {
+    return false;
+  }
+
+  // Hide tool results for TodoWrite since TodoList component already shows this
+  const isTodoWriteResult =
+    message.name === "TodoWrite" || message.name === "write_todos";
+
+  // Also hide tool results that contain todo list updates in the content
+  const isTodoListContentResult =
+    typeof message.content === "string" &&
+    message.content.includes("Updated todo list to");
+
+  // Hide sub-agent responses (research-agent, critique-agent) since they are intermediate results
+  // The main agent synthesizes these into the final report, so users shouldn't see raw sub-agent output
+  const isSubAgentResult =
+    message.name === "research-agent" ||
+    message.name === "critique-agent" ||
+    message.name === "task"; // "task" is the generic name for sub-agent calls
+
+  // Hide file operation results since they're shown in WriteFileDiff component
+  const isFileOperationResult =
+    message.name === "write_file" ||
+    message.name === "edit_file" ||
+    message.name === "Write" ||
+    message.name === "Edit" ||
+    message.name === "MultiEdit";
+
+  // Also hide file operation results based on content
+  const isFileOperationContentResult =
+    typeof message.content === "string" &&
+    (message.content.startsWith("Updated file ") ||
+      message.content.startsWith("Created file ") ||
+      message.content.startsWith("Edited file "));
+
+  return (
+    isTodoWriteResult ||
+    isTodoListContentResult ||
+    isSubAgentResult ||
+    isFileOperationResult ||
+    isFileOperationContentResult
+  );
+}
+
+function hasTodoListToolCalls(message: Message | undefined): boolean {
+  if (!(message && "tool_calls" in message && message.tool_calls)) {
+    return false;
+  }
+
+  return message.tool_calls.some(
+    (tc) =>
+      (tc.name === "write_todos" || tc.name === "TodoWrite") &&
+      tc.args &&
+      "todos" in tc.args &&
+      Array.isArray(tc.args.todos)
+  );
+}
+
+function shouldHideCommandButtons(
+  message: Message | undefined,
+  contentString: string,
+  isLastMessage: boolean
+): boolean {
+  if (!message) {
+    return false;
+  }
+
+  const hasToolCalls =
+    "tool_calls" in message &&
+    message.tool_calls &&
+    message.tool_calls.length > 0;
+  const isToolResult = message.type === "tool";
+  const hasTodoListCalls = hasTodoListToolCalls(message);
+
+  return (
+    hasToolCalls || // Hide if message has active tool calls
+    isToolResult || // Hide for tool result messages
+    hasTodoListCalls || // Hide for todo list updates
+    (contentString.length < MIN_CONTENT_LENGTH && !isLastMessage) // Hide short messages unless it's the last one
+  );
+}
+
+function getCorrespondingToolCall(
+  message: Message | undefined,
+  thread: ReturnType<typeof useStreamContext>
+): (AIMessage["tool_calls"] & { id: string })[number] | undefined {
+  if (!message || message.type !== "tool" || !("tool_call_id" in message)) {
+    return;
+  }
+
+  return thread.messages
+    .filter((m): m is AIMessage => m.type === "ai" && "tool_calls" in m)
+    .flatMap((m) => m.tool_calls || [])
+    .find((tc) => tc.id === message.tool_call_id);
+}
+
+function useMessageState(message: Message | undefined) {
   const content = message?.content ?? [];
   const contentString = getContentString(content);
   const [hideToolCalls] = useQueryState(
@@ -110,42 +241,14 @@ export function AssistantMessage({
   );
 
   const thread = useStreamContext();
-  const isLastMessage =
-    thread.messages[thread.messages.length - 1].id === message?.id;
+  const isLastMessage = thread.messages.at(-1)?.id === message?.id;
   const hasNoAiOrToolMessages = !thread.messages.find(
     (m) => m.type === "ai" || m.type === "tool"
   );
   const meta = message ? thread.getMessagesMetadata(message) : undefined;
   const threadInterrupt = thread.interrupt;
 
-  // Collect tool results that follow this message's tool calls
-  const toolResults =
-    message && "tool_calls" in message && message.tool_calls
-      ? message.tool_calls.map((tc) => {
-          // Find the corresponding tool result message
-          const resultMessage = thread.messages.find(
-            (m) =>
-              m.type === "tool" &&
-              "tool_call_id" in m &&
-              m.tool_call_id === tc.id
-          );
-          const isError =
-            resultMessage &&
-            typeof resultMessage.content === "string" &&
-            (resultMessage.content.toLowerCase().includes("error:") ||
-              resultMessage.content.toLowerCase().includes("string not found"));
-          const isSuccess =
-            resultMessage &&
-            typeof resultMessage.content === "string" &&
-            resultMessage.content.toLowerCase().includes("updated file");
-          return {
-            id: tc.id || "",
-            error: isError ? String(resultMessage.content) : undefined,
-            success: isSuccess && !isError,
-          };
-        })
-      : undefined;
-
+  const toolResults = getToolResults(message, thread);
   const parentCheckpoint = meta?.firstSeenState?.parent_checkpoint;
   const anthropicStreamedToolCalls = Array.isArray(content)
     ? parseAnthropicStreamedToolCalls(content)
@@ -164,95 +267,77 @@ export function AssistantMessage({
   const hasAnthropicToolCalls = !!anthropicStreamedToolCalls?.length;
   const isToolResult = message?.type === "tool";
 
-  // Hide tool results for TodoWrite since TodoList component already shows this
-  const isTodoWriteResult =
-    isToolResult &&
-    message?.name &&
-    (message.name === "TodoWrite" || message.name === "write_todos");
+  return {
+    content,
+    contentString,
+    hideToolCalls,
+    thread,
+    isLastMessage,
+    hasNoAiOrToolMessages,
+    meta,
+    threadInterrupt,
+    toolResults,
+    parentCheckpoint,
+    anthropicStreamedToolCalls,
+    hasToolCalls,
+    toolCallsHaveContents,
+    hasAnthropicToolCalls,
+    isToolResult,
+  };
+}
 
-  // Also hide tool results that contain todo list updates in the content
-  const isTodoListContentResult =
-    isToolResult &&
-    typeof message.content === "string" &&
-    message.content.includes("Updated todo list to");
-
-  // Hide sub-agent responses (research-agent, critique-agent) since they are intermediate results
-  // The main agent synthesizes these into the final report, so users shouldn't see raw sub-agent output
-  const isSubAgentResult =
-    isToolResult &&
-    message?.name &&
-    (message.name === "research-agent" ||
-      message.name === "critique-agent" ||
-      message.name === "task"); // "task" is the generic name for sub-agent calls
-
-  // Hide file operation results since they're shown in WriteFileDiff component
-  const isFileOperationResult =
-    isToolResult &&
-    message?.name &&
-    (message.name === "write_file" ||
-      message.name === "edit_file" ||
-      message.name === "Write" ||
-      message.name === "Edit" ||
-      message.name === "MultiEdit");
-
-  // Also hide file operation results based on content
-  const isFileOperationContentResult =
-    isToolResult &&
-    typeof message.content === "string" &&
-    (message.content.startsWith("Updated file ") ||
-      message.content.startsWith("Created file ") ||
-      message.content.startsWith("Edited file "));
-
-  // Check if message contains TodoList tool calls
-  const hasTodoListToolCalls =
-    hasToolCalls &&
-    message.tool_calls?.some(
-      (tc) =>
-        (tc.name === "write_todos" || tc.name === "TodoWrite") &&
-        tc.args &&
-        "todos" in tc.args &&
-        Array.isArray(tc.args.todos)
-    );
-
-  // Determine if this is a final report message that should show Copy/Refresh buttons
-  // Hide buttons for intermediate tool-related messages, show only for substantial final content
-  const shouldHideCommandButtons =
-    hasToolCalls || // Hide if message has active tool calls
-    isToolResult || // Hide for tool result messages
-    hasTodoListToolCalls || // Hide for todo list updates
-    (contentString.length < 500 && !isLastMessage); // Hide short messages unless it's the last one
+export function AssistantMessage({
+  message,
+  isLoading,
+  handleRegenerate,
+}: {
+  message: Message | undefined;
+  isLoading: boolean;
+  handleRegenerate: (parentCheckpoint: Checkpoint | null | undefined) => void;
+}) {
+  const {
+    contentString,
+    hideToolCalls,
+    thread,
+    isLastMessage,
+    hasNoAiOrToolMessages,
+    meta,
+    threadInterrupt,
+    toolResults,
+    parentCheckpoint,
+    anthropicStreamedToolCalls,
+    hasToolCalls,
+    toolCallsHaveContents,
+    hasAnthropicToolCalls,
+    isToolResult,
+  } = useMessageState(message);
 
   if (isToolResult && hideToolCalls) {
     return null;
   }
 
-  if (
-    isTodoWriteResult ||
-    isTodoListContentResult ||
-    isSubAgentResult ||
-    isFileOperationResult ||
-    isFileOperationContentResult
-  ) {
+  if (shouldHideToolResult(message)) {
     return null;
   }
 
-  // Find the corresponding tool call for this tool result
-  const correspondingToolCall =
-    isToolResult && "tool_call_id" in message
-      ? thread.messages
-          .filter((m): m is AIMessage => m.type === "ai" && "tool_calls" in m)
-          .flatMap((m) => m.tool_calls || [])
-          .find((tc) => tc.id === message.tool_call_id)
-      : undefined;
+  const correspondingToolCall = getCorrespondingToolCall(message, thread);
+  const shouldHideButtons = shouldHideCommandButtons(
+    message,
+    contentString,
+    isLastMessage
+  );
 
   return (
     <div className="group mr-auto flex items-start gap-2">
       <div className="flex flex-col gap-2">
         {isToolResult ? (
           <>
-            <ToolResult message={message} toolCall={correspondingToolCall} />
+            <ToolResult
+              message={message as Message & { type: "tool" }}
+              toolCall={correspondingToolCall}
+            />
             <Interrupt
-              hasNoAIOrToolMessages={hasNoAiOrToolMessages}
+              hasNoAiOrToolMessages={hasNoAiOrToolMessages}
               interruptValue={threadInterrupt?.value}
               isLastMessage={isLastMessage}
             />
@@ -260,28 +345,37 @@ export function AssistantMessage({
         ) : (
           <>
             {/* Render tool calls first (includes TodoList, read_file, write_file, etc.) */}
-            {!hideToolCalls && (
-              <>
-                {(hasToolCalls && toolCallsHaveContents && (
+            {!hideToolCalls &&
+              ((hasToolCalls && toolCallsHaveContents && (
+                <ToolCalls
+                  toolCalls={
+                    (
+                      message as Message & {
+                        toolCalls?: AIMessage["tool_calls"];
+                      }
+                    )?.toolCalls
+                  }
+                  toolResults={toolResults}
+                />
+              )) ||
+                (hasAnthropicToolCalls && (
                   <ToolCalls
-                    toolCalls={message.tool_calls}
+                    toolCalls={anthropicStreamedToolCalls}
                     toolResults={toolResults}
                   />
                 )) ||
-                  (hasAnthropicToolCalls && (
-                    <ToolCalls
-                      toolCalls={anthropicStreamedToolCalls}
-                      toolResults={toolResults}
-                    />
-                  )) ||
-                  (hasToolCalls && (
-                    <ToolCalls
-                      toolCalls={message.tool_calls}
-                      toolResults={toolResults}
-                    />
-                  ))}
-              </>
-            )}
+                (hasToolCalls && (
+                  <ToolCalls
+                    toolCalls={
+                      (
+                        message as Message & {
+                          toolCalls?: AIMessage["tool_calls"];
+                        }
+                      )?.toolCalls
+                    }
+                    toolResults={toolResults}
+                  />
+                )))}
 
             {message && <CustomComponent message={message} thread={thread} />}
 
@@ -293,11 +387,11 @@ export function AssistantMessage({
             )}
 
             <Interrupt
-              hasNoAIOrToolMessages={hasNoAiOrToolMessages}
+              hasNoAiOrToolMessages={hasNoAiOrToolMessages}
               interruptValue={threadInterrupt?.value}
               isLastMessage={isLastMessage}
             />
-            {!hasTodoListToolCalls && (
+            {!hasTodoListToolCalls(message) && (
               <div
                 className={cn(
                   "mr-auto flex items-center gap-2 transition-opacity",
@@ -313,7 +407,7 @@ export function AssistantMessage({
                 <CommandBar
                   content={contentString}
                   handleRegenerate={() => handleRegenerate(parentCheckpoint)}
-                  hideButtons={shouldHideCommandButtons}
+                  hideButtons={shouldHideButtons}
                   isAiMessage={true}
                   isLoading={isLoading}
                 />

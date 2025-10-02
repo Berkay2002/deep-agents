@@ -20,15 +20,15 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 
 // TypeScript interfaces
-export interface Collaborator {
+export type Collaborator = {
   id: string;
   name: string;
   avatar?: string;
   isActive?: boolean;
   lastSeen?: Date;
-}
+};
 
-export interface FileUpdateNotificationProps {
+export type FileUpdateNotificationProps = {
   fileName: string;
   editorName: string;
   timestamp: Date | string;
@@ -41,19 +41,23 @@ export interface FileUpdateNotificationProps {
   error?: string;
   success?: boolean;
   className?: string;
-}
+};
 
-export interface DiffLine {
+export type DiffLine = {
   type: "default" | "added" | "removed";
   value: string;
   leftLineNumber?: number;
   rightLineNumber?: number;
-}
+};
 
 // Helper functions
+const LINE_BREAK_REGEX = /\n$/;
+
 function constructLines(value: string): string[] {
-  if (value === "") return [];
-  const lines = value.replace(/\n$/, "").split("\n");
+  if (value === "") {
+    return [];
+  }
+  const lines = value.replace(LINE_BREAK_REGEX, "").split("\n");
   return lines;
 }
 
@@ -66,10 +70,10 @@ function computeDiffLines(oldContent: string, newContent: string): DiffLine[] {
   let rightLineNumber = 0;
   const result: DiffLine[] = [];
 
-  changes.forEach((change) => {
+  for (const change of changes) {
     const changeLines = constructLines(change.value);
 
-    changeLines.forEach((line) => {
+    for (const line of changeLines) {
       if (change.added) {
         rightLineNumber += 1;
         result.push({
@@ -94,8 +98,8 @@ function computeDiffLines(oldContent: string, newContent: string): DiffLine[] {
           rightLineNumber,
         });
       }
-    });
-  });
+    }
+  }
 
   return result;
 }
@@ -104,20 +108,53 @@ function calculateDiffStats(diffLines: DiffLine[]) {
   let additions = 0;
   let deletions = 0;
 
-  diffLines.forEach((line) => {
+  for (const line of diffLines) {
     if (line.type === "added") {
       additions += 1;
     } else if (line.type === "removed") {
       deletions += 1;
     }
-  });
+  }
 
   return { additions, deletions };
 }
 
 const COLLAPSED_LINES = 8;
+const MAX_ERROR_LENGTH = 150;
+
+// Helper function to determine line marker
+function getLineMarker(isAdded: boolean, isRemoved: boolean): string {
+  if (isAdded) {
+    return "+";
+  }
+  if (isRemoved) {
+    return "-";
+  }
+  return " ";
+}
+
+// Helper function to render line content
+function renderLineContent(line: DiffLine) {
+  const { type, value } = line;
+  const content = (
+    <pre className="break-anywhere m-0 whitespace-pre-wrap px-2 py-0 text-[#24292e] leading-[1.6em]">
+      {value || " "}
+    </pre>
+  );
+
+  if (type === "added") {
+    return <ins className="no-underline">{content}</ins>;
+  }
+
+  if (type === "removed") {
+    return <del className="no-underline">{content}</del>;
+  }
+
+  return content;
+}
 
 // Main component
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: <Fine>
 export function FileUpdateNotification({
   fileName,
   editorName,
@@ -145,7 +182,9 @@ export function FileUpdateNotification({
 
   // Compute diff if we have content
   const diffData = useMemo(() => {
-    if (!(oldContent || newContent)) return null;
+    if (!(oldContent || newContent)) {
+      return null;
+    }
 
     const diffLines = computeDiffLines(oldContent, newContent);
     const { additions, deletions } = calculateDiffStats(diffLines);
@@ -211,7 +250,7 @@ export function FileUpdateNotification({
       <motion.div
         animate={{ opacity: 1, y: 0 }}
         className={cn(
-          "overflow-hidden rounded-lg border-2 bg-white shadow-sm",
+          "overflow-hidden rounded-lg border-2 bg-white shadow-xs",
           statusInfo.borderColor,
           isRealTime && "ring-2 ring-blue-100 ring-opacity-50"
         )}
@@ -329,6 +368,7 @@ export function FileUpdateNotification({
                     : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-100"
                 )}
                 onClick={() => setShowDiff(!showDiff)}
+                type="button"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -350,6 +390,7 @@ export function FileUpdateNotification({
                     : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-100"
                 )}
                 onClick={() => setShowCollaborators(!showCollaborators)}
+                type="button"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -444,7 +485,7 @@ export function FileUpdateNotification({
                             "bg-[#e6ffed]": isAdded,
                             "bg-[#ffeef0]": isRemoved,
                           })}
-                          key={index}
+                          key={`${line.type}-${line.leftLineNumber || 0}-${line.rightLineNumber || 0}-${index}`}
                         >
                           {/* Left line number */}
                           <td
@@ -490,7 +531,7 @@ export function FileUpdateNotification({
                             )}
                           >
                             <pre className="m-0 p-0">
-                              {isAdded ? "+" : isRemoved ? "-" : " "}
+                              {getLineMarker(isAdded, isRemoved)}
                             </pre>
                           </td>
 
@@ -501,23 +542,7 @@ export function FileUpdateNotification({
                               "bg-[#ffeef0]": isRemoved,
                             })}
                           >
-                            {isAdded ? (
-                              <ins className="no-underline">
-                                <pre className="break-anywhere m-0 whitespace-pre-wrap px-2 py-0 text-[#24292e] leading-[1.6em]">
-                                  {line.value || " "}
-                                </pre>
-                              </ins>
-                            ) : isRemoved ? (
-                              <del className="no-underline">
-                                <pre className="break-anywhere m-0 whitespace-pre-wrap px-2 py-0 text-[#24292e] leading-[1.6em]">
-                                  {line.value || " "}
-                                </pre>
-                              </del>
-                            ) : (
-                              <pre className="break-anywhere m-0 whitespace-pre-wrap px-2 py-0 text-[#24292e] leading-[1.6em]">
-                                {line.value || " "}
-                              </pre>
-                            )}
+                            {renderLineContent(line)}
                           </td>
                         </tr>
                       );
@@ -532,6 +557,7 @@ export function FileUpdateNotification({
                   className="flex w-full cursor-pointer items-center justify-center border-gray-200 border-t bg-gray-50 py-2 text-gray-500 transition-all duration-200 ease-in-out hover:bg-gray-100 hover:text-gray-600"
                   initial={{ scale: 1 }}
                   onClick={() => setIsExpanded(!isExpanded)}
+                  type="button"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -561,7 +587,9 @@ export function FileUpdateNotification({
                   Update Failed
                 </p>
                 <p className="text-red-800 text-sm">
-                  {error.length > 150 ? error.slice(0, 150) + "..." : error}
+                  {error.length > MAX_ERROR_LENGTH
+                    ? `${error.slice(0, MAX_ERROR_LENGTH)}...`
+                    : error}
                 </p>
               </div>
             </div>

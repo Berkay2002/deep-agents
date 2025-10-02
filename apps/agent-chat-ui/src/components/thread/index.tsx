@@ -34,6 +34,10 @@ import {
   ensureToolCallsHaveResponses,
 } from "@/lib/ensure-tool-responses";
 import {
+  groupPlannerAgentMessages,
+  type PlannerAgentGroup,
+} from "@/lib/planner-agent-grouper";
+import {
   groupResearchAgentMessages,
   isMessageInResearchGroup,
   type ResearchAgentGroup,
@@ -127,7 +131,7 @@ function McpServerConfigButton({ onClick }: { onClick: () => void }) {
 }
 
 export function Thread() {
-  const [artifactContext, setArtifactContext] = useArtifactContext();
+  const artifactContext = useArtifactContext();
   const [artifactOpen, closeArtifact] = useArtifactOpen();
 
   const [threadId, _setThreadId] = useQueryState("threadId");
@@ -163,9 +167,8 @@ export function Thread() {
   const setThreadId = (id: string | null) => {
     _setThreadId(id);
 
-    // close artifact and reset artifact context
+    // close artifact
     closeArtifact();
-    setArtifactContext({});
   };
 
   useEffect(() => {
@@ -431,11 +434,13 @@ export function Thread() {
                         return filtered.length > 0;
                       });
 
-                    // Group research and critique agent messages
+                    // Group research, critique, and planner agent messages
                     const researchGroups =
                       groupResearchAgentMessages(filteredMessages);
                     const critiqueGroups =
                       groupCritiqueAgentMessages(filteredMessages);
+                    const plannerGroups =
+                      groupPlannerAgentMessages(filteredMessages);
 
                     // Track which indices have been processed
                     const processedIndices = new Set<number>();
@@ -500,6 +505,35 @@ export function Thread() {
 
                         // Mark all critique-related messages as processed
                         critiqueGroups.forEach((group) => {
+                          for (
+                            let i = group.startIndex;
+                            i <= group.endIndex;
+                            i++
+                          ) {
+                            processedIndices.add(i);
+                          }
+                        });
+                        return;
+                      }
+
+                      // Check if this is the start of a planner group
+                      if (
+                        plannerGroups.length > 0 &&
+                        index === plannerGroups[0].startIndex
+                      ) {
+                        allTimelineActivities.push({
+                          key: "planner-agents-timeline",
+                          messages: filteredMessages.slice(
+                            plannerGroups[0].startIndex,
+                            plannerGroups[plannerGroups.length - 1].endIndex + 1
+                          ),
+                          startIndex: plannerGroups[0].startIndex,
+                          endIndex:
+                            plannerGroups[plannerGroups.length - 1].endIndex,
+                        });
+
+                        // Mark all planner-related messages as processed
+                        plannerGroups.forEach((group) => {
                           for (
                             let i = group.startIndex;
                             i <= group.endIndex;
@@ -628,7 +662,7 @@ export function Thread() {
               }
               contentClassName="pt-8 pb-16  max-w-3xl mx-auto flex flex-col gap-4 w-full"
               footer={
-                <div className="sticky bottom-0 flex flex-col items-center gap-8 bg-white">
+                <div className="sticky bottom-0 z-30 flex flex-col items-center gap-8 bg-white">
                   {!chatStarted && (
                     <div className="flex items-center gap-3">
                       <LangGraphLogoSVG className="h-8 flex-shrink-0" />
@@ -642,7 +676,7 @@ export function Thread() {
 
                   <div
                     className={cn(
-                      "relative z-10 mx-auto mb-8 w-full max-w-3xl rounded-2xl bg-muted shadow-xs transition-all",
+                      "relative z-20 mx-auto mb-8 w-full max-w-3xl rounded-2xl bg-muted shadow-xs transition-all",
                       dragOver
                         ? "border-2 border-primary border-dotted"
                         : "border border-solid"
@@ -658,7 +692,7 @@ export function Thread() {
                         onRemove={removeBlock}
                       />
                       <textarea
-                        className="field-sizing-content resize-none border-none bg-transparent p-3.5 pb-0 shadow-none outline-none ring-0 focus:outline-none focus:ring-0"
+                        className="field-sizing-content resize-none border-none bg-transparent p-3.5 pb-0 shadow-none outline-hidden ring-0 focus:outline-hidden focus:ring-0"
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => {
                           if (

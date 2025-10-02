@@ -5,32 +5,58 @@ import { Book, ChevronDown, ChevronUp, Eye } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-interface ReadFileDisplayProps {
+type ReadFileDisplayProps = {
   toolName: string;
   args: {
-    file_path?: string;
     filePath?: string;
     startLine?: number;
-    start_line?: number;
     endLine?: number;
-    end_line?: number;
   };
   content: string;
-}
+};
 
 const PREVIEW_LINES = 3;
 const EXPANDED_LINES = 15;
 
+// Helper function to determine button text
+const getButtonText = (
+  isExpanded: boolean,
+  canShowAll: boolean,
+  totalLines: number,
+  previewLines: number
+): string => {
+  if (!isExpanded) {
+    return `Show more (${totalLines - previewLines} more lines)`;
+  }
+  
+  return canShowAll ? "Show all" : "Show less";
+};
+
+// Helper function to determine button icon
+const getButtonIcon = (
+  isExpanded: boolean,
+  canShowAll: boolean
+): React.ReactElement => {
+  if (!isExpanded) {
+    return <ChevronDown className="h-4 w-4" />;
+  }
+  
+  return canShowAll ? (
+    <ChevronDown className="h-4 w-4" />
+  ) : (
+    <ChevronUp className="h-4 w-4" />
+  );
+};
+
 export function ReadFileDisplay({
-  toolName,
   args,
   content,
 }: ReadFileDisplayProps) {
   const [isExpanded, setIsExpanded] = useState(false); // Start with preview
 
-  const filePath = args.file_path || args.filePath || "unknown";
-  const startLine = args.startLine || args.start_line;
-  const endLine = args.endLine || args.end_line;
+  const filePath = args.filePath || "unknown";
+  const startLine = args.startLine;
+  const endLine = args.endLine;
 
   // Parse content into lines
   const contentLines = content.split("\n");
@@ -55,6 +81,14 @@ export function ReadFileDisplay({
         <motion.div
           className="cursor-pointer border-blue-200 border-b bg-blue-50 px-4 py-2 transition-colors hover:bg-blue-100"
           onClick={() => setIsExpanded(!isExpanded)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsExpanded(!isExpanded);
+            }
+          }}
+          role="button"
+          tabIndex={0}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -96,7 +130,7 @@ export function ReadFileDisplay({
                   return (
                     <tr
                       className="transition-colors hover:bg-blue-50"
-                      key={index}
+                      key={`line-${lineNumber}`}
                     >
                       {/* Line number */}
                       <td
@@ -126,6 +160,7 @@ export function ReadFileDisplay({
           {/* Expand/Collapse Button */}
           {shouldShowExpand && (
             <motion.button
+              type="button"
               className="flex w-full cursor-pointer items-center justify-center border-blue-200 border-t bg-blue-50 py-2 text-blue-500 transition-all duration-200 ease-in-out hover:bg-blue-100 hover:text-blue-600"
               initial={{ scale: 1 }}
               onClick={(e) => {
@@ -136,21 +171,9 @@ export function ReadFileDisplay({
               whileTap={{ scale: 0.98 }}
             >
               <span className="mr-2 text-sm">
-                {isExpanded
-                  ? canShowAll
-                    ? "Show all"
-                    : "Show less"
-                  : `Show more (${totalLines - PREVIEW_LINES} more lines)`}
+                {getButtonText(isExpanded, canShowAll, totalLines, PREVIEW_LINES)}
               </span>
-              {isExpanded ? (
-                canShowAll ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronUp className="h-4 w-4" />
-                )
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
+              {getButtonIcon(isExpanded, canShowAll)}
             </motion.button>
           )}
         </div>

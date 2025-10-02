@@ -17,18 +17,24 @@ import { TopicAnalysisResult } from "./topic-analysis-result";
 
 type PlannerAgentStatus = "pending" | "in_progress" | "completed";
 
-interface PlannerAgent {
+type TopicAnalysisData = Record<string, unknown>;
+
+type ScopeEstimationData = Record<string, unknown>;
+
+type PlanOptimizationData = Record<string, unknown>;
+
+type PlannerAgent = {
   taskDescription: string;
-  topicAnalysis?: any;
-  scopeEstimation?: any;
-  planOptimization?: any;
+  topicAnalysis?: TopicAnalysisData;
+  scopeEstimation?: ScopeEstimationData;
+  planOptimization?: PlanOptimizationData;
   finalPlan?: string;
   status: PlannerAgentStatus;
-}
+};
 
-interface PlannerAgentContainerProps {
+type PlannerAgentContainerProps = {
   agents: PlannerAgent[];
-}
+};
 
 function getStatusIcon(status: PlannerAgentStatus) {
   switch (status) {
@@ -38,6 +44,8 @@ function getStatusIcon(status: PlannerAgentStatus) {
       return <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-500" />;
     case "completed":
       return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />;
+    default:
+      return null;
   }
 }
 
@@ -49,6 +57,8 @@ function getStatusColor(status: PlannerAgentStatus) {
       return "text-emerald-600 border-emerald-400 bg-emerald-50";
     case "completed":
       return "text-emerald-600 border-emerald-500 bg-emerald-50";
+    default:
+      return "text-gray-500 border-gray-300";
   }
 }
 
@@ -56,7 +66,9 @@ export function PlannerAgentContainer({ agents }: PlannerAgentContainerProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
 
-  if (agents.length === 0) return null;
+  if (agents.length === 0) {
+    return null;
+  }
 
   const currentAgent = agents[activeTab];
 
@@ -81,9 +93,16 @@ export function PlannerAgentContainer({ agents }: PlannerAgentContainerProps) {
               </div>
             </div>
             <button
+              type="button"
               aria-label={isExpanded ? "Collapse" : "Expand"}
               className="flex-shrink-0 text-gray-500 hover:text-gray-700"
               onClick={() => setIsExpanded(!isExpanded)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setIsExpanded(!isExpanded);
+                }
+              }}
             >
               {isExpanded ? (
                 <ChevronUp className="h-4 w-4" />
@@ -100,13 +119,20 @@ export function PlannerAgentContainer({ agents }: PlannerAgentContainerProps) {
             <div className="flex overflow-x-auto">
               {agents.map((agent, idx) => (
                 <button
+                  type="button"
                   className={`flex-shrink-0 border-b-2 px-4 py-2 font-medium text-sm transition-colors ${
                     activeTab === idx
                       ? `border-emerald-600 ${getStatusColor(agent.status)}`
                       : "border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   }`}
-                  key={idx}
+                  key={`agent-${idx}-${agent.taskDescription.slice(0, 10)}`}
                   onClick={() => setActiveTab(idx)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setActiveTab(idx);
+                    }
+                  }}
                 >
                   <div className="flex items-center gap-2">
                     {getStatusIcon(agent.status)}
@@ -127,8 +153,15 @@ export function PlannerAgentContainer({ agents }: PlannerAgentContainerProps) {
             </p>
             {currentAgent.finalPlan && (
               <button
+                type="button"
                 className="inline-flex items-center gap-2 font-medium text-emerald-600 text-sm transition-colors hover:text-emerald-700"
                 onClick={() => setIsExpanded(true)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setIsExpanded(true);
+                  }
+                }}
               >
                 <FileText className="h-4 w-4" />
                 Read Plan

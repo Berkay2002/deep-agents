@@ -2,14 +2,16 @@
 
 import { AlertTriangle, Lightbulb, TrendingUp, Zap } from "lucide-react";
 
-interface PlanOptimizationResultProps {
+type PlanOptimizationResultProps = {
   result: {
     optimizedPlan?: string[];
     identifiedGaps?: string[];
     suggestionsForImprovement?: string[];
     estimatedImprovement?: string;
   };
-}
+};
+
+const KEY_PREFIX_LENGTH = 20;
 
 export function PlanOptimizationResult({
   result,
@@ -68,7 +70,7 @@ export function PlanOptimizationResult({
                 {optimizedPlan.map((task, index) => (
                   <li
                     className="flex items-start gap-3 text-gray-700 text-sm"
-                    key={index}
+                    key={`optimized-plan-${index}-${task.slice(0, KEY_PREFIX_LENGTH)}`}
                   >
                     <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 font-semibold text-emerald-700 text-xs">
                       {index + 1}
@@ -93,7 +95,7 @@ export function PlanOptimizationResult({
                 {identifiedGaps.map((gap, index) => (
                   <div
                     className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2"
-                    key={index}
+                    key={`identified-gap-${index}-${gap.slice(0, KEY_PREFIX_LENGTH)}`}
                   >
                     <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
                     <p className="text-amber-900 text-sm">{gap}</p>
@@ -116,7 +118,7 @@ export function PlanOptimizationResult({
                 {suggestionsForImprovement.map((suggestion, index) => (
                   <div
                     className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2"
-                    key={index}
+                    key={`suggestion-${index}-${suggestion.slice(0, KEY_PREFIX_LENGTH)}`}
                   >
                     <Lightbulb className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600" />
                     <p className="text-blue-900 text-sm">{suggestion}</p>

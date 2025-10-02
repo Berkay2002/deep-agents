@@ -3,7 +3,7 @@
 import "./markdown-styles.css";
 
 import { CheckIcon, CopyIcon } from "lucide-react";
-import { type FC, memo, useState } from "react";
+import { Fragment, type FC, memo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
@@ -15,20 +15,22 @@ import { cn } from "@/lib/utils";
 
 import "katex/dist/katex.min.css";
 
-interface CodeHeaderProps {
+type CodeHeaderProps = {
   language?: string;
   code: string;
-}
+};
 
 const useCopyToClipboard = ({
   copiedDuration = 3000,
 }: {
   copiedDuration?: number;
 } = {}) => {
-  const [isCopied, setIsCopied] = useState<boolean>(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   const copyToClipboard = (value: string) => {
-    if (!value) return;
+    if (!value) {
+      return;
+    }
 
     navigator.clipboard.writeText(value).then(() => {
       setIsCopied(true);
@@ -42,7 +44,9 @@ const useCopyToClipboard = ({
 const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
   const { isCopied, copyToClipboard } = useCopyToClipboard();
   const onCopy = () => {
-    if (!code || isCopied) return;
+    if (!code || isCopied) {
+      return;
+    }
     copyToClipboard(code);
   };
 
@@ -57,7 +61,13 @@ const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
   );
 };
 
-const defaultComponents: any = {
+// Define regex literals at the top level
+const LANGUAGE_REGEX = /language-(\w+)/;
+const NEWLINE_REGEX = /\n$/;
+
+type ComponentProps = Record<string, unknown>;
+
+const defaultComponents: Record<string, React.ComponentType<ComponentProps>> = {
   h1: ({ className, ...props }: { className?: string }) => (
     <h1
       className={cn(
@@ -115,12 +125,13 @@ const defaultComponents: any = {
       {...props}
     />
   ),
-  a: ({ className, ...props }: { className?: string }) => (
+  a: ({ className, href, ...props }: { className?: string; href?: string }) => (
     <a
       className={cn(
         "font-medium text-primary underline underline-offset-4",
         className
       )}
+      href={href}
       {...props}
     />
   ),
@@ -202,21 +213,21 @@ const defaultComponents: any = {
     ...props
   }: {
     className?: string;
-    children: React.ReactNode;
+    children?: React.ReactNode;
   }) => {
-    const match = /language-(\w+)/.exec(className || "");
+    const match = LANGUAGE_REGEX.exec(className || "");
 
     if (match) {
       const language = match[1];
-      const code = String(children).replace(/\n$/, "");
+      const code = String(children).replace(NEWLINE_REGEX, "");
 
       return (
-        <>
+        <Fragment key={language}>
           <CodeHeader code={code} language={language} />
           <SyntaxHighlighter className={className} language={language}>
             {code}
           </SyntaxHighlighter>
-        </>
+        </Fragment>
       );
     }
 

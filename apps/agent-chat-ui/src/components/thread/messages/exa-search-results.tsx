@@ -6,17 +6,16 @@ import {
   ChevronUp,
   ExternalLink,
   FileText,
-  Search,
   Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 
-interface ExaHighlight {
+type ExaHighlight = {
   snippet?: string | null;
   source?: string | null;
-}
+};
 
-interface ExaSearchResult {
+type ExaSearchResult = {
   url: string;
   title?: string | null;
   summary?: string | null;
@@ -25,13 +24,19 @@ interface ExaSearchResult {
   author?: string | null;
   publishedDate?: string | null;
   highlights?: ExaHighlight[];
-}
+};
 
-interface ExaSearchResultsProps {
+type ExaSearchResultsProps = {
   query: string;
   results: ExaSearchResult[];
   responseTime?: number;
-}
+};
+
+const HIGHLIGHT_SNIPPET_LENGTH = 20;
+const CONTENT_PREVIEW_LENGTH = 500;
+const FULL_TEXT_THRESHOLD = 500;
+const SNIPPET_THRESHOLD = 300;
+const PREVIEW_TRUNCATE_LENGTH = 200;
 
 function extractDomain(url: string): string {
   try {
@@ -44,15 +49,14 @@ function extractDomain(url: string): string {
 
 function ExaSearchResultCard({ result }: { result: ExaSearchResult }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [showHighlights, setShowHighlights] = useState(true);
   const domain = extractDomain(result.url);
 
   // Determine what content to show
   const mainContent =
-    result.summary || result.snippet || result.fullText?.slice(0, 500);
+    result.summary || result.snippet || result.fullText?.slice(0, CONTENT_PREVIEW_LENGTH);
   const hasExpandableContent =
-    (result.fullText && result.fullText.length > 500) ||
-    (result.snippet && result.snippet.length > 300);
+    (result.fullText && result.fullText.length > FULL_TEXT_THRESHOLD) ||
+    (result.snippet && result.snippet.length > SNIPPET_THRESHOLD);
   const hasHighlights = result.highlights && result.highlights.length > 0;
 
   return (
@@ -95,8 +99,8 @@ function ExaSearchResultCard({ result }: { result: ExaSearchResult }) {
                 <p className="whitespace-pre-wrap text-gray-700 text-sm italic leading-relaxed">
                   {isExpanded
                     ? mainContent
-                    : mainContent.slice(0, 200) +
-                      (mainContent.length > 200 ? "..." : "")}
+                    : mainContent.slice(0, PREVIEW_TRUNCATE_LENGTH) +
+                      (mainContent.length > PREVIEW_TRUNCATE_LENGTH ? "..." : "")}
                 </p>
               </div>
             )}
@@ -104,15 +108,15 @@ function ExaSearchResultCard({ result }: { result: ExaSearchResult }) {
               <p className="whitespace-pre-wrap text-gray-700 text-sm leading-relaxed">
                 {isExpanded
                   ? result.snippet
-                  : result.snippet.slice(0, 200) +
-                    (result.snippet.length > 200 ? "..." : "")}
+                  : result.snippet.slice(0, PREVIEW_TRUNCATE_LENGTH) +
+                    (result.snippet.length > PREVIEW_TRUNCATE_LENGTH ? "..." : "")}
               </p>
             )}
           </div>
         )}
 
         {/* Neural search highlights */}
-        {hasHighlights && showHighlights && (
+        {hasHighlights && (
           <div className="mt-3 space-y-2">
             <div className="flex items-center gap-1.5">
               <FileText className="h-3 w-3 text-indigo-600" />
@@ -121,19 +125,17 @@ function ExaSearchResultCard({ result }: { result: ExaSearchResult }) {
               </span>
             </div>
             <div className="space-y-1.5 pl-4">
-              {result
-                .highlights!.slice(0, isExpanded ? undefined : 2)
-                .map((highlight, idx) => (
-                  <div
-                    className="border-indigo-200 border-l-2 pl-2 text-gray-600 text-xs leading-relaxed"
-                    key={idx}
-                  >
-                    {highlight.snippet}
-                  </div>
-                ))}
-              {!isExpanded && result.highlights!.length > 2 && (
+              {result.highlights?.slice(0, isExpanded ? undefined : 2).map((highlight, idx) => (
+                <div
+                  className="border-indigo-200 border-l-2 pl-2 text-gray-600 text-xs leading-relaxed"
+                  key={`highlight-${highlight.snippet?.slice(0, HIGHLIGHT_SNIPPET_LENGTH)}-${idx}`}
+                >
+                  {highlight.snippet}
+                </div>
+              ))}
+              {!isExpanded && (result.highlights?.length ?? 0) > 2 && (
                 <p className="pl-2 text-indigo-600 text-xs italic">
-                  +{result.highlights!.length - 2} more highlights
+                  +{(result.highlights?.length ?? 0) - 2} more highlights
                 </p>
               )}
             </div>
@@ -142,10 +144,17 @@ function ExaSearchResultCard({ result }: { result: ExaSearchResult }) {
 
         {/* Expand button */}
         {(hasExpandableContent ||
-          (hasHighlights && result.highlights!.length > 2)) && (
+          (hasHighlights && (result.highlights?.length ?? 0) > 2)) && (
           <button
+            type="button"
             className="mt-2 flex items-center gap-1 font-medium text-indigo-600 text-xs hover:text-indigo-800"
             onClick={() => setIsExpanded(!isExpanded)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setIsExpanded(!isExpanded);
+              }
+            }}
           >
             {isExpanded ? (
               <>
@@ -202,8 +211,15 @@ export function ExaSearchResults({
               </div>
             </div>
             <button
+              type="button"
               className="flex-shrink-0 text-indigo-600 hover:text-indigo-800"
               onClick={() => setIsExpanded(!isExpanded)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setIsExpanded(!isExpanded);
+                }
+              }}
             >
               {isExpanded ? (
                 <ChevronUp className="h-4 w-4" />
@@ -226,7 +242,7 @@ export function ExaSearchResults({
         >
           <div className="max-h-[500px] overflow-y-auto">
             {validResults.map((result, idx) => (
-              <ExaSearchResultCard key={idx} result={result} />
+              <ExaSearchResultCard key={`${result.url}-${idx}`} result={result} />
             ))}
           </div>
         </motion.div>

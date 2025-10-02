@@ -33,6 +33,18 @@ export function isSubagentResponse(message: Message): boolean {
     return true;
   }
 
+  // Don't filter planner-agent tool messages - they're displayed in the UI
+  if (message.type === "tool") {
+    const toolMessage = message as any;
+    if (
+      toolMessage.name === "topic_analysis" ||
+      toolMessage.name === "scope_estimation" ||
+      toolMessage.name === "plan_optimization"
+    ) {
+      return false;
+    }
+  }
+
   // Only check AI messages for subagent content
   if (message.type !== "ai") {
     return false;

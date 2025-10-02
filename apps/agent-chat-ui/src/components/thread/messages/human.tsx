@@ -17,7 +17,7 @@ function EditableContent({
   setValue: React.Dispatch<React.SetStateAction<string>>;
   onSubmit: () => void;
 }) {
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
       onSubmit();
@@ -62,7 +62,9 @@ export function HumanMessage({
         streamResumable: true,
         optimisticValues: (prev) => {
           const values = meta?.firstSeenState?.values;
-          if (!values) return prev;
+          if (!values) {
+            return prev;
+          }
 
           return {
             ...values,
@@ -92,17 +94,19 @@ export function HumanMessage({
             {/* Render images and files if no text */}
             {Array.isArray(message.content) && message.content.length > 0 && (
               <div className="flex flex-wrap items-end justify-end gap-2">
-                {message.content.reduce<React.ReactNode[]>(
-                  (acc, block, idx) => {
-                    if (isBase64ContentBlock(block)) {
-                      acc.push(
-                        <MultimodalPreview block={block} key={idx} size="md" />
-                      );
-                    }
-                    return acc;
-                  },
-                  []
-                )}
+                {message.content.reduce<React.ReactNode[]>((acc, block) => {
+                  if (isBase64ContentBlock(block)) {
+                    const uniqueKey = `block-${acc.length}`;
+                    acc.push(
+                      <MultimodalPreview
+                        block={block}
+                        key={uniqueKey}
+                        size="md"
+                      />
+                    );
+                  }
+                  return acc;
+                }, [])}
               </div>
             )}
             {/* Render text if present, otherwise fallback to file/image name */}
@@ -133,11 +137,11 @@ export function HumanMessage({
             isEditing={isEditing}
             isHumanMessage={true}
             isLoading={isLoading}
-            setIsEditing={(c) => {
-              if (c) {
+            setIsEditing={(shouldEdit) => {
+              if (shouldEdit) {
                 setValue(contentString);
               }
-              setIsEditing(c);
+              setIsEditing(shouldEdit);
             }}
           />
         </div>

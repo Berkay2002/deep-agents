@@ -1,11 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Children, cloneElement, isValidElement, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { TimelineItem, type TimelineItemType } from "./timeline-item";
 
-interface TimelineActivity {
+const ANIMATION_DELAY = 0.1;
+
+export type TimelineActivity = {
   id: string;
   type: TimelineItemType;
   title?: string;
@@ -13,20 +15,22 @@ interface TimelineActivity {
   status?: "pending" | "in_progress" | "completed" | "error";
   content: ReactNode;
   isMini?: boolean;
-}
+};
 
-interface TimelineContainerProps {
+type TimelineContainerProps = {
   activities: TimelineActivity[];
   className?: string;
   isLast?: boolean;
-}
+};
 
 export function TimelineContainer({
   activities,
   className,
   isLast = false,
 }: TimelineContainerProps) {
-  if (activities.length === 0) return null;
+  if (activities.length === 0) {
+    return null;
+  }
 
   return (
     <div className={cn("mx-auto w-full max-w-4xl", className)}>
@@ -43,7 +47,7 @@ export function TimelineContainer({
             key={activity.id}
             transition={{
               duration: 0.4,
-              delay: index * 0.1,
+              delay: index * ANIMATION_DELAY,
               type: "spring",
               stiffness: 100,
             }}
@@ -86,17 +90,23 @@ export function createTimelineActivity(
 }
 
 // Helper function to extract file name from file operations
-export function extractFileNameFromArgs(args: any): string {
-  if (args?.file_path) return args.file_path;
-  if (args?.fileName) return args.fileName;
-  if (args?.file_name) return args.file_name;
+export function extractFileNameFromArgs(args: Record<string, unknown>): string {
+  if (args?.file_path && typeof args.file_path === "string") {
+    return args.file_path;
+  }
+  if (args?.fileName && typeof args.fileName === "string") {
+    return args.fileName;
+  }
+  if (args?.file_name && typeof args.file_name === "string") {
+    return args.file_name;
+  }
   return "Unknown file";
 }
 
 // Helper function to determine activity type from tool name
 export function getActivityTypeFromTool(
   toolName: string,
-  args?: any
+  args?: Record<string, unknown>
 ): TimelineItemType {
   const lowerToolName = toolName.toLowerCase();
 

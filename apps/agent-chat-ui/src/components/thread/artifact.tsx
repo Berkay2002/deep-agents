@@ -12,17 +12,15 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
-type Setter<T> = (value: T | ((value: T) => T)) => void;
-
 const ArtifactSlotContext = createContext<{
-  open: [string | null, Setter<string | null>];
-  mounted: [string | null, Setter<string | null>];
+  open: [string | null, (value: string | null | ((value: string | null) => string | null)) => void];
+  mounted: [string | null, (value: string | null | ((value: string | null) => string | null)) => void];
 
-  title: [HTMLElement | null, Setter<HTMLElement | null>];
-  content: [HTMLElement | null, Setter<HTMLElement | null>];
+  title: [HTMLElement | null, (value: HTMLElement | null | ((value: HTMLElement | null) => HTMLElement | null)) => void];
+  content: [HTMLElement | null, (value: HTMLElement | null | ((value: HTMLElement | null) => HTMLElement | null)) => void];
 
-  context: [Record<string, unknown>, Setter<Record<string, unknown>>];
-}>(null!);
+  context: [Record<string, unknown>, (value: Record<string, unknown> | ((value: Record<string, unknown>) => Record<string, unknown>)) => void];
+} | null>(null);
 
 /**
  * Headless component that will obtain the title and content of the artifact
@@ -35,52 +33,75 @@ const ArtifactSlot = (props: {
   title?: ReactNode;
 }) => {
   const context = useContext(ArtifactSlotContext);
-
-  const [ctxMounted, ctxSetMounted] = context.mounted;
-  const [content] = context.content;
-  const [title] = context.title;
+  const noOpFunction = () => {
+    // No-op function for when context is not available
+  };
+  const [ctxMounted, ctxSetMounted] = context?.mounted ?? [null, noOpFunction];
+  const [content] = context?.content ?? [null];
+  const [title] = context?.title ?? [null];
 
   const isMounted = ctxMounted === props.id;
   const isEmpty = props.children == null && props.title == null;
 
   useEffect(() => {
-    if (isEmpty) {
+    if (isEmpty && context) {
       ctxSetMounted((open) => (open === props.id ? null : open));
     }
-  }, [isEmpty, ctxSetMounted, props.id]);
+  }, [isEmpty, ctxSetMounted, props.id, context]);
 
-  if (!isMounted) return null;
+  if (!isMounted) {
+    return null;
+  }
+
+  if (!context) {
+    return null;
+  }
+
   return (
     <>
-      {title != null ? createPortal(<>{props.title}</>, title) : null}
-      {content != null ? createPortal(<>{props.children}</>, content) : null}
+      {title != null ? createPortal(props.title, title) : null}
+      {content != null ? createPortal(props.children, content) : null}
     </>
   );
 };
 
 export function ArtifactContent(props: HTMLAttributes<HTMLDivElement>) {
   const context = useContext(ArtifactSlotContext);
-
-  const [mounted] = context.mounted;
+  const [mounted] = context?.mounted ?? [null];
   const ref = useRef<HTMLDivElement>(null);
-  const [, setStateRef] = context.content;
+  const noOpSetter = () => {
+    // No-op function for when context is not available
+  };
+  const [, setStateRef] = context?.content ?? [null, noOpSetter];
 
   useLayoutEffect(
     () => setStateRef?.(mounted ? ref.current : null),
     [setStateRef, mounted]
   );
 
-  if (!mounted) return null;
+  if (!mounted) {
+    return null;
+  }
+
+  if (!context) {
+    return null;
+  }
+
   return <div {...props} ref={ref} />;
 }
-
 export function ArtifactTitle(props: HTMLAttributes<HTMLDivElement>) {
   const context = useContext(ArtifactSlotContext);
-
   const ref = useRef<HTMLDivElement>(null);
-  const [, setStateRef] = context.title;
+  const noOpSetter = () => {
+    // No-op function for when context is not available
+  };
+  const [, setStateRef] = context?.title ?? [null, noOpSetter];
 
   useLayoutEffect(() => setStateRef?.(ref.current), [setStateRef]);
+
+  if (!context) {
+    return null;
+  }
 
   return <div {...props} ref={ref} />;
 }
@@ -110,17 +131,22 @@ export function ArtifactProvider(props: { children?: ReactNode }) {
 export function useArtifact() {
   const id = useId();
   const context = useContext(ArtifactSlotContext);
+
+  if (!context) {
+    throw new Error("useArtifact must be used within an ArtifactProvider");
+  }
+
   const [ctxOpen, ctxSetOpen] = context.open;
   const [ctxContext, ctxSetContext] = context.context;
   const [, ctxSetMounted] = context.mounted;
 
-  const open = ctxOpen === id;
-  const setOpen = useCallback(
-    (value: boolean | ((value: boolean) => boolean)) => {
-      if (typeof value === "boolean") {
-        ctxSetOpen(value ? id : null);
+  const isOpen = ctxOpen === id;
+  const setArtifactOpenState = useCallback(
+    (newValue: boolean | ((value: boolean) => boolean)) => {
+      if (typeof newValue === "boolean") {
+        ctxSetOpen(newValue ? id : null);
       } else {
-        ctxSetOpen((open) => (open === id ? null : id));
+        ctxSetOpen((currentOpen) => (currentOpen === id ? null : id));
       }
 
       ctxSetMounted(id);
@@ -128,23 +154,23 @@ export function useArtifact() {
     [ctxSetOpen, ctxSetMounted, id]
   );
 
-  const ArtifactContent = useCallback(
-    (props: { title?: React.ReactNode; children: React.ReactNode }) => (
-      <ArtifactSlot id={id} title={props.title}>
-        {props.children}
+  const ArtifactContentComponent = useCallback(
+    (slotProps: { title?: React.ReactNode; children: React.ReactNode }) => (
+      <ArtifactSlot id={id} title={slotProps.title}>
+        {slotProps.children}
       </ArtifactSlot>
     ),
     [id]
   );
 
   return [
-    ArtifactContent,
-    { open, setOpen, context: ctxContext, setContext: ctxSetContext },
+    ArtifactContentComponent,
+    { open: isOpen, setOpen: setArtifactOpenState, context: ctxContext, setContext: ctxSetContext },
   ] as [
-    typeof ArtifactContent,
+    typeof ArtifactContentComponent,
     {
-      open: typeof open;
-      setOpen: typeof setOpen;
+      open: typeof isOpen;
+      setOpen: typeof setArtifactOpenState;
       context: typeof ctxContext;
       setContext: typeof ctxSetContext;
     },
@@ -156,7 +182,11 @@ export function useArtifact() {
  */
 export function useArtifactOpen() {
   const context = useContext(ArtifactSlotContext);
-  const [ctxOpen, setCtxOpen] = context.open;
+  const noOpCallback = () => {
+    // No-op function when context is not available
+  };
+
+  const [ctxOpen, setCtxOpen] = context?.open ?? [null, noOpCallback];
 
   const open = ctxOpen !== null;
   const onClose = useCallback(() => setCtxOpen(null), [setCtxOpen]);
@@ -170,5 +200,5 @@ export function useArtifactOpen() {
  */
 export function useArtifactContext() {
   const context = useContext(ArtifactSlotContext);
-  return context.context;
+  return context?.context || {};
 }

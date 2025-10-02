@@ -2,7 +2,7 @@
 
 import { BookOpen, Clock, Lightbulb, Tag, Target } from "lucide-react";
 
-interface TopicAnalysisResultProps {
+type TopicAnalysisResultProps = {
   result: {
     topicType?: string;
     complexity?: string;
@@ -10,7 +10,7 @@ interface TopicAnalysisResultProps {
     suggestedSources?: string[];
     estimatedTimeframe?: string;
   };
-}
+};
 
 function getTopicTypeBadgeColor(topicType: string): string {
   const colors: Record<string, string> = {
@@ -59,9 +59,9 @@ export function TopicAnalysisResult({ result }: TopicAnalysisResultProps) {
           {/* Topic Type & Complexity */}
           <div className="flex flex-wrap gap-3">
             <div>
-              <label className="mb-1 block font-medium text-gray-500 text-xs uppercase tracking-wide">
+              <div className="mb-1 block font-medium text-gray-500 text-xs uppercase tracking-wide">
                 Topic Type
-              </label>
+              </div>
               <span
                 className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-medium text-sm ${getTopicTypeBadgeColor(
                   topicType
@@ -73,9 +73,9 @@ export function TopicAnalysisResult({ result }: TopicAnalysisResultProps) {
             </div>
 
             <div>
-              <label className="mb-1 block font-medium text-gray-500 text-xs uppercase tracking-wide">
+              <div className="mb-1 block font-medium text-gray-500 text-xs uppercase tracking-wide">
                 Complexity
-              </label>
+              </div>
               <span
                 className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-medium text-sm ${getComplexityBadgeColor(
                   complexity
@@ -87,9 +87,9 @@ export function TopicAnalysisResult({ result }: TopicAnalysisResultProps) {
             </div>
 
             <div>
-              <label className="mb-1 block font-medium text-gray-500 text-xs uppercase tracking-wide">
+              <div className="mb-1 block font-medium text-gray-500 text-xs uppercase tracking-wide">
                 Estimated Timeframe
-              </label>
+              </div>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-gray-100 px-3 py-1 font-medium text-gray-700 text-sm">
                 <Clock className="h-3 w-3" />
                 {estimatedTimeframe}
@@ -107,10 +107,10 @@ export function TopicAnalysisResult({ result }: TopicAnalysisResultProps) {
                 </h4>
               </div>
               <div className="flex flex-wrap gap-2">
-                {estimatedResearchAreas.map((area, index) => (
+                {estimatedResearchAreas.map((area) => (
                   <span
                     className="inline-block rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700 text-xs"
-                    key={index}
+                    key={area}
                   >
                     {area}
                   </span>
@@ -129,10 +129,10 @@ export function TopicAnalysisResult({ result }: TopicAnalysisResultProps) {
                 </h4>
               </div>
               <ul className="space-y-1.5">
-                {suggestedSources.map((source, index) => (
+                {suggestedSources.map((source) => (
                   <li
                     className="flex items-start gap-2 text-gray-600 text-sm"
-                    key={index}
+                    key={source}
                   >
                     <span className="mt-0.5 text-emerald-600">•</span>
                     <span>{source}</span>

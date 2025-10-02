@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-interface McpServer {
+type McpServer = {
   name: string;
   displayName: string;
   description: string;
   enabled: boolean;
   requiresAuth: boolean;
-}
+};
 
 /**
  * GET /api/mcp-status
@@ -16,7 +16,7 @@ interface McpServer {
  * Returns the current status of MCP servers based on environment configuration.
  * This mirrors the logic in apps/agent/src/utils/mcp.ts
  */
-export async function GET() {
+export function GET() {
   const servers: McpServer[] = [];
 
   // Sequential Thinking - always enabled (no auth required)

@@ -4,19 +4,19 @@ import { motion } from "framer-motion";
 import { ChevronDown, ChevronUp, ExternalLink, Search } from "lucide-react";
 import { useState } from "react";
 
-interface TavilySearchResult {
+type TavilySearchResult = {
   url: string;
   title: string;
   content: string;
   score?: number;
-  raw_content?: string | null;
-}
+  rawContent?: string | null;
+};
 
-interface TavilySearchResultsProps {
+type TavilySearchResultsProps = {
   query: string;
   results: TavilySearchResult[];
   responseTime?: number;
-}
+};
 
 function extractDomain(url: string): string {
   try {
@@ -27,13 +27,15 @@ function extractDomain(url: string): string {
   }
 }
 
+const CONTENT_PREVIEW_LENGTH = 200;
+
 function TavilySearchResultCard({ result }: { result: TavilySearchResult }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const domain = extractDomain(result.url);
-  const hasExpandableContent = result.content.length > 200;
+  const hasExpandableContent = result.content.length > CONTENT_PREVIEW_LENGTH;
   const displayContent =
     !isExpanded && hasExpandableContent
-      ? result.content.slice(0, 200) + "..."
+      ? `${result.content.slice(0, CONTENT_PREVIEW_LENGTH)}...`
       : result.content;
 
   return (
@@ -67,6 +69,13 @@ function TavilySearchResultCard({ result }: { result: TavilySearchResult }) {
           <button
             className="mt-2 flex items-center gap-1 text-gray-500 text-xs hover:text-gray-700"
             onClick={() => setIsExpanded(!isExpanded)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setIsExpanded(!isExpanded);
+              }
+            }}
+            type="button"
           >
             {isExpanded ? (
               <>
@@ -123,8 +132,18 @@ export function TavilySearchResults({
               </div>
             </div>
             <button
+              aria-label={
+                isExpanded ? "Collapse search results" : "Expand search results"
+              }
               className="flex-shrink-0 text-gray-500 hover:text-gray-700"
               onClick={() => setIsExpanded(!isExpanded)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setIsExpanded(!isExpanded);
+                }
+              }}
+              type="button"
             >
               {isExpanded ? (
                 <ChevronUp className="h-4 w-4" />
@@ -146,8 +165,8 @@ export function TavilySearchResults({
           transition={{ duration: 0.2 }}
         >
           <div className="max-h-[500px] overflow-y-auto">
-            {validResults.map((result, idx) => (
-              <TavilySearchResultCard key={idx} result={result} />
+            {validResults.map((result) => (
+              <TavilySearchResultCard key={result.url} result={result} />
             ))}
           </div>
         </motion.div>

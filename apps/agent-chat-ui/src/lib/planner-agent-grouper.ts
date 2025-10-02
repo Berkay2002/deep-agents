@@ -127,7 +127,7 @@ export function groupPlannerAgentMessages(
                 "topic_analysis"
               );
               topicAnalysis = result;
-              endIndex = j;
+              endIndex = Math.max(endIndex, j); // Ensure we capture the latest index
               if (status === "pending") {
                 status = "in_progress";
               }
@@ -141,7 +141,7 @@ export function groupPlannerAgentMessages(
                 "scope_estimation"
               );
               scopeEstimation = result;
-              endIndex = j;
+              endIndex = Math.max(endIndex, j); // Ensure we capture the latest index
               if (status === "pending") {
                 status = "in_progress";
               }
@@ -155,7 +155,7 @@ export function groupPlannerAgentMessages(
                 "plan_optimization"
               );
               planOptimization = result;
-              endIndex = j;
+              endIndex = Math.max(endIndex, j); // Ensure we capture the latest index
               if (status === "pending") {
                 status = "in_progress";
               }
@@ -201,7 +201,7 @@ export function groupPlannerAgentMessages(
               if (planResult) {
                 finalPlan = planResult;
                 status = "completed";
-                endIndex = j;
+                endIndex = Math.max(endIndex, j); // Ensure we capture the latest index
                 break; // Planner agent task is complete
               }
             }

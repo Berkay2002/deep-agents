@@ -4,6 +4,10 @@ import { type NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
+// Regex literals at top level for performance
+const TRAILING_SLASH_REGEX = /\/+$/;
+const MILLISECONDS_PER_SECOND = 1000;
+
 type Params = {
   params: Promise<{
     _path?: string[];
@@ -60,7 +64,7 @@ async function proxy(request: NextRequest, props: Params) {
 
   const params = await props.params;
   const { _path = [] } = params;
-  const normalizedBaseUrl = rawBaseUrl.replace(/\/+$/, "");
+  const normalizedBaseUrl = rawBaseUrl.replace(TRAILING_SLASH_REGEX, "");
   const pathname = _path.map(encodeURIComponent).join("/");
   const targetUrl = new URL(
     `${pathname}${request.nextUrl.search}`,
@@ -70,7 +74,9 @@ async function proxy(request: NextRequest, props: Params) {
   const forwardHeaders = new Headers();
   for (const [key, value] of request.headers.entries()) {
     const lower = key.toLowerCase();
-    if (SENSITIVE_HEADERS.has(lower)) continue;
+    if (SENSITIVE_HEADERS.has(lower)) {
+      continue;
+    }
     if (ALLOWED_REQUEST_HEADERS.has(lower)) {
       forwardHeaders.set(key, value);
     }
@@ -86,9 +92,13 @@ async function proxy(request: NextRequest, props: Params) {
   forwardHeaders.set("x-langgraph-user-id", userId);
 
   const forwardedHost = request.headers.get("host");
-  if (forwardedHost) forwardHeaders.set("x-forwarded-host", forwardedHost);
+  if (forwardedHost) {
+    forwardHeaders.set("x-forwarded-host", forwardedHost);
+  }
   const proto = request.nextUrl.protocol.replace(":", "");
-  if (proto) forwardHeaders.set("x-forwarded-proto", proto);
+  if (proto) {
+    forwardHeaders.set("x-forwarded-proto", proto);
+  }
 
   const init: RequestInit & { duplex?: "half" } = {
     method: request.method,
@@ -98,7 +108,7 @@ async function proxy(request: NextRequest, props: Params) {
   };
 
   if (request.body) {
-    init.body = request.body as any;
+    init.body = request.body as ReadableStream;
     init.duplex = "half";
   }
 
@@ -114,8 +124,7 @@ async function proxy(request: NextRequest, props: Params) {
       statusText: response.statusText,
       headers: responseHeaders,
     });
-  } catch (err) {
-    console.error("LangGraph proxy fetch failed:", err);
+  } catch {
     return NextResponse.json(
       { error: "Failed to reach LangGraph server" },
       { status: 502 }
@@ -134,7 +143,7 @@ async function buildAuthorizationHeader(
 
   const secretKey = new TextEncoder().encode(secret);
   const ttlSeconds = resolveTtlSeconds();
-  const now = Math.floor(Date.now() / 1000);
+  const now = Math.floor(Date.now() / MILLISECONDS_PER_SECOND);
 
   const metadata = collectUserMetadata(request);
   const permissions = collectUserPermissions(request);
@@ -142,7 +151,7 @@ async function buildAuthorizationHeader(
   const githubPat = request.headers.get("x-github-pat");
 
   const payload: Record<string, unknown> = {
-    display_name: displayName,
+    displayName,
   };
   if (Object.keys(metadata).length > 0) {
     payload.metadata = metadata;
@@ -206,7 +215,9 @@ async function resolveUserIdentity(
 
 function resolveTtlSeconds(): number {
   const raw = process.env.LANGGRAPH_AUTH_TTL_SECONDS;
-  if (!raw) return DEFAULT_TTL_SECONDS;
+  if (!raw) {
+    return DEFAULT_TTL_SECONDS;
+  }
   const parsed = Number.parseInt(raw, 10);
   if (!Number.isFinite(parsed) || parsed <= 0) {
     return DEFAULT_TTL_SECONDS;
@@ -231,7 +242,9 @@ function collectUserPermissions(request: NextRequest): string[] {
   const header =
     request.headers.get("x-user-role") ??
     request.headers.get("x-user-permissions");
-  if (!header) return [];
+  if (!header) {
+    return [];
+  }
   return header
     .split(",")
     .map((value) => value.trim())

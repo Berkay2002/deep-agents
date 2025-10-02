@@ -28,7 +28,7 @@ export type TimelineItemType =
   | "search-result"
   | "generic";
 
-interface TimelineItemProps {
+type TimelineItemProps = {
   children: ReactNode;
   type: TimelineItemType;
   title?: string;
@@ -39,7 +39,7 @@ interface TimelineItemProps {
   isMini?: boolean;
 }
 
-function getIconForType(type: TimelineItemType, status?: string) {
+function getIconForType(type: TimelineItemType) {
   const iconClass = "w-4 h-4";
 
   switch (type) {
@@ -66,7 +66,7 @@ function getIconForType(type: TimelineItemType, status?: string) {
   }
 }
 
-function getStatusColor(status?: string) {
+function getStatusColor(status?: "pending" | "in_progress" | "completed" | "error") {
   switch (status) {
     case "pending":
       return "bg-gray-300 border-gray-400";
@@ -91,7 +91,7 @@ export function TimelineItem({
   className,
   isMini = false,
 }: TimelineItemProps) {
-  const icon = getIconForType(type, status);
+  const icon = getIconForType(type);
   const statusColor = getStatusColor(status);
 
   return (
@@ -103,20 +103,18 @@ export function TimelineItem({
           animate={{ scale: 1 }}
           className={cn(
             isMini
-              ? "z-10 flex h-5 w-5 items-center justify-center rounded-full border bg-white"
-              : "z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 bg-white",
+              ? "z-0 flex h-5 w-5 items-center justify-center rounded-full border bg-white"
+              : "z-0 flex h-8 w-8 items-center justify-center rounded-full border-2 bg-white",
             statusColor
           )}
           initial={{ scale: 0 }}
           transition={{ type: "spring", stiffness: 200, damping: 15 }}
         >
-          {isMini ? (
-            <div className="h-2 w-2 rounded-full bg-emerald-500" />
-          ) : status === "in_progress" ? (
+          {isMini && <div className="h-2 w-2 rounded-full bg-emerald-500" />}
+          {!isMini && status === "in_progress" && (
             <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
-          ) : (
-            icon
           )}
+          {!isMini && status !== "in_progress" && icon}
         </motion.div>
 
         {/* Connecting Line */}

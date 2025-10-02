@@ -13,6 +13,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TooltipIconButton } from "../tooltip-icon-button";
 
+const COPY_RESET_DELAY = 2000;
+
 function ContentCopyable({
   content,
   disabled,
@@ -26,13 +28,23 @@ function ContentCopyable({
     e.stopPropagation();
     navigator.clipboard.writeText(content);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), COPY_RESET_DELAY);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), COPY_RESET_DELAY);
+    }
   };
 
   return (
     <TooltipIconButton
       disabled={disabled}
-      onClick={(e) => handleCopy(e)}
+      onClick={handleCopy}
+      onKeyDown={handleKeyDown}
       tooltip="Copy content"
       variant="ghost"
     >
@@ -74,7 +86,9 @@ export function BranchSwitcher({
   onSelect: (branch: string) => void;
   isLoading: boolean;
 }) {
-  if (!(branchOptions && branch)) return null;
+  if (!(branchOptions && branch)) {
+    return null;
+  }
   const index = branchOptions.indexOf(branch);
 
   return (
@@ -84,11 +98,24 @@ export function BranchSwitcher({
         disabled={isLoading}
         onClick={() => {
           const prevBranch = branchOptions[index - 1];
-          if (!prevBranch) return;
+          if (!prevBranch) {
+            return;
+          }
           onSelect(prevBranch);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            const prevBranch = branchOptions[index - 1];
+            if (!prevBranch) {
+              return;
+            }
+            onSelect(prevBranch);
+          }
         }}
         size="icon"
         variant="ghost"
+        type="button"
       >
         <ChevronLeft />
       </Button>
@@ -100,11 +127,24 @@ export function BranchSwitcher({
         disabled={isLoading}
         onClick={() => {
           const nextBranch = branchOptions[index + 1];
-          if (!nextBranch) return;
+          if (!nextBranch) {
+            return;
+          }
           onSelect(nextBranch);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            const nextBranch = branchOptions[index + 1];
+            if (!nextBranch) {
+              return;
+            }
+            onSelect(nextBranch);
+          }
         }}
         size="icon"
         variant="ghost"
+        type="button"
       >
         <ChevronRight />
       </Button>
@@ -170,6 +210,12 @@ export function CommandBar({
           onClick={() => {
             setIsEditing(false);
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsEditing(false);
+            }
+          }}
           tooltip="Cancel edit"
           variant="ghost"
         >
@@ -178,6 +224,12 @@ export function CommandBar({
         <TooltipIconButton
           disabled={isLoading}
           onClick={handleSubmitEdit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleSubmitEdit();
+            }
+          }}
           tooltip="Submit"
           variant="secondary"
         >
@@ -199,6 +251,12 @@ export function CommandBar({
         <TooltipIconButton
           disabled={isLoading}
           onClick={handleRegenerate}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleRegenerate();
+            }
+          }}
           tooltip="Refresh"
           variant="ghost"
         >
@@ -210,6 +268,12 @@ export function CommandBar({
           disabled={isLoading}
           onClick={() => {
             setIsEditing?.(true);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsEditing?.(true);
+            }
           }}
           tooltip="Edit"
           variant="ghost"

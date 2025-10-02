@@ -4,15 +4,18 @@ import { motion } from "framer-motion";
 import { CheckCircle2, Circle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface Todo {
+const ANIMATION_DELAY = 0.05;
+
+type Todo = {
+  id: string;
   content: string;
   status: "pending" | "in_progress" | "completed";
   activeForm?: string;
-}
+};
 
-interface TodoListProps {
+type TodoListProps = {
   todos: Todo[];
-}
+};
 
 export function TodoList({ todos }: TodoListProps) {
   const completedCount = todos.filter((t) => t.status === "completed").length;
@@ -38,11 +41,11 @@ export function TodoList({ todos }: TodoListProps) {
               animate={{ opacity: 1, y: 0 }}
               className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-gray-100/50"
               initial={{ opacity: 0, y: 10 }}
-              key={index}
-              transition={{ delay: index * 0.05 }}
+              key={todo.id}
+              transition={{ delay: index * ANIMATION_DELAY }}
             >
               {/* Status indicator */}
-              <div className="flex-shrink-0 pt-0.5">
+              <div className="flex-shrink-0 pt-0.5" aria-hidden="true">
                 {todo.status === "completed" && (
                   <motion.div
                     animate={{ scale: 1 }}
@@ -65,11 +68,9 @@ export function TodoList({ todos }: TodoListProps) {
                 <p
                   className={cn(
                     "text-sm leading-relaxed",
-                    todo.status === "completed"
-                      ? "text-gray-500 line-through"
-                      : todo.status === "in_progress"
-                        ? "font-medium text-gray-900"
-                        : "text-gray-700"
+                    todo.status === "completed" && "text-gray-500 line-through",
+                    todo.status === "in_progress" && "font-medium text-gray-900",
+                    todo.status === "pending" && "text-gray-700"
                   )}
                 >
                   {todo.status === "in_progress" && todo.activeForm
