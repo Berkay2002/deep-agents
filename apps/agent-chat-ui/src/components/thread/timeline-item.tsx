@@ -3,25 +3,27 @@
 import { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { 
-  Search, 
-  FileText, 
-  CheckCircle2, 
-  MessageSquare, 
-  Users, 
+import {
+  Search,
+  FileText,
+  CheckCircle2,
+  MessageSquare,
+  Users,
   Edit3,
   GitBranch,
   Clock,
-  Loader2
+  Loader2,
+  ClipboardList
 } from "lucide-react";
 
-export type TimelineItemType = 
+export type TimelineItemType =
   | "research"
   | "file-write"
   | "file-edit"
   | "file-update"
   | "todo"
   | "critique"
+  | "planning"
   | "tool-call"
   | "search-result"
   | "generic";
@@ -34,11 +36,12 @@ interface TimelineItemProps {
   status?: "pending" | "in_progress" | "completed" | "error";
   isLast?: boolean;
   className?: string;
+  isMini?: boolean;
 }
 
 function getIconForType(type: TimelineItemType, status?: string) {
   const iconClass = "w-4 h-4";
-  
+
   switch (type) {
     case "research":
       return <Search className={cn(iconClass, "text-blue-600")} />;
@@ -52,6 +55,8 @@ function getIconForType(type: TimelineItemType, status?: string) {
       return <CheckCircle2 className={cn(iconClass, "text-emerald-600")} />;
     case "critique":
       return <MessageSquare className={cn(iconClass, "text-purple-600")} />;
+    case "planning":
+      return <ClipboardList className={cn(iconClass, "text-emerald-600")} />;
     case "tool-call":
       return <GitBranch className={cn(iconClass, "text-gray-600")} />;
     case "search-result":
@@ -83,13 +88,14 @@ export function TimelineItem({
   timestamp,
   status,
   isLast = false,
-  className
+  className,
+  isMini = false
 }: TimelineItemProps) {
   const icon = getIconForType(type, status);
   const statusColor = getStatusColor(status);
 
   return (
-    <div className={cn("relative flex gap-4", className)}>
+    <div className={cn("relative flex gap-4", isMini && "ml-8", className)}>
       {/* Timeline Line */}
       <div className="flex flex-col items-center">
         {/* Timeline Dot */}
@@ -98,11 +104,15 @@ export function TimelineItem({
           animate={{ scale: 1 }}
           transition={{ type: "spring", stiffness: 200, damping: 15 }}
           className={cn(
-            "w-8 h-8 rounded-full border-2 flex items-center justify-center bg-white z-10",
+            isMini
+              ? "w-5 h-5 rounded-full border flex items-center justify-center bg-white z-10"
+              : "w-8 h-8 rounded-full border-2 flex items-center justify-center bg-white z-10",
             statusColor
           )}
         >
-          {status === "in_progress" ? (
+          {isMini ? (
+            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+          ) : status === "in_progress" ? (
             <Loader2 className="w-3 h-3 animate-spin text-blue-600" />
           ) : (
             icon
@@ -116,12 +126,12 @@ export function TimelineItem({
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0 pb-8">
+      <div className={cn("flex-1 min-w-0", isMini ? "pb-4" : "pb-8")}>
         {/* Header */}
         {(title || timestamp) && (
           <div className="flex items-center gap-2 mb-2">
             {title && (
-              <h3 className="text-sm font-medium text-gray-900">
+              <h3 className={cn(isMini ? "text-xs font-medium text-gray-700" : "text-sm font-medium text-gray-900")}>
                 {title}
               </h3>
             )}

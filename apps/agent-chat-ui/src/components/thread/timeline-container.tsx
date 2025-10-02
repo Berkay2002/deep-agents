@@ -12,6 +12,7 @@ interface TimelineActivity {
   timestamp?: string;
   status?: "pending" | "in_progress" | "completed" | "error";
   content: ReactNode;
+  isMini?: boolean;
 }
 
 interface TimelineContainerProps {
@@ -49,6 +50,7 @@ export function TimelineContainer({ activities, className, isLast = false }: Tim
               timestamp={activity.timestamp}
               status={activity.status}
               isLast={isLast && index === activities.length - 1}
+              isMini={activity.isMini}
             >
               {activity.content}
             </TimelineItem>
@@ -68,6 +70,7 @@ export function createTimelineActivity(
     title?: string;
     timestamp?: string;
     status?: "pending" | "in_progress" | "completed" | "error";
+    isMini?: boolean;
   }
 ): TimelineActivity {
   return {

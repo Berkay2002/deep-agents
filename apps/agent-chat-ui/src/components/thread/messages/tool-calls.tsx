@@ -8,6 +8,10 @@ import { TavilySearchResults } from "./tavily-search-results";
 import { ExaSearchResults } from "./exa-search-results";
 import { FileUpdateNotification } from "./file-update-notification";
 import { ReadFileDisplay } from "./read-file-display";
+import { LsResult } from "./ls-result";
+import { TopicAnalysisResult } from "./topic-analysis-result";
+import { ScopeEstimationResult } from "./scope-estimation-result";
+import { PlanOptimizationResult } from "./plan-optimization-result";
 
 function isComplexValue(value: any): boolean {
   return Array.isArray(value) || (typeof value === "object" && value !== null);
@@ -112,6 +116,14 @@ export function ToolCalls({
           args?.subagent_type === "critique-agent";
         if (isCritiqueAgentTask) {
           return null; // Will be displayed by CritiqueAgentContainer
+        }
+
+        // Check if this is a planner agent task - don't show it here, it will be shown in PlannerAgentContainer
+        const isPlannerAgentTask =
+          tc.name === "task" &&
+          args?.subagent_type === "planner-agent";
+        if (isPlannerAgentTask) {
+          return null; // Will be displayed by PlannerAgentContainer
         }
 
         return (
@@ -246,6 +258,41 @@ export function ToolResult({
 
   if (isCritiqueAgentTaskResult) {
     return null; // Will be displayed by CritiqueAgentContainer
+  }
+
+  // Check if this is a planner agent task result - hide it since PlannerAgentContainer handles it
+  const isPlannerAgentTaskResult =
+    toolCall?.name === "task" &&
+    toolCall?.args?.subagent_type === "planner-agent";
+
+  if (isPlannerAgentTaskResult) {
+    return null; // Will be displayed by PlannerAgentContainer
+  }
+
+  // Check if this is an ls tool result
+  if (message.name === "ls") {
+    try {
+      // ls returns an array of file paths
+      const files = Array.isArray(parsedContent) ? parsedContent : [];
+      return <LsResult files={files} />;
+    } catch {
+      // Fall through to default display
+    }
+  }
+
+  // Check if this is a topic_analysis tool result
+  if (message.name === "topic_analysis") {
+    return <TopicAnalysisResult result={parsedContent} />;
+  }
+
+  // Check if this is a scope_estimation tool result
+  if (message.name === "scope_estimation") {
+    return <ScopeEstimationResult result={parsedContent} />;
+  }
+
+  // Check if this is a plan_optimization tool result
+  if (message.name === "plan_optimization") {
+    return <PlanOptimizationResult result={parsedContent} />;
   }
 
   // Check if this is a Tavily search result (has 'content' field)

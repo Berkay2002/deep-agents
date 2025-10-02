@@ -2,17 +2,25 @@
 
 import { ReactNode } from "react";
 import { Message } from "@langchain/langgraph-sdk";
-import { 
-  groupResearchAgentMessages, 
-  type ResearchAgentGroup 
+import {
+  groupResearchAgentMessages,
+  type ResearchAgentGroup
 } from "@/lib/research-agent-grouper";
-import { 
-  groupCritiqueAgentMessages, 
-  type CritiqueAgentGroup 
+import {
+  groupCritiqueAgentMessages,
+  type CritiqueAgentGroup
 } from "@/lib/critique-agent-grouper";
+import {
+  groupPlannerAgentMessages,
+  type PlannerAgentGroup
+} from "@/lib/planner-agent-grouper";
 import { TimelineContainer, createTimelineActivity, extractFileNameFromArgs, getActivityTypeFromTool } from "./timeline-container";
 import { ResearchAgentContainer } from "./messages/research-agent-container";
 import { CritiqueAgentContainer } from "./messages/critique-agent-container";
+import { PlannerAgentContainer } from "./messages/planner-agent-container";
+import { TopicAnalysisResult } from "./messages/topic-analysis-result";
+import { ScopeEstimationResult } from "./messages/scope-estimation-result";
+import { PlanOptimizationResult } from "./messages/plan-optimization-result";
 import { TodoList } from "./todo-list";
 import { FileUpdateNotification } from "./messages/file-update-notification";
 import { WriteFileDiff } from "./messages/write-file-diff";
@@ -29,10 +37,11 @@ interface TimelineAdapterProps {
 }
 
 export function TimelineAdapter({ messages, className, isLast = false }: TimelineAdapterProps) {
-  // Group research and critique agent messages
+  // Group research, critique, and planner agent messages
   const researchGroups = groupResearchAgentMessages(messages);
   const critiqueGroups = groupCritiqueAgentMessages(messages);
-  
+  const plannerGroups = groupPlannerAgentMessages(messages);
+
   const activities: any[] = [];
   const processedIndices = new Set<number>();
 
@@ -89,6 +98,89 @@ export function TimelineAdapter({ messages, className, isLast = false }: Timelin
 
     // Mark all critique-related messages as processed
     critiqueGroups.forEach(group => {
+      for (let i = group.startIndex; i <= group.endIndex; i++) {
+        processedIndices.add(i);
+      }
+    });
+  }
+
+  // Process planner agent groups
+  if (plannerGroups.length > 0) {
+    const agents = plannerGroups.map((group) => ({
+      taskDescription: group.taskDescription,
+      topicAnalysis: group.topicAnalysis,
+      scopeEstimation: group.scopeEstimation,
+      planOptimization: group.planOptimization,
+      finalPlan: group.finalPlan,
+      status: group.status,
+    }));
+
+    // Create main planning agent activity
+    activities.push(
+      createTimelineActivity(
+        "planner-agents",
+        "planning",
+        <PlannerAgentContainer agents={agents} />,
+        {
+          title: "Planning Agents",
+          status: plannerGroups[0].status,
+        }
+      )
+    );
+
+    // Add sub-activities for individual planning tool calls
+    plannerGroups.forEach((group, groupIndex) => {
+      // Add topic analysis as a mini timeline item
+      if (group.topicAnalysis) {
+        activities.push(
+          createTimelineActivity(
+            `planner-${groupIndex}-topic-analysis`,
+            "planning",
+            <TopicAnalysisResult result={group.topicAnalysis} />,
+            {
+              title: "Topic Analysis",
+              status: "completed",
+              isMini: true,
+            }
+          )
+        );
+      }
+
+      // Add scope estimation as a mini timeline item
+      if (group.scopeEstimation) {
+        activities.push(
+          createTimelineActivity(
+            `planner-${groupIndex}-scope-estimation`,
+            "planning",
+            <ScopeEstimationResult result={group.scopeEstimation} />,
+            {
+              title: "Scope Estimation",
+              status: "completed",
+              isMini: true,
+            }
+          )
+        );
+      }
+
+      // Add plan optimization as a mini timeline item
+      if (group.planOptimization) {
+        activities.push(
+          createTimelineActivity(
+            `planner-${groupIndex}-plan-optimization`,
+            "planning",
+            <PlanOptimizationResult result={group.planOptimization} />,
+            {
+              title: "Plan Optimization",
+              status: "completed",
+              isMini: true,
+            }
+          )
+        );
+      }
+    });
+
+    // Mark all planner-related messages as processed
+    plannerGroups.forEach(group => {
       for (let i = group.startIndex; i <= group.endIndex; i++) {
         processedIndices.add(i);
       }
