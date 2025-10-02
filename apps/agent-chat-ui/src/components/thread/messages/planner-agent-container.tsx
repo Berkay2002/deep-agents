@@ -79,7 +79,7 @@ export function PlannerAgentContainer({ agents }: PlannerAgentContainerProps) {
         <div className="border-gray-200 border-b bg-emerald-50 px-4 py-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <ClipboardList className="h-4 w-4 flex-shrink-0 text-emerald-600" />
+              <ClipboardList className="h-4 w-4 shrink-0 text-emerald-600" />
               <div className="min-w-0 flex-1">
                 <h3 className="font-semibold text-gray-900 text-sm">
                   Planning Agent
@@ -93,9 +93,8 @@ export function PlannerAgentContainer({ agents }: PlannerAgentContainerProps) {
               </div>
             </div>
             <button
-              type="button"
               aria-label={isExpanded ? "Collapse" : "Expand"}
-              className="flex-shrink-0 text-gray-500 hover:text-gray-700"
+              className="shrink-0 text-gray-500 hover:text-gray-700"
               onClick={() => setIsExpanded(!isExpanded)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -103,6 +102,7 @@ export function PlannerAgentContainer({ agents }: PlannerAgentContainerProps) {
                   setIsExpanded(!isExpanded);
                 }
               }}
+              type="button"
             >
               {isExpanded ? (
                 <ChevronUp className="h-4 w-4" />
@@ -119,8 +119,7 @@ export function PlannerAgentContainer({ agents }: PlannerAgentContainerProps) {
             <div className="flex overflow-x-auto">
               {agents.map((agent, idx) => (
                 <button
-                  type="button"
-                  className={`flex-shrink-0 border-b-2 px-4 py-2 font-medium text-sm transition-colors ${
+                  className={`shrink-0 border-b-2 px-4 py-2 font-medium text-sm transition-colors ${
                     activeTab === idx
                       ? `border-emerald-600 ${getStatusColor(agent.status)}`
                       : "border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900"
@@ -133,6 +132,7 @@ export function PlannerAgentContainer({ agents }: PlannerAgentContainerProps) {
                       setActiveTab(idx);
                     }
                   }}
+                  type="button"
                 >
                   <div className="flex items-center gap-2">
                     {getStatusIcon(agent.status)}
@@ -153,7 +153,6 @@ export function PlannerAgentContainer({ agents }: PlannerAgentContainerProps) {
             </p>
             {currentAgent.finalPlan && (
               <button
-                type="button"
                 className="inline-flex items-center gap-2 font-medium text-emerald-600 text-sm transition-colors hover:text-emerald-700"
                 onClick={() => setIsExpanded(true)}
                 onKeyDown={(e) => {
@@ -162,6 +161,7 @@ export function PlannerAgentContainer({ agents }: PlannerAgentContainerProps) {
                     setIsExpanded(true);
                   }
                 }}
+                type="button"
               >
                 <FileText className="h-4 w-4" />
                 Read Plan

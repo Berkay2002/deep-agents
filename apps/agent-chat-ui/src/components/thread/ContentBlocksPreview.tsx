@@ -29,7 +29,7 @@ export const ContentBlocksPreview: React.FC<ContentBlocksPreviewProps> = ({
       {blocks.map((block, idx) => (
         <MultimodalPreview
           block={block}
-          key={`block-${idx}-${block.mime_type || 'unknown'}`}
+          key={`block-${idx}-${block.mime_type || "unknown"}`}
           onRemove={() => onRemove(idx)}
           removable
           size={size}

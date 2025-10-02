@@ -13,23 +13,23 @@ import { validate } from "uuid";
 import { getApiKey } from "@/lib/api-key";
 import { createClient } from "./client";
 
-interface ThreadContextType {
+type ThreadContextType = {
   getThreads: () => Promise<Thread[]>;
   threads: Thread[];
   setThreads: Dispatch<SetStateAction<Thread[]>>;
   threadsLoading: boolean;
   setThreadsLoading: Dispatch<SetStateAction<boolean>>;
-}
+};
 
 const ThreadContext = createContext<ThreadContextType | undefined>(undefined);
 
 function getThreadSearchMetadata(
   assistantId: string
-): { graph_id: string } | { assistant_id: string } {
+): { graphId: string } | { assistantId: string } {
   if (validate(assistantId)) {
-    return { assistant_id: assistantId };
+    return { assistantId };
   }
-  return { graph_id: assistantId };
+  return { graphId: assistantId };
 }
 
 export function ThreadProvider({ children }: { children: ReactNode }) {
@@ -39,17 +39,19 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
   const [threadsLoading, setThreadsLoading] = useState(false);
 
   const getThreads = useCallback(async (): Promise<Thread[]> => {
-    if (!(apiUrl && assistantId)) return [];
+    if (!(apiUrl && assistantId)) {
+      return [];
+    }
     const client = createClient(apiUrl, getApiKey() ?? undefined);
 
-    const threads = await client.threads.search({
+    const fetchedThreads = await client.threads.search({
       metadata: {
         ...getThreadSearchMetadata(assistantId),
       },
       limit: 100,
     });
 
-    return threads;
+    return fetchedThreads;
   }, [apiUrl, assistantId]);
 
   const value = {

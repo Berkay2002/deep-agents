@@ -32,7 +32,7 @@ function ContentCopyable({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === 'Enter' || e.key === ' ') {
+    if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       navigator.clipboard.writeText(content);
       setCopied(true);
@@ -104,7 +104,7 @@ export function BranchSwitcher({
           onSelect(prevBranch);
         }}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
+          if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             const prevBranch = branchOptions[index - 1];
             if (!prevBranch) {
@@ -114,8 +114,8 @@ export function BranchSwitcher({
           }
         }}
         size="icon"
-        variant="ghost"
         type="button"
+        variant="ghost"
       >
         <ChevronLeft />
       </Button>
@@ -133,7 +133,7 @@ export function BranchSwitcher({
           onSelect(nextBranch);
         }}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
+          if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             const nextBranch = branchOptions[index + 1];
             if (!nextBranch) {
@@ -143,8 +143,8 @@ export function BranchSwitcher({
           }
         }}
         size="icon"
-        variant="ghost"
         type="button"
+        variant="ghost"
       >
         <ChevronRight />
       </Button>
@@ -211,7 +211,7 @@ export function CommandBar({
             setIsEditing(false);
           }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+            if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               setIsEditing(false);
             }
@@ -225,7 +225,7 @@ export function CommandBar({
           disabled={isLoading}
           onClick={handleSubmitEdit}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+            if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               handleSubmitEdit();
             }
@@ -252,7 +252,7 @@ export function CommandBar({
           disabled={isLoading}
           onClick={handleRegenerate}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+            if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               handleRegenerate();
             }
@@ -270,7 +270,7 @@ export function CommandBar({
             setIsEditing?.(true);
           }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+            if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               setIsEditing?.(true);
             }

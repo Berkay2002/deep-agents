@@ -3,12 +3,12 @@
 import type React from "react";
 import { createContext, useContext, useEffect, useState } from "react";
 
-interface GithubSettingsContextType {
+type GithubSettingsContextType = {
   githubEnabled: boolean;
   githubPat: string | null;
   setGithubEnabled: (enabled: boolean) => void;
   setGithubPat: (pat: string | null) => void;
-}
+};
 
 const GithubSettingsContext = createContext<
   GithubSettingsContextType | undefined
@@ -28,7 +28,9 @@ export function GithubSettingsProvider({
 
   // Load from sessionStorage on mount
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined") {
+      return;
+    }
 
     const savedEnabled = sessionStorage.getItem(STORAGE_KEY_ENABLED);
     const savedPat = sessionStorage.getItem(STORAGE_KEY_PAT);

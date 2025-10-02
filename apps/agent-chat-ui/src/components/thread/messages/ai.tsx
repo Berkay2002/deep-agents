@@ -91,8 +91,10 @@ function Interrupt({
       (isLastMessage || hasNoAiOrToolMessages) ? (
         <GenericInterruptView
           interrupt={
-            (typeof interruptValue === 'object' && interruptValue !== null)
-              ? interruptValue as Record<string, unknown> | Record<string, unknown>[]
+            typeof interruptValue === "object" && interruptValue !== null
+              ? (interruptValue as
+                  | Record<string, unknown>
+                  | Record<string, unknown>[])
               : {}
           }
         />

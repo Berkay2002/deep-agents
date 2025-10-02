@@ -344,7 +344,7 @@ export function FileUpdateNotification({
 
               <span
                 className={cn(
-                  "rounded px-2 py-1 font-medium text-xs",
+                  "rounded-sm px-2 py-1 font-medium text-xs",
                   changeType === "created" && "bg-green-100 text-green-700",
                   changeType === "modified" && "bg-blue-100 text-blue-700",
                   changeType === "deleted" && "bg-red-100 text-red-700"
@@ -401,13 +401,13 @@ export function FileUpdateNotification({
           </div>
 
           {error && (
-            <span className="rounded bg-red-100 px-2 py-1 font-medium text-red-700 text-xs">
+            <span className="rounded-sm bg-red-100 px-2 py-1 font-medium text-red-700 text-xs">
               Failed
             </span>
           )}
 
           {success && !error && (
-            <span className="rounded bg-green-100 px-2 py-1 font-medium text-green-700 text-xs">
+            <span className="rounded-sm bg-green-100 px-2 py-1 font-medium text-green-700 text-xs">
               Success
             </span>
           )}
@@ -581,7 +581,7 @@ export function FileUpdateNotification({
         {error && (
           <div className="border-red-200 border-t-2 bg-red-50 px-4 py-3">
             <div className="flex items-start gap-2">
-              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-600" />
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
               <div className="flex-1">
                 <p className="mb-1 font-medium text-red-900 text-sm">
                   Update Failed

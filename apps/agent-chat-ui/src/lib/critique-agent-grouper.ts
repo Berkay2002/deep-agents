@@ -1,29 +1,27 @@
-import {
-  AIMessage,
-  type Message,
-  type ToolMessage,
-} from "@langchain/langgraph-sdk";
+import type { Message, ToolMessage } from "@langchain/langgraph-sdk";
 
-export interface FileRead {
+export type FileRead = {
   filePath: string;
   content: string;
   toolCallId: string;
-}
+};
 
-export interface CritiqueAgentGroup {
+export type CritiqueAgentGroup = {
   taskDescription: string;
   taskToolCallId: string;
   critique?: string;
   fileReads: FileRead[];
   startIndex: number;
   endIndex: number;
-}
+};
 
 /**
  * Checks if a tool call is a critique agent task invocation
  */
 function isCritiqueAgentTask(toolCall: any): boolean {
-  if (!toolCall || toolCall.name !== "task") return false;
+  if (!toolCall || toolCall.name !== "task") {
+    return false;
+  }
   const args = toolCall.args as Record<string, any>;
   return args?.subagent_type === "critique-agent" && !!args?.description;
 }
@@ -32,7 +30,9 @@ function isCritiqueAgentTask(toolCall: any): boolean {
  * Extracts critique from a tool message
  */
 function extractCritique(message: ToolMessage): string | null {
-  if (typeof message.content !== "string") return null;
+  if (typeof message.content !== "string") {
+    return null;
+  }
 
   // Return the content if it exists and is non-empty
   return message.content.trim().length > 0 ? message.content : null;

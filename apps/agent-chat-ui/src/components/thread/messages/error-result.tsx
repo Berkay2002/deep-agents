@@ -141,7 +141,7 @@ export function ErrorResult({ toolName, errorMessage }: ErrorResultProps) {
               <h3 className="font-semibold text-red-900 text-sm">{title}</h3>
               <p className="mt-0.5 text-red-700 text-xs">
                 Tool:{" "}
-                <code className="rounded bg-red-200 px-1.5 py-0.5">
+                <code className="rounded-sm bg-red-200 px-1.5 py-0.5">
                   {toolName}
                 </code>
               </p>
@@ -158,7 +158,7 @@ export function ErrorResult({ toolName, errorMessage }: ErrorResultProps) {
               <summary className="cursor-pointer font-medium text-red-700 text-xs hover:text-red-900">
                 Show full error details
               </summary>
-              <div className="mt-2 rounded bg-red-100 p-3">
+              <div className="mt-2 rounded-sm bg-red-100 p-3">
                 <code className="whitespace-pre-wrap break-all text-red-800 text-xs">
                   {details}
                 </code>

@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/correctness/noUnusedImports: <> */
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import type { Checkpoint, Message } from "@langchain/langgraph-sdk";
 import { motion } from "framer-motion";
@@ -21,6 +22,12 @@ import {
 import { toast } from "sonner";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import { v4 as uuidv4 } from "uuid";
+
+// Constants for magic numbers
+const SIDEBAR_WIDTH = 300;
+const SIDEBAR_OFFSET = -300;
+const BUTTON_OFFSET = 48;
+
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import {
@@ -45,8 +52,8 @@ import {
 import { filterSubagentResponses } from "@/lib/subagent-filter";
 import { cn } from "@/lib/utils";
 import { useStreamContext } from "@/providers/Stream";
-import { GitHubSVG } from "../icons/github";
-import { LangGraphLogoSVG } from "../icons/langgraph";
+import { GithubSvg } from "../icons/github";
+import { LanggraphLogoSvg } from "../icons/langgraph";
 import { GithubConfigDialog } from "../settings/github-config-dialog";
 import { Button } from "../ui/button";
 import { Label } from "../ui/label";
@@ -97,7 +104,9 @@ function StickyToBottomContent(props: {
 function ScrollToBottom(props: { className?: string }) {
   const { isAtBottom, scrollToBottom } = useStickToBottomContext();
 
-  if (isAtBottom) return null;
+  if (isAtBottom) {
+    return null;
+  }
   return (
     <Button
       className={props.className}
@@ -116,10 +125,12 @@ function McpServerConfigButton({ onClick }: { onClick: () => void }) {
       <Tooltip>
         <TooltipTrigger asChild>
           <button
+            aria-label="MCP Server Settings"
             className="flex cursor-pointer items-center justify-center"
             onClick={onClick}
+            type="button"
           >
-            <GitHubSVG height="24" width="24" />
+            <GithubSvg height="24" width="24" />
           </button>
         </TooltipTrigger>
         <TooltipContent side="left">
@@ -130,6 +141,200 @@ function McpServerConfigButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+// Helper functions to reduce complexity
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: <It's fine>
+function collectTimelineActivities(
+  filteredMessages: Message[],
+  researchGroups: ResearchAgentGroup[],
+  critiqueGroups: CritiqueAgentGroup[],
+  plannerGroups: PlannerAgentGroup[]
+) {
+  const processedIndices = new Set<number>();
+  const allTimelineActivities: Array<{
+    key: string;
+    messages: Message[];
+    startIndex: number;
+    endIndex: number;
+  }> = [];
+
+  for (const [index, message] of filteredMessages.entries()) {
+    // Check if this is the start of a research group
+    if (researchGroups.length > 0 && index === researchGroups[0].startIndex) {
+      const lastResearchGroup = researchGroups.at(-1);
+      if (lastResearchGroup) {
+        allTimelineActivities.push({
+          key: "research-agents-timeline",
+          messages: filteredMessages.slice(
+            researchGroups[0].startIndex,
+            lastResearchGroup.endIndex + 1
+          ),
+          startIndex: researchGroups[0].startIndex,
+          endIndex: lastResearchGroup.endIndex,
+        });
+      }
+
+      // Mark all research-related messages as processed
+      for (const group of researchGroups) {
+        for (let i = group.startIndex; i <= group.endIndex; i++) {
+          processedIndices.add(i);
+        }
+      }
+      continue;
+    }
+
+    // Check if this is the start of a critique group
+    if (critiqueGroups.length > 0 && index === critiqueGroups[0].startIndex) {
+      const lastCritiqueGroup = critiqueGroups.at(-1);
+      if (lastCritiqueGroup) {
+        allTimelineActivities.push({
+          key: "critique-agents-timeline",
+          messages: filteredMessages.slice(
+            critiqueGroups[0].startIndex,
+            lastCritiqueGroup.endIndex + 1
+          ),
+          startIndex: critiqueGroups[0].startIndex,
+          endIndex: lastCritiqueGroup.endIndex,
+        });
+      }
+
+      // Mark all critique-related messages as processed
+      for (const group of critiqueGroups) {
+        for (let i = group.startIndex; i <= group.endIndex; i++) {
+          processedIndices.add(i);
+        }
+      }
+      continue;
+    }
+
+    // Check if this is the start of a planner group
+    if (plannerGroups.length > 0 && index === plannerGroups[0].startIndex) {
+      const lastPlannerGroup = plannerGroups.at(-1);
+      if (lastPlannerGroup) {
+        allTimelineActivities.push({
+          key: "planner-agents-timeline",
+          messages: filteredMessages.slice(
+            plannerGroups[0].startIndex,
+            lastPlannerGroup.endIndex + 1
+          ),
+          startIndex: plannerGroups[0].startIndex,
+          endIndex: lastPlannerGroup.endIndex,
+        });
+      }
+
+      // Mark all planner-related messages as processed
+      for (const group of plannerGroups) {
+        for (let i = group.startIndex; i <= group.endIndex; i++) {
+          processedIndices.add(i);
+        }
+      }
+      continue;
+    }
+
+    // Skip if this message is part of a processed group
+    if (processedIndices.has(index)) {
+      continue;
+    }
+
+    // Process AI messages with tool calls
+    if (
+      message.type === "ai" &&
+      message.tool_calls &&
+      message.tool_calls.length > 0
+    ) {
+      // Find the end of this AI message's tool activities
+      let endIndex = index;
+      for (let i = index + 1; i < filteredMessages.length; i++) {
+        if (
+          filteredMessages[i].type === "human" ||
+          filteredMessages[i].type === "ai"
+        ) {
+          break;
+        }
+        endIndex = i;
+      }
+
+      allTimelineActivities.push({
+        key: `timeline-${index}`,
+        messages: filteredMessages.slice(index, endIndex + 1),
+        startIndex: index,
+        endIndex,
+      });
+
+      // Mark these messages as processed
+      for (let i = index; i <= endIndex; i++) {
+        processedIndices.add(i);
+      }
+    }
+  }
+
+  return allTimelineActivities;
+}
+
+function renderMessages(
+  filteredMessages: Message[],
+  allTimelineActivities: Array<{
+    key: string;
+    messages: Message[];
+    startIndex: number;
+    endIndex: number;
+  }>,
+  handleRegenerate: (parentCheckpoint: Checkpoint | null | undefined) => void,
+  isLoading: boolean
+) {
+  const processedIndices = new Set<number>();
+  const result: React.ReactElement[] = [];
+  let timelineActivityIndex = 0;
+
+  for (let index = 0; index < filteredMessages.length; index++) {
+    const message = filteredMessages[index];
+
+    // Check if this is the start of a timeline activity
+    if (
+      timelineActivityIndex < allTimelineActivities.length &&
+      index === allTimelineActivities[timelineActivityIndex].startIndex
+    ) {
+      // Render the timeline activity
+      const activity = allTimelineActivities[timelineActivityIndex];
+      result.push(
+        <TimelineAdapter
+          isLast={timelineActivityIndex === allTimelineActivities.length - 1}
+          key={activity.key}
+          messages={activity.messages}
+        />
+      );
+      timelineActivityIndex++;
+
+      // Skip to the end of this activity
+      index = activity.endIndex;
+      continue;
+    }
+
+    // Skip if this message is part of a processed group
+    if (processedIndices.has(index)) {
+      continue;
+    }
+
+    // Render individual message
+    const stableKey = `${message.type}-${index}`;
+
+    result.push(
+      message.type === "human" ? (
+        <HumanMessage isLoading={isLoading} key={stableKey} message={message} />
+      ) : (
+        <AssistantMessage
+          handleRegenerate={handleRegenerate}
+          isLoading={isLoading}
+          key={stableKey}
+          message={message}
+        />
+      )
+    );
+  }
+
+  return result;
+}
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: <It's fine>
 export function Thread() {
   const artifactContext = useArtifactContext();
   const [artifactOpen, closeArtifact] = useArtifactOpen();
@@ -177,7 +382,7 @@ export function Thread() {
       return;
     }
     try {
-      const message = (stream.error as any).message;
+      const message = (stream.error as Error).message;
       if (!message || lastError.current === message) {
         // Message has already been logged. do not modify ref, return early.
         return;
@@ -205,7 +410,7 @@ export function Thread() {
     if (
       messages.length !== prevMessageLength.current &&
       messages?.length &&
-      messages[messages.length - 1].type === "ai"
+      messages.at(-1)?.type === "ai"
     ) {
       setFirstTokenReceived(true);
     }
@@ -215,8 +420,12 @@ export function Thread() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if ((input.trim().length === 0 && contentBlocks.length === 0) || isLoading)
+    if (
+      (input.trim().length === 0 && contentBlocks.length === 0) ||
+      isLoading
+    ) {
       return;
+    }
     setFirstTokenReceived(false);
 
     const newHumanMessage: Message = {
@@ -259,7 +468,7 @@ export function Thread() {
     parentCheckpoint: Checkpoint | null | undefined
   ) => {
     // Do this so the loading state is correct
-    prevMessageLength.current = prevMessageLength.current - 1;
+    prevMessageLength.current -= 1;
     setFirstTokenReceived(false);
     stream.submit(undefined, {
       checkpoint: parentCheckpoint,
@@ -278,21 +487,17 @@ export function Thread() {
     <div className="flex h-screen w-full overflow-hidden">
       <div className="relative hidden lg:flex">
         <motion.div
-          animate={
-            isLargeScreen
-              ? { x: chatHistoryOpen ? 0 : -300 }
-              : { x: chatHistoryOpen ? 0 : -300 }
-          }
+          animate={{ x: chatHistoryOpen ? 0 : SIDEBAR_OFFSET }}
           className="absolute z-20 h-full overflow-hidden border-r bg-white"
-          initial={{ x: -300 }}
-          style={{ width: 300 }}
+          initial={{ x: SIDEBAR_OFFSET }}
+          style={{ width: SIDEBAR_WIDTH }}
           transition={
             isLargeScreen
               ? { type: "spring", stiffness: 300, damping: 30 }
               : { duration: 0 }
           }
         >
-          <div className="relative h-full" style={{ width: 300 }}>
+          <div className="relative h-full" style={{ width: SIDEBAR_WIDTH }}>
             <ThreadHistory />
           </div>
         </motion.div>
@@ -306,12 +511,11 @@ export function Thread() {
       >
         <motion.div
           animate={{
-            marginLeft: chatHistoryOpen ? (isLargeScreen ? 300 : 0) : 0,
-            width: chatHistoryOpen
-              ? isLargeScreen
-                ? "calc(100% - 300px)"
-                : "100%"
-              : "100%",
+            marginLeft: chatHistoryOpen && isLargeScreen ? SIDEBAR_WIDTH : 0,
+            width:
+              chatHistoryOpen && isLargeScreen
+                ? `calc(100% - ${SIDEBAR_WIDTH}px)`
+                : "100%",
           }}
           className={cn(
             "relative flex min-w-0 flex-1 flex-col overflow-hidden",
@@ -372,17 +576,31 @@ export function Thread() {
                 </div>
                 <motion.button
                   animate={{
-                    marginLeft: chatHistoryOpen ? 0 : 48,
+                    marginLeft: chatHistoryOpen ? 0 : BUTTON_OFFSET,
                   }}
+                  aria-label="New thread"
                   className="flex cursor-pointer items-center gap-2"
                   onClick={() => setThreadId(null)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                    }
+                  }}
+                  onKeyUp={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      setThreadId(null);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
                   transition={{
                     type: "spring",
                     stiffness: 300,
                     damping: 30,
                   }}
+                  type="button"
                 >
-                  <LangGraphLogoSVG height={32} width={32} />
+                  <LanggraphLogoSvg height={32} width={32} />
                   <span className="font-semibold text-xl tracking-tight">
                     Agent Chat
                   </span>
@@ -412,7 +630,7 @@ export function Thread() {
                 </TooltipIconButton>
               </div>
 
-              <div className="absolute inset-x-0 top-full h-5 bg-gradient-to-b from-background to-background/0" />
+              <div className="absolute inset-x-0 top-full h-5 bg-linear-to-b from-background to-background/0" />
             </div>
           )}
 
@@ -442,208 +660,19 @@ export function Thread() {
                     const plannerGroups =
                       groupPlannerAgentMessages(filteredMessages);
 
-                    // Track which indices have been processed
-                    const processedIndices = new Set<number>();
-                    const result: React.ReactElement[] = [];
+                    const timelineActivities = collectTimelineActivities(
+                      filteredMessages,
+                      researchGroups,
+                      critiqueGroups,
+                      plannerGroups
+                    );
 
-                    // Collect all timeline activities to render them in a single timeline
-                    const allTimelineActivities: Array<{
-                      key: string;
-                      messages: Message[];
-                      startIndex: number;
-                      endIndex: number;
-                    }> = [];
-
-                    // First pass: collect all timeline activities
-                    filteredMessages.forEach((message, index) => {
-                      // Check if this is the start of a research group
-                      if (
-                        researchGroups.length > 0 &&
-                        index === researchGroups[0].startIndex
-                      ) {
-                        allTimelineActivities.push({
-                          key: "research-agents-timeline",
-                          messages: filteredMessages.slice(
-                            researchGroups[0].startIndex,
-                            researchGroups[researchGroups.length - 1].endIndex +
-                              1
-                          ),
-                          startIndex: researchGroups[0].startIndex,
-                          endIndex:
-                            researchGroups[researchGroups.length - 1].endIndex,
-                        });
-
-                        // Mark all research-related messages as processed
-                        researchGroups.forEach((group) => {
-                          for (
-                            let i = group.startIndex;
-                            i <= group.endIndex;
-                            i++
-                          ) {
-                            processedIndices.add(i);
-                          }
-                        });
-                        return;
-                      }
-
-                      // Check if this is the start of a critique group
-                      if (
-                        critiqueGroups.length > 0 &&
-                        index === critiqueGroups[0].startIndex
-                      ) {
-                        allTimelineActivities.push({
-                          key: "critique-agents-timeline",
-                          messages: filteredMessages.slice(
-                            critiqueGroups[0].startIndex,
-                            critiqueGroups[critiqueGroups.length - 1].endIndex +
-                              1
-                          ),
-                          startIndex: critiqueGroups[0].startIndex,
-                          endIndex:
-                            critiqueGroups[critiqueGroups.length - 1].endIndex,
-                        });
-
-                        // Mark all critique-related messages as processed
-                        critiqueGroups.forEach((group) => {
-                          for (
-                            let i = group.startIndex;
-                            i <= group.endIndex;
-                            i++
-                          ) {
-                            processedIndices.add(i);
-                          }
-                        });
-                        return;
-                      }
-
-                      // Check if this is the start of a planner group
-                      if (
-                        plannerGroups.length > 0 &&
-                        index === plannerGroups[0].startIndex
-                      ) {
-                        allTimelineActivities.push({
-                          key: "planner-agents-timeline",
-                          messages: filteredMessages.slice(
-                            plannerGroups[0].startIndex,
-                            plannerGroups[plannerGroups.length - 1].endIndex + 1
-                          ),
-                          startIndex: plannerGroups[0].startIndex,
-                          endIndex:
-                            plannerGroups[plannerGroups.length - 1].endIndex,
-                        });
-
-                        // Mark all planner-related messages as processed
-                        plannerGroups.forEach((group) => {
-                          for (
-                            let i = group.startIndex;
-                            i <= group.endIndex;
-                            i++
-                          ) {
-                            processedIndices.add(i);
-                          }
-                        });
-                        return;
-                      }
-
-                      // Skip if this message is part of a processed group
-                      if (processedIndices.has(index)) {
-                        return;
-                      }
-
-                      // Process AI messages with tool calls
-                      if (
-                        message.type === "ai" &&
-                        message.tool_calls &&
-                        message.tool_calls.length > 0
-                      ) {
-                        // Find the end of this AI message's tool activities
-                        let endIndex = index;
-                        for (
-                          let i = index + 1;
-                          i < filteredMessages.length;
-                          i++
-                        ) {
-                          if (
-                            filteredMessages[i].type === "human" ||
-                            filteredMessages[i].type === "ai"
-                          ) {
-                            break;
-                          }
-                          endIndex = i;
-                        }
-
-                        allTimelineActivities.push({
-                          key: `timeline-${index}`,
-                          messages: filteredMessages.slice(index, endIndex + 1),
-                          startIndex: index,
-                          endIndex,
-                        });
-
-                        // Mark these messages as processed
-                        for (let i = index; i <= endIndex; i++) {
-                          processedIndices.add(i);
-                        }
-                        return;
-                      }
-                    });
-
-                    // Second pass: render everything in chronological order
-                    let timelineActivityIndex = 0;
-                    filteredMessages.forEach((message, index) => {
-                      // Check if this is the start of a timeline activity
-                      if (
-                        timelineActivityIndex < allTimelineActivities.length &&
-                        index ===
-                          allTimelineActivities[timelineActivityIndex]
-                            .startIndex
-                      ) {
-                        // Render the timeline activity
-                        const activity =
-                          allTimelineActivities[timelineActivityIndex];
-                        result.push(
-                          <TimelineAdapter
-                            isLast={
-                              timelineActivityIndex ===
-                              allTimelineActivities.length - 1
-                            }
-                            key={activity.key}
-                            messages={activity.messages}
-                          />
-                        );
-                        timelineActivityIndex++;
-
-                        // Skip to the end of this activity
-                        index = activity.endIndex;
-                        return;
-                      }
-
-                      // Skip if this message is part of a processed group
-                      if (processedIndices.has(index)) {
-                        return;
-                      }
-
-                      // Render individual message
-                      const stableKey = `${message.type}-${index}`;
-
-                      result.push(
-                        message.type === "human" ? (
-                          <HumanMessage
-                            isLoading={isLoading}
-                            key={stableKey}
-                            message={message}
-                          />
-                        ) : (
-                          <AssistantMessage
-                            handleRegenerate={handleRegenerate}
-                            isLoading={isLoading}
-                            key={stableKey}
-                            message={message}
-                          />
-                        )
-                      );
-                    });
-
-                    return result;
+                    return renderMessages(
+                      filteredMessages,
+                      timelineActivities,
+                      handleRegenerate,
+                      isLoading
+                    );
                   })()}
                   {/* Special rendering case where there are no AI/tool messages, but there is an interrupt.
                     We need to render it outside of the messages list, since there are no messages to render */}
@@ -665,7 +694,7 @@ export function Thread() {
                 <div className="sticky bottom-0 z-30 flex flex-col items-center gap-8 bg-white">
                   {!chatStarted && (
                     <div className="flex items-center gap-3">
-                      <LangGraphLogoSVG className="h-8 flex-shrink-0" />
+                      <LanggraphLogoSvg className="h-8 shrink-0" />
                       <h1 className="font-semibold text-2xl tracking-tight">
                         Agent Chat
                       </h1>
@@ -778,11 +807,16 @@ export function Thread() {
           <div className="absolute inset-0 flex min-w-[30vw] flex-col">
             <div className="grid grid-cols-[1fr_auto] border-b p-4">
               <ArtifactTitle className="overflow-hidden truncate" />
-              <button className="cursor-pointer" onClick={closeArtifact}>
+              <button
+                aria-label="Close artifact"
+                className="cursor-pointer"
+                onClick={closeArtifact}
+                type="button"
+              >
                 <XIcon className="size-5" />
               </button>
             </div>
-            <ArtifactContent className="relative flex-grow" />
+            <ArtifactContent className="relative grow" />
           </div>
         </div>
       </div>

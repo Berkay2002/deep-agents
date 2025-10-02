@@ -27,7 +27,6 @@
     "ultracite": "5.4.5"
   },
   "dependencies": {
-    "@anthropic-ai/claude-code": "^2.0.1",
     "@langchain/mcp-adapters": "^0.6.0",
     "@modelcontextprotocol/sdk": "^1.18.2",
     "react-syntax-highlighter": "^15.6.6"

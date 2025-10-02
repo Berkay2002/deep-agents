@@ -37,7 +37,7 @@ type TimelineItemProps = {
   isLast?: boolean;
   className?: string;
   isMini?: boolean;
-}
+};
 
 function getIconForType(type: TimelineItemType) {
   const iconClass = "w-4 h-4";
@@ -66,7 +66,9 @@ function getIconForType(type: TimelineItemType) {
   }
 }
 
-function getStatusColor(status?: "pending" | "in_progress" | "completed" | "error") {
+function getStatusColor(
+  status?: "pending" | "in_progress" | "completed" | "error"
+) {
   switch (status) {
     case "pending":
       return "bg-gray-300 border-gray-400";

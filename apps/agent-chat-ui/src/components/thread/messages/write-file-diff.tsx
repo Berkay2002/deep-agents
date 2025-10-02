@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/style/useNamingConvention: <Fallback> */
 "use client";
 
 import { type Change, diffLines as diffLinesUtil } from "diff";
@@ -33,7 +34,7 @@ const DiffType = {
   removed: 2,
 } as const;
 
-type DiffType = typeof DiffType[keyof typeof DiffType];
+type DiffType = (typeof DiffType)[keyof typeof DiffType];
 
 type DiffLine = {
   type: DiffType;
@@ -113,7 +114,10 @@ function calculateStats(diffLines: DiffLine[]) {
   return { additions, deletions };
 }
 
-function getFileContent(args: WriteFileDiffProps["args"], isWriteOperation: boolean) {
+function getFileContent(
+  args: WriteFileDiffProps["args"],
+  isWriteOperation: boolean
+) {
   if (isWriteOperation) {
     // For Write operations, show the entire content as new
     return {
@@ -121,7 +125,7 @@ function getFileContent(args: WriteFileDiffProps["args"], isWriteOperation: bool
       newContent: args.content || "",
     };
   }
-  
+
   // For Edit operations
   return {
     oldContent: args.oldString || args.old_string || "",
@@ -129,15 +133,21 @@ function getFileContent(args: WriteFileDiffProps["args"], isWriteOperation: bool
   };
 }
 
-function StatusIcon({ hasFailed, hasSucceeded }: { hasFailed: boolean; hasSucceeded: boolean }) {
+function StatusIcon({
+  hasFailed,
+  hasSucceeded,
+}: {
+  hasFailed: boolean;
+  hasSucceeded: boolean;
+}) {
   if (hasFailed) {
     return <AlertCircle className="h-4 w-4 text-red-500" />;
   }
-  
+
   if (hasSucceeded) {
     return <CheckCircle className="h-4 w-4 text-green-500" />;
   }
-  
+
   return <FileText className="h-4 w-4 text-gray-500" />;
 }
 
@@ -197,7 +207,7 @@ function DiffRow({ line }: { line: DiffLine }) {
         <pre className="m-0 p-0">
           {isAdded && "+"}
           {isRemoved && "-"}
-          {!isAdded && !isRemoved && " "}
+          {!(isAdded || isRemoved) && " "}
         </pre>
       </td>
 
@@ -222,7 +232,7 @@ function DiffRow({ line }: { line: DiffLine }) {
             </pre>
           </del>
         )}
-        {!isAdded && !isRemoved && (
+        {!(isAdded || isRemoved) && (
           <pre className="break-anywhere m-0 whitespace-pre-wrap px-2 py-0 text-[#24292e] leading-[1.6em]">
             {line.value || " "}
           </pre>
@@ -232,7 +242,12 @@ function DiffRow({ line }: { line: DiffLine }) {
   );
 }
 
-function useWriteFileDiffState(args: WriteFileDiffProps["args"], toolName: string, error?: string, success?: boolean) {
+function useWriteFileDiffState(
+  args: WriteFileDiffProps["args"],
+  toolName: string,
+  error?: string,
+  success?: boolean
+) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showErrorDetails, setShowErrorDetails] = useState(false);
 
@@ -285,7 +300,10 @@ function DiffContent({ displayedLines }: { displayedLines: DiffLine[] }) {
         <table className="w-full min-w-[1000px] border-collapse font-mono text-[13px]">
           <tbody>
             {displayedLines.map((line) => (
-              <DiffRow key={`${line.type}-${line.leftLineNumber}-${line.rightLineNumber}`} line={line} />
+              <DiffRow
+                key={`${line.type}-${line.leftLineNumber}-${line.rightLineNumber}`}
+                line={line}
+              />
             ))}
           </tbody>
         </table>
@@ -305,16 +323,16 @@ function ExpandButton({
 }) {
   return (
     <motion.button
-      type="button"
       className="flex w-full cursor-pointer items-center justify-center border-gray-200 border-t bg-gray-50 py-2 text-gray-500 transition-all duration-200 ease-in-out hover:bg-gray-100 hover:text-gray-600"
       initial={{ scale: 1 }}
       onClick={() => setIsExpanded(!isExpanded)}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           setIsExpanded(!isExpanded);
         }
       }}
+      type="button"
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
     >
@@ -344,40 +362,43 @@ function ErrorSection({
   return (
     <div className="border-red-200 border-t-2 bg-red-50 px-4 py-3">
       <div className="flex items-start gap-2">
-        <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-600" />
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
         <div className="flex-1">
           <p className="mb-1 font-medium text-red-900 text-sm">
             Operation Failed
           </p>
           <p className="text-red-800 text-sm">
-            {error.length > ERROR_PREVIEW_LENGTH ? `${error.slice(0, ERROR_PREVIEW_LENGTH)}...` : error}
+            {error.length > ERROR_PREVIEW_LENGTH
+              ? `${error.slice(0, ERROR_PREVIEW_LENGTH)}...`
+              : error}
           </p>
           {error.length > ERROR_PREVIEW_LENGTH && (
             <button
-              type="button"
-              className="mt-2 font-medium text-red-700 text-xs underline hover:text-red-900"
+              aria-controls="error-details"
+              aria-expanded={showErrorDetails}
+              className="mt-2 font-medium text-red-700 text-xs underline hover:text-red-900 focus:outline-hidden focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
               onClick={() => setShowErrorDetails(!showErrorDetails)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
+                if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
                   setShowErrorDetails(!showErrorDetails);
                 }
               }}
+              type="button"
             >
               {showErrorDetails ? "Show less" : "Show full error"}
             </button>
           )}
           {showErrorDetails && error.length > ERROR_PREVIEW_LENGTH && (
-            <div className="mt-2 rounded bg-red-100 p-2">
+            <div className="mt-2 rounded-sm bg-red-100 p-2" id="error-details">
               <code className="whitespace-pre-wrap break-all text-red-900 text-xs">
                 {error}
               </code>
             </div>
           )}
           <p className="mt-2 text-red-700 text-xs">
-            💡 <strong>Tip:</strong> The file content may have changed
-            since it was last read. The agent may retry with a different
-            approach.
+            💡 <strong>Tip:</strong> The file content may have changed since it
+            was last read. The agent may retry with a different approach.
           </p>
         </div>
       </div>
@@ -404,9 +425,7 @@ function Header({
     <div
       className={cn(
         "border-b px-4 py-2",
-        hasFailed
-          ? "border-red-200 bg-red-50"
-          : "border-gray-200 bg-gray-50"
+        hasFailed ? "border-red-200 bg-red-50" : "border-gray-200 bg-gray-50"
       )}
     >
       <div className="flex items-center justify-between">
@@ -421,12 +440,12 @@ function Header({
             {filePath}
           </code>
           {hasFailed && (
-            <span className="rounded bg-red-100 px-2 py-0.5 font-medium text-red-700 text-xs">
+            <span className="rounded-sm bg-red-100 px-2 py-0.5 font-medium text-red-700 text-xs">
               Failed
             </span>
           )}
           {hasSucceeded && (
-            <span className="rounded bg-green-100 px-2 py-0.5 font-medium text-green-700 text-xs">
+            <span className="rounded-sm bg-green-100 px-2 py-0.5 font-medium text-green-700 text-xs">
               Success
             </span>
           )}
@@ -481,11 +500,11 @@ function WriteFileDiffContent({
         )}
       >
         <Header
+          additions={additions}
+          deletions={deletions}
           filePath={filePath}
           hasFailed={hasFailed}
           hasSucceeded={hasSucceeded}
-          additions={additions}
-          deletions={deletions}
           isWriteOperation={isWriteOperation}
         />
 
@@ -502,8 +521,8 @@ function WriteFileDiffContent({
         {hasFailed && error && (
           <ErrorSection
             error={error}
-            showErrorDetails={showErrorDetails}
             setShowErrorDetails={setShowErrorDetails}
+            showErrorDetails={showErrorDetails}
           />
         )}
       </div>
@@ -519,12 +538,12 @@ export function WriteFileDiff({
 }: WriteFileDiffProps) {
   // Note: This component intentionally does not render copy content or refresh buttons
   // to keep the diff view clean and focused on the content changes
-  
+
   const state = useWriteFileDiffState(args, toolName, error, success);
-  
+
   if (!state) {
     return null;
   }
-  
+
   return <WriteFileDiffContent {...state} error={error} />;
 }

@@ -114,7 +114,7 @@ export function TavilySearchResults({
         <div className="border-gray-200 border-b bg-gray-50 px-4 py-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <Search className="h-4 w-4 flex-shrink-0 text-gray-400" />
+              <Search className="h-4 w-4 shrink-0 text-gray-400" />
               <div className="min-w-0 flex-1">
                 <h3 className="truncate font-medium text-gray-900 text-sm">
                   {query}
@@ -135,7 +135,7 @@ export function TavilySearchResults({
               aria-label={
                 isExpanded ? "Collapse search results" : "Expand search results"
               }
-              className="flex-shrink-0 text-gray-500 hover:text-gray-700"
+              className="shrink-0 text-gray-500 hover:text-gray-700"
               onClick={() => setIsExpanded(!isExpanded)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {

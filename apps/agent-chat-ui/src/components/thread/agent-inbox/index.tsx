@@ -4,9 +4,9 @@ import { useStreamContext } from "@/providers/Stream";
 import { StateView } from "./components/state-view";
 import { ThreadActionsView } from "./components/thread-actions-view";
 
-interface ThreadViewProps {
+type ThreadViewProps = {
   interrupt: HumanInterrupt | HumanInterrupt[];
-}
+};
 
 export function ThreadView({ interrupt }: ThreadViewProps) {
   const interruptObj = Array.isArray(interrupt) ? interrupt[0] : interrupt;
@@ -20,7 +20,6 @@ export function ThreadView({ interrupt }: ThreadViewProps) {
     showDescription: boolean
   ) => {
     if (showState && showDescription) {
-      console.error("Cannot show both state and description");
       return;
     }
     if (showState) {

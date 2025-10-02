@@ -17,11 +17,11 @@ import { useStreamContext } from "@/providers/Stream";
 import type { HumanResponseWithEdits, SubmitType } from "../types";
 import { createDefaultHumanResponse } from "../utils";
 
-interface UseInterruptedActionsInput {
+type UseInterruptedActionsInput = {
   interrupt: HumanInterrupt;
-}
+};
 
-interface UseInterruptedActionsValue {
+type UseInterruptedActionsValue = {
   // Actions
   handleSubmit: (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent> | KeyboardEvent
@@ -51,7 +51,7 @@ interface UseInterruptedActionsValue {
 
   // Refs
   initialHumanInterruptEditValue: MutableRefObject<Record<string, string>>;
-}
+};
 
 export default function useInterruptedActions({
   interrupt,
@@ -78,9 +78,7 @@ export default function useInterruptedActions({
       setSelectedSubmitType(defaultSubmitType);
       setHumanResponse(responses);
       setAcceptAllowed(hasAccept);
-    } catch (e) {
-      console.error("Error formatting and setting human response state", e);
-    }
+    } catch (_e) {}
   }, [interrupt]);
 
   const resumeRun = (response: HumanResponse[]): boolean => {
@@ -94,8 +92,7 @@ export default function useInterruptedActions({
         }
       );
       return true;
-    } catch (e: any) {
-      console.error("Error sending human response", e);
+    } catch (_e: any) {
       return false;
     }
   };
@@ -180,8 +177,6 @@ export default function useInterruptedActions({
           setStreamFinished(true);
         }
       } catch (e: any) {
-        console.error("Error sending human response", e);
-
         if ("message" in e && e.message.includes("Invalid assistant ID")) {
           toast("Error: Invalid assistant ID", {
             description:
@@ -268,8 +263,7 @@ export default function useInterruptedActions({
         description: "Marked thread as resolved.",
         duration: 3000,
       });
-    } catch (e) {
-      console.error("Error marking thread as resolved", e);
+    } catch (_e) {
       toast.error("Error", {
         description: "Failed to mark thread as resolved.",
         richColors: true,

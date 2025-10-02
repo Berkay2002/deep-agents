@@ -33,7 +33,6 @@
     "date-fns": "^4.1.0",
     "diff": "^8.0.2",
     "esbuild": "^0.25.0",
-    "esbuild-plugin-tailwindcss": "^2.0.1",
     "framer-motion": "^12.4.9",
     "jose": "^5.9.3",
     "katex": "^0.16.21",
@@ -58,7 +57,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.4",
-    "@tailwindcss/postcss": "^4.0.13",
+    "@tailwindcss/postcss": "^4.1.14",
     "@types/diff": "^7.0.2",
     "@types/lodash": "^4.17.16",
     "@types/node": "^22.13.5",
@@ -69,7 +68,7 @@
     "dotenv": "^16.4.7",
     "next": "^15.2.3",
     "postcss": "^8.5.3",
-    "tailwindcss": "^4.0.13",
+    "tailwindcss": "^4.1.14",
     "typescript": "~5.7.2",
     "ultracite": "^5.4.5"
   },

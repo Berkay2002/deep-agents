@@ -14,14 +14,14 @@ import { Command, getCurrentTaskInput } from "@langchain/langgraph";
 import { z } from "zod";
 import type { DeepAgentStateType } from "../../../deep-agent-experimental/types.js";
 import {
-	type ExaSearchArgs,
-	exaSearchArgsSchema,
-	performExaSearch,
+  type ExaSearchArgs,
+  exaSearchArgsSchema,
+  performExaSearch,
 } from "../../../utils/exa.js";
 import {
-	performTavilySearch,
-	type TavilySearchArgs,
-	tavilySearchArgsSchema,
+  performTavilySearch,
+  type TavilySearchArgs,
+  tavilySearchArgsSchema,
 } from "../../../utils/tavily.js";
 
 /**
@@ -229,241 +229,241 @@ Findings persist across agent turns and can be accessed by parent agents for rep
 // Constants for magic numbers
 const MAX_QUERY_LENGTH = 60;
 const MAX_FILENAME_LENGTH = 60;
+const ANSWER_PREVIEW_LENGTH = 200;
 
 /**
  * Helper function to sanitize query for filesystem paths
  */
 function sanitizeQueryForPath(query: string): string {
-	return query
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, "_")
-		.replace(/^_+|_+$/g, "")
-		.substring(0, MAX_QUERY_LENGTH);
+  return query
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .substring(0, MAX_QUERY_LENGTH);
 }
 
 /**
  * Helper function to sanitize topic for filesystem paths
  */
 function sanitizeTopicForPath(topic: string): string {
-	return topic
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, "_")
-		.replace(/^_+|_+$/g, "")
-		.substring(0, MAX_FILENAME_LENGTH);
+  return topic
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .substring(0, MAX_FILENAME_LENGTH);
 }
 
 /**
  * Helper function to format search cache
  */
 function formatSearchCache(
-	query: string,
-	results: unknown[],
-	searchType: "exa" | "tavily",
-	additionalData?: Record<string, unknown>
+  query: string,
+  results: unknown[],
+  searchType: "exa" | "tavily",
+  additionalData?: Record<string, unknown>
 ): string {
-	return JSON.stringify(
-		{
-			query,
-			timestamp: new Date().toISOString(),
-			searchType,
-			cached: false,
-			results,
-			...additionalData,
-		},
-		null,
-		2
-	);
+  return JSON.stringify(
+    {
+      query,
+      timestamp: new Date().toISOString(),
+      searchType,
+      cached: false,
+      results,
+      ...additionalData,
+    },
+    null,
+    2
+  );
 }
 
 /**
  * Exa search tool - performs semantic web search and stores in mock filesystem
  */
 export const exaSearch = tool(
-	async (input: unknown, config: ToolRunnableConfig) => {
-		const state = getCurrentTaskInput<DeepAgentStateType>();
-		const files = { ...(state.files || {}) };
-		const args = input as ExaSearchArgs;
+  async (input: unknown, config: ToolRunnableConfig) => {
+    const state = getCurrentTaskInput<DeepAgentStateType>();
+    const files = { ...(state.files || {}) };
+    const args = input as ExaSearchArgs;
 
-		// Perform the actual search using existing utility
-		const searchResult = await performExaSearch(args, { toolName: "exa_search" });
+    // Perform the actual search using existing utility
+    const searchResult = await performExaSearch(args, {
+      toolName: "exa_search",
+    });
 
-		// Sanitize query for file path
-		const sanitizedQuery = sanitizeQueryForPath(args.query);
-		const filePath = `/research/searches/${sanitizedQuery}_exa.json`;
+    // Sanitize query for file path
+    const sanitizedQuery = sanitizeQueryForPath(args.query);
+    const filePath = `/research/searches/${sanitizedQuery}_exa.json`;
 
-		// Store results in mock filesystem
-		files[filePath] = formatSearchCache(
-			args.query,
-			searchResult.results,
-			"exa",
-			{
-				error: searchResult.error,
-			}
-		);
+    // Store results in mock filesystem
+    files[filePath] = formatSearchCache(
+      args.query,
+      searchResult.results,
+      "exa",
+      {
+        error: searchResult.error,
+      }
+    );
 
-		// Prepare user-facing message
-		const resultCount = searchResult.results.length;
-		const hasError = !!searchResult.error;
-		const messageContent = hasError
-			? `Exa search encountered an issue: ${searchResult.error}\n\nSearch results cached to ${filePath}\nYou can still read cached results with: read_file({ filePath: "${filePath}" })`
-			: `Exa search completed: Found ${resultCount} results for "${args.query}"\n\nResults cached to ${filePath}\nUse read_file to access full results: read_file({ filePath: "${filePath}" })`;
+    // Prepare user-facing message
+    const resultCount = searchResult.results.length;
+    const hasError = !!searchResult.error;
+    const messageContent = hasError
+      ? `Exa search encountered an issue: ${searchResult.error}\n\nSearch results cached to ${filePath}\nYou can still read cached results with: read_file({ filePath: "${filePath}" })`
+      : `Exa search completed: Found ${resultCount} results for "${args.query}"\n\nResults cached to ${filePath}\nUse read_file to access full results: read_file({ filePath: "${filePath}" })`;
 
-		return new Command({
-			update: {
-				files,
-				messages: [
-					new ToolMessage({
-						content: messageContent,
-						// biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
-						tool_call_id: config.toolCall?.id as string,
-					}),
-				],
-			},
-		});
-	},
-	{
-		name: "exa_search",
-		description: EXA_SEARCH_DESCRIPTION,
-		schema: exaSearchArgsSchema,
-	}
+    return new Command({
+      update: {
+        files,
+        messages: [
+          new ToolMessage({
+            content: messageContent,
+            // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
+            tool_call_id: config.toolCall?.id as string,
+          }),
+        ],
+      },
+    });
+  },
+  {
+    name: "exa_search",
+    description: EXA_SEARCH_DESCRIPTION,
+    schema: exaSearchArgsSchema,
+  }
 );
 
 /**
  * Tavily search tool - performs web search and stores in mock filesystem
  */
 export const tavilySearch = tool(
-	async (input: unknown, config: ToolRunnableConfig) => {
-		const state = getCurrentTaskInput<DeepAgentStateType>();
-		const files = { ...(state.files || {}) };
-		const args = input as TavilySearchArgs;
+  async (input: unknown, config: ToolRunnableConfig) => {
+    const state = getCurrentTaskInput<DeepAgentStateType>();
+    const files = { ...(state.files || {}) };
+    const args = input as TavilySearchArgs;
 
-		// Perform the actual search using existing utility
-		const searchResult = await performTavilySearch(args, {
-			toolName: "tavily_search",
-		});
+    // Perform the actual search using existing utility
+    const searchResult = await performTavilySearch(args, {
+      toolName: "tavily_search",
+    });
 
-		// Sanitize query for file path
-		const sanitizedQuery = sanitizeQueryForPath(args.query);
-		const filePath = `/research/searches/${sanitizedQuery}_tavily.json`;
+    // Sanitize query for file path
+    const sanitizedQuery = sanitizeQueryForPath(args.query);
+    const filePath = `/research/searches/${sanitizedQuery}_tavily.json`;
 
-		// Store results in mock filesystem
-		files[filePath] = formatSearchCache(
-			args.query,
-			searchResult.results,
-			"tavily",
-			{
-				answer: searchResult.answer,
-				images: searchResult.images,
-				followUpQuestions: searchResult.followUpQuestions,
-				error: searchResult.error,
-			}
-		);
+    // Store results in mock filesystem
+    files[filePath] = formatSearchCache(
+      args.query,
+      searchResult.results,
+      "tavily",
+      {
+        answer: searchResult.answer,
+        images: searchResult.images,
+        followUpQuestions: searchResult.followUpQuestions,
+        error: searchResult.error,
+      }
+    );
 
-		// Prepare user-facing message
-		const resultCount = searchResult.results.length;
-		const hasError = !!searchResult.error;
-		const hasAnswer = !!searchResult.answer && !hasError;
-		const answerPreview = hasAnswer
-			? `\n\nSynthesized Answer: ${searchResult.answer?.substring(0, 200)}${searchResult.answer && searchResult.answer.length > 200 ? "..." : ""}`
-			: "";
-		const messageContent = hasError
-			? `Tavily search encountered an issue: ${searchResult.error}\n\nSearch results cached to ${filePath}\nYou can still read cached results with: read_file({ filePath: "${filePath}" })`
-			: `Tavily search completed: Found ${resultCount} results for "${args.query}"${answerPreview}\n\nResults cached to ${filePath}\nUse read_file to access full results: read_file({ filePath: "${filePath}" })`;
+    // Prepare user-facing message
+    const resultCount = searchResult.results.length;
+    const hasError = !!searchResult.error;
+    const hasAnswer = !!searchResult.answer && !hasError;
+    const answerPreview = hasAnswer
+      ? `\n\nSynthesized Answer: ${searchResult.answer?.substring(0, ANSWER_PREVIEW_LENGTH)}${searchResult.answer && searchResult.answer.length > ANSWER_PREVIEW_LENGTH ? "..." : ""}`
+      : "";
+    const messageContent = hasError
+      ? `Tavily search encountered an issue: ${searchResult.error}\n\nSearch results cached to ${filePath}\nYou can still read cached results with: read_file({ filePath: "${filePath}" })`
+      : `Tavily search completed: Found ${resultCount} results for "${args.query}"${answerPreview}\n\nResults cached to ${filePath}\nUse read_file to access full results: read_file({ filePath: "${filePath}" })`;
 
-		return new Command({
-			update: {
-				files,
-				messages: [
-					new ToolMessage({
-						content: messageContent,
-						// biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
-						tool_call_id: config.toolCall?.id as string,
-					}),
-				],
-			},
-		});
-	},
-	{
-		name: "tavily_search",
-		description: TAVILY_SEARCH_DESCRIPTION,
-		schema: tavilySearchArgsSchema,
-	}
+    return new Command({
+      update: {
+        files,
+        messages: [
+          new ToolMessage({
+            content: messageContent,
+            // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
+            tool_call_id: config.toolCall?.id as string,
+          }),
+        ],
+      },
+    });
+  },
+  {
+    name: "tavily_search",
+    description: TAVILY_SEARCH_DESCRIPTION,
+    schema: tavilySearchArgsSchema,
+  }
 );
 
 /**
  * Save research findings tool - stores structured findings in mock filesystem
  */
 export const saveResearchFindings = tool(
-	(input: unknown, config: ToolRunnableConfig) => {
-		const state = getCurrentTaskInput<DeepAgentStateType>();
-		const files = { ...(state.files || {}) };
-		const { topic, findings, metadata } = input as {
-			topic: string;
-			findings: Array<{ fact: string; source: string; category: string }>;
-			metadata?: Record<string, unknown>;
-		};
+  (input: unknown, config: ToolRunnableConfig) => {
+    const state = getCurrentTaskInput<DeepAgentStateType>();
+    const files = { ...(state.files || {}) };
+    const { topic, findings, metadata } = input as {
+      topic: string;
+      findings: Array<{ fact: string; source: string; category: string }>;
+      metadata?: Record<string, unknown>;
+    };
 
-		// Sanitize topic for file path
-		const sanitizedTopic = sanitizeTopicForPath(topic);
-		const filePath = `/research/findings/${sanitizedTopic}_findings.json`;
+    // Sanitize topic for file path
+    const sanitizedTopic = sanitizeTopicForPath(topic);
+    const filePath = `/research/findings/${sanitizedTopic}_findings.json`;
 
-		// Check if findings file already exists
-		let existingFindings: Array<{
-			fact: string;
-			source: string;
-			category: string;
-		}> = [];
-		let existingSources: string[] = [];
-		let existingCategories: string[] = [];
+    // Check if findings file already exists
+    let existingFindings: Array<{
+      fact: string;
+      source: string;
+      category: string;
+    }> = [];
+    let existingSources: string[] = [];
+    let existingCategories: string[] = [];
 
-		if (filePath in files) {
-			try {
-				const existing = JSON.parse(files[filePath] || "{}");
-				existingFindings = existing.findings || [];
-				existingSources = existing.sources || [];
-				existingCategories = existing.categories || [];
-			} catch {
-				// If parsing fails, start fresh
-			}
-		}
+    if (filePath in files) {
+      try {
+        const existing = JSON.parse(files[filePath] || "{}");
+        existingFindings = existing.findings || [];
+        existingSources = existing.sources || [];
+        existingCategories = existing.categories || [];
+      } catch {
+        // If parsing fails, start fresh
+      }
+    }
 
-		// Merge new findings with existing
-		const mergedFindings = [...existingFindings, ...findings];
+    // Merge new findings with existing
+    const mergedFindings = [...existingFindings, ...findings];
 
-		// Extract and deduplicate sources
-		const allSources = [
-			...existingSources,
-			...findings.map((f) => f.source),
-		];
-		const uniqueSources = Array.from(new Set(allSources));
+    // Extract and deduplicate sources
+    const allSources = [...existingSources, ...findings.map((f) => f.source)];
+    const uniqueSources = Array.from(new Set(allSources));
 
-		// Extract and deduplicate categories
-		const allCategories = [
-			...existingCategories,
-			...findings.map((f) => f.category),
-		];
-		const uniqueCategories = Array.from(new Set(allCategories));
+    // Extract and deduplicate categories
+    const allCategories = [
+      ...existingCategories,
+      ...findings.map((f) => f.category),
+    ];
+    const uniqueCategories = Array.from(new Set(allCategories));
 
-		// Create findings result
-		const findingsResult = {
-			topic,
-			findings: mergedFindings,
-			sources: uniqueSources,
-			categories: uniqueCategories,
-			totalFindings: mergedFindings.length,
-			metadata: metadata || {},
-			timestamp: new Date().toISOString(),
-		};
+    // Create findings result
+    const findingsResult = {
+      topic,
+      findings: mergedFindings,
+      sources: uniqueSources,
+      categories: uniqueCategories,
+      totalFindings: mergedFindings.length,
+      metadata: metadata || {},
+      timestamp: new Date().toISOString(),
+    };
 
-		// Store in mock filesystem
-		files[filePath] = JSON.stringify(findingsResult, null, 2);
+    // Store in mock filesystem
+    files[filePath] = JSON.stringify(findingsResult, null, 2);
 
-		return new Command({
-			update: {
-				files,
-				messages: [
-					new ToolMessage({
-						content: `Research findings saved to ${filePath}
+    return new Command({
+      update: {
+        files,
+        messages: [
+          new ToolMessage({
+            content: `Research findings saved to ${filePath}
 
 Summary:
 - Topic: ${topic}
@@ -473,52 +473,48 @@ Summary:
 - Categories: ${uniqueCategories.join(", ")}
 
 Use read_file to access findings: read_file({ filePath: "${filePath}" })`,
-						// biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
-						tool_call_id: config.toolCall?.id as string,
-					}),
-				],
-			},
-		});
-	},
-	{
-		name: "save_research_findings",
-		description: SAVE_FINDINGS_DESCRIPTION,
-		schema: z.object({
-			topic: z.string().describe("The research topic these findings relate to"),
-			findings: z
-				.array(
-					z.object({
-						fact: z.string().describe("The key fact or insight discovered"),
-						source: z
-							.string()
-							.describe("URL or reference where this was found"),
-						category: z
-							.string()
-							.describe(
-								"Category/type of finding (e.g., background, statistics, expert opinion)"
-							),
-					})
-				)
-				.describe("Array of structured findings"),
-			metadata: z
-				.record(z.string(), z.unknown())
-				.optional()
-				.describe("Optional additional context"),
-		}),
-	}
+            // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
+            tool_call_id: config.toolCall?.id as string,
+          }),
+        ],
+      },
+    });
+  },
+  {
+    name: "save_research_findings",
+    description: SAVE_FINDINGS_DESCRIPTION,
+    schema: z.object({
+      topic: z.string().describe("The research topic these findings relate to"),
+      findings: z
+        .array(
+          z.object({
+            fact: z.string().describe("The key fact or insight discovered"),
+            source: z
+              .string()
+              .describe("URL or reference where this was found"),
+            category: z
+              .string()
+              .describe(
+                "Category/type of finding (e.g., background, statistics, expert opinion)"
+              ),
+          })
+        )
+        .describe("Array of structured findings"),
+      metadata: z
+        .record(z.string(), z.unknown())
+        .optional()
+        .describe("Optional additional context"),
+    }),
+  }
 );
 
 /**
  * Research tools collection
  */
-export const researchTools = [
-	exaSearch,
-	tavilySearch,
-	saveResearchFindings,
-];
+export const researchTools = [exaSearch, tavilySearch, saveResearchFindings];
 
 /**
  * Message modifier for adding research system prompts
  */
 export const researchMessageModifier = (message: string) =>
-	message + RESEARCH_SYSTEM_PROMPT;
+  message + RESEARCH_SYSTEM_PROMPT;

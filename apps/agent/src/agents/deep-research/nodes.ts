@@ -12,13 +12,13 @@ export const researchSubAgent: SubAgent = {
     "Used to extract raw research data for synthesis. This agent returns UNFORMATTED research findings, NOT polished reports. Only give this researcher one topic at a time. Do not pass multiple sub questions to this researcher. Instead, break down large topics into necessary components and call multiple research agents in parallel, one for each sub question. CRITICAL: The research-agent returns raw data in plain structured format (bullet points + source URLs). DO NOT echo its response to the user. DO NOT treat its response as a formatted report. ONLY use it as source material for your final_report.md. After receiving research results, mark the corresponding todo as completed and continue with remaining todos.",
   prompt: RESEARCH_SUB_AGENT_PROMPT,
   tools: [
-    "tavily_search",        // Refactored with Command pattern
-    "exa_search",           // Refactored with Command pattern
+    "tavily_search", // Refactored with Command pattern
+    "exa_search", // Refactored with Command pattern
     "save_research_findings", // NEW: Structure findings
-    "ls",                   // List mock filesystem
-    "read_file",            // Read cached searches/findings
-    "write_file",           // Write custom artifacts
-    "edit_file"             // Edit existing artifacts
+    "ls", // List mock filesystem
+    "read_file", // Read cached searches/findings
+    "write_file", // Write custom artifacts
+    "edit_file", // Edit existing artifacts
   ],
 };
 
@@ -28,14 +28,14 @@ export const critiqueSubAgent: SubAgent = {
     "Used to critique the final report using specialized critique tools. This agent performs structured analysis of report structure, completeness, accuracy, and clarity. It can fact-check claims, evaluate organization, analyze coverage, and save structured critique findings. The agent outputs STRUCTURED CRITIQUE DATA for synthesis by the main agent. CRITICAL: DO NOT echo its response to the user. DO NOT treat its response as a formatted report. ONLY use it as source material for improving your final_report.md.",
   prompt: CRITIQUE_SUB_AGENT_PROMPT,
   tools: [
-    "tavily_search",          // For manual fact-checking
-    "exa_search",             // For manual fact-checking
-    "fact_check",             // Automated fact verification
-    "evaluate_structure",     // Structure analysis
-    "analyze_completeness",   // Completeness assessment
-    "save_critique",          // Save structured critique
-    "read_file",              // Read report, question, cached analyses
-    "ls"                      // List available files
+    "tavily_search", // For manual fact-checking
+    "exa_search", // For manual fact-checking
+    "fact_check", // Automated fact verification
+    "evaluate_structure", // Structure analysis
+    "analyze_completeness", // Completeness assessment
+    "save_critique", // Save structured critique
+    "read_file", // Read report, question, cached analyses
+    "ls", // List available files
   ],
   /**
    * Note: The agent now has access to specialized critique tools that perform

@@ -76,9 +76,9 @@ export function LsResult({ files }: LsResultProps) {
                   key={itemKey}
                 >
                   {isDirectory ? (
-                    <Folder className="h-4 w-4 flex-shrink-0 text-blue-500" />
+                    <Folder className="h-4 w-4 shrink-0 text-blue-500" />
                   ) : (
-                    <FileText className="h-4 w-4 flex-shrink-0 text-gray-400" />
+                    <FileText className="h-4 w-4 shrink-0 text-gray-400" />
                   )}
                   <code className="font-mono text-gray-700 text-sm">
                     {file}

@@ -14,10 +14,10 @@ import {
 } from "../utils";
 import { ToolCallTable } from "./tool-call-table";
 
-interface StateViewRecursiveProps {
+type StateViewRecursiveProps = {
   value: unknown;
   expanded?: boolean;
-}
+};
 
 const messageTypeToLabel = (message: BaseMessage) => {
   let type = "";
@@ -127,7 +127,7 @@ function StateViewRecursive(props: StateViewRecursiveProps) {
     return (
       <div className="relative ml-6 flex w-full flex-col items-start justify-start gap-1">
         {/* Vertical line */}
-        <div className="absolute top-0 left-[-24px] h-full w-[1px] bg-gray-200" />
+        <div className="absolute top-0 left-[-24px] h-full w-px bg-gray-200" />
 
         {Object.entries(props.value).map(([key, value], idx) => (
           <div
@@ -135,7 +135,7 @@ function StateViewRecursive(props: StateViewRecursiveProps) {
             key={`state-view-object-${key}-${idx}`}
           >
             {/* Horizontal connector line */}
-            <div className="absolute top-[10px] left-[-20px] h-[1px] w-[18px] bg-gray-200" />
+            <div className="absolute top-[10px] left-[-20px] h-px w-[18px] bg-gray-200" />
             <StateViewObject
               expanded={props.expanded}
               keyName={key}
@@ -164,7 +164,7 @@ function HasContentsEllipsis({ onClick }: { onClick?: () => void }) {
   );
 }
 
-interface StateViewProps {
+type StateViewProps = {
   keyName: string;
   value: unknown;
   /**
@@ -172,7 +172,7 @@ interface StateViewProps {
    * @default true
    */
   expanded?: boolean;
-}
+};
 
 export function StateViewObject(props: StateViewProps) {
   const [expanded, setExpanded] = useState(false);
@@ -224,12 +224,12 @@ export function StateViewObject(props: StateViewProps) {
   );
 }
 
-interface StateViewComponentProps {
+type StateViewComponentProps = {
   values: Record<string, any>;
   description: string | undefined;
   handleShowSidePanel: (showState: boolean, showDescription: boolean) => void;
   view: "description" | "state";
-}
+};
 
 export function StateView({
   handleShowSidePanel,
@@ -247,8 +247,7 @@ export function StateView({
     <div
       className={cn(
         "flex w-full flex-row gap-0",
-        view === "state" &&
-          "border-gray-100 border-t-[1px] lg:border-t-[0px] lg:border-l-[1px]"
+        view === "state" && "border-gray-100 border-t lg:border-t-0 lg:border-l"
       )}
     >
       {view === "description" && (

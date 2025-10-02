@@ -4,6 +4,7 @@
 import type { Message } from "@langchain/langgraph-sdk";
 import { formatDistanceToNow } from "date-fns";
 import { ReactNode } from "react";
+
 import {
   type CritiqueAgentGroup,
   groupCritiqueAgentMessages,
@@ -16,9 +17,13 @@ import {
   groupResearchAgentMessages,
   type ResearchAgentGroup,
 } from "@/lib/research-agent-grouper";
+
 import { CritiqueAgentContainer } from "./messages/critique-agent-container";
 import { ExaSearchResults } from "./messages/exa-search-results";
-import { FileUpdateNotification, type Collaborator } from "./messages/file-update-notification";
+import {
+  type Collaborator,
+  FileUpdateNotification,
+} from "./messages/file-update-notification";
 import { PlanOptimizationResult } from "./messages/plan-optimization-result";
 import { PlannerAgentContainer } from "./messages/planner-agent-container";
 import { ResearchAgentContainer } from "./messages/research-agent-container";
@@ -100,19 +105,28 @@ function processFileEditToolCall(data: ToolCallData): TimelineActivity | null {
 }
 
 // Helper function to process file update notification tool calls
-function processFileUpdateNotificationToolCall(data: ToolCallData): TimelineActivity | null {
+function processFileUpdateNotificationToolCall(
+  data: ToolCallData
+): TimelineActivity | null {
   const { index, toolIndex, toolName, args, result } = data;
   if (
     toolName === "file_update_notification" ||
     toolName === "collaborative_file_update"
   ) {
-    const fileName = (args.file_name || args.fileName || "Unknown file") as string;
+    const fileName = (args.file_name ||
+      args.fileName ||
+      "Unknown file") as string;
     return createTimelineActivity(
       `file-update-${index}-${toolIndex}`,
       "file-update",
       <FileUpdateNotification
         branch={args.branch as string}
-        changeType={(args.change_type || args.changeType || "modified") as "created" | "modified" | "deleted"}
+        changeType={
+          (args.change_type || args.changeType || "modified") as
+            | "created"
+            | "modified"
+            | "deleted"
+        }
         collaborators={(args.collaborators || []) as Collaborator[]}
         editorName={args.editor_name as string}
         error={result?.error}
@@ -135,19 +149,24 @@ function processFileUpdateNotificationToolCall(data: ToolCallData): TimelineActi
 // Helper function to process a single tool call
 function processToolCall(data: ToolCallData): TimelineActivity | null {
   const { toolName } = data;
-  
+
   if (toolName === "write_todos" || toolName === "TodoWrite") {
     return processTodoToolCall(data);
   }
-  
-  if (["Write", "Edit", "MultiEdit", "write_file", "edit_file"].includes(toolName)) {
+
+  if (
+    ["Write", "Edit", "MultiEdit", "write_file", "edit_file"].includes(toolName)
+  ) {
     return processFileEditToolCall(data);
   }
-  
-  if (toolName === "file_update_notification" || toolName === "collaborative_file_update") {
+
+  if (
+    toolName === "file_update_notification" ||
+    toolName === "collaborative_file_update"
+  ) {
     return processFileUpdateNotificationToolCall(data);
   }
-  
+
   return null;
 }
 
@@ -163,7 +182,7 @@ function processAiToolCalls(
     for (const [toolIndex, toolCall] of message.tool_calls.entries()) {
       const args = toolCall.args as Record<string, unknown>;
       const result = toolCall.id ? resultsMap.get(toolCall.id) : undefined;
-      
+
       const toolCallData: ToolCallData = {
         index,
         toolIndex,
@@ -171,7 +190,7 @@ function processAiToolCalls(
         args,
         result,
       };
-      
+
       const activity = processToolCall(toolCallData);
       if (activity) {
         activities.push(activity);

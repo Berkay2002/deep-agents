@@ -51,7 +51,7 @@ function ArgsRenderer({ args }: { args: Record<string, any> }) {
   );
 }
 
-interface InboxItemInputProps {
+type InboxItemInputProps = {
   interruptValue: HumanInterrupt;
   humanResponse: HumanResponseWithEdits[];
   supportsMultipleMethods: boolean;
@@ -75,7 +75,7 @@ interface InboxItemInputProps {
   handleSubmit: (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent> | React.KeyboardEvent
   ) => Promise<void>;
-}
+};
 
 function ResponseComponent({
   humanResponse,
@@ -107,7 +107,7 @@ function ResponseComponent({
   };
 
   return (
-    <div className="flex w-full flex-col items-start gap-4 rounded-xl border-[1px] border-gray-300 p-6">
+    <div className="flex w-full flex-col items-start gap-4 rounded-xl border border-gray-300 p-6">
       <div className="flex w-full items-center justify-between">
         <p className="font-semibold text-base text-black">
           Respond to assistant
@@ -157,7 +157,7 @@ function AcceptComponent({
   ) => Promise<void>;
 }) {
   return (
-    <div className="flex w-full flex-col items-start gap-4 rounded-lg border-[1px] border-gray-300 p-6">
+    <div className="flex w-full flex-col items-start gap-4 rounded-lg border border-gray-300 p-6">
       {actionRequestArgs && Object.keys(actionRequestArgs).length > 0 && (
         <ArgsRenderer args={actionRequestArgs} />
       )}
@@ -254,7 +254,7 @@ function EditAndOrAcceptComponent({
   };
 
   return (
-    <div className="flex w-full flex-col items-start gap-4 rounded-lg border-[1px] border-gray-300 p-6">
+    <div className="flex w-full flex-col items-start gap-4 rounded-lg border border-gray-300 p-6">
       <div className="flex w-full items-center justify-between">
         <p className="font-semibold text-base text-black">{header}</p>
         <ResetButton handleReset={handleReset} />
@@ -279,7 +279,7 @@ function EditAndOrAcceptComponent({
 
         return (
           <div
-            className="flex h-full w-full flex-col items-start gap-1 px-[1px]"
+            className="flex h-full w-full flex-col items-start gap-1 px-px"
             key={`allow-edit-args--${k}-${idx}`}
           >
             <div className="flex w-full flex-col items-start gap-[6px]">
@@ -382,11 +382,6 @@ export function InboxItemInput({
 
     setHumanResponse((prev) => {
       if (typeof response.args !== "object" || !response.args) {
-        console.error(
-          "Mismatched response type",
-          !!response.args,
-          typeof response.args
-        );
         return prev;
       }
 

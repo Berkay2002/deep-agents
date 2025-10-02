@@ -85,15 +85,15 @@ function renderTodoList(tc: ToolCall, idx: number): React.ReactElement {
   return (
     <TodoList
       key={`${tc.name}-${tc.id}-${idx}`}
-      todos={
-        (args.todos as Array<{
+      todos={(
+        args.todos as Array<{
           content: string;
           status: "pending" | "in_progress" | "completed";
-        }>).map((todo, index) => ({
-          ...todo,
-          id: `${tc.id}-${index}`, // Generate unique ID for each todo
-        }))
-      }
+        }>
+      ).map((todo, index) => ({
+        ...todo,
+        id: `${tc.id}-${index}`, // Generate unique ID for each todo
+      }))}
     />
   );
 }
@@ -171,7 +171,7 @@ function renderDefaultToolCall(tc: ToolCall, idx: number): React.ReactElement {
         <h3 className="font-medium text-gray-900">
           {tc.name}
           {tc.id && (
-            <code className="ml-2 rounded bg-gray-100 px-2 py-1 text-sm">
+            <code className="ml-2 rounded-sm bg-gray-100 px-2 py-1 text-sm">
               {tc.id}
             </code>
           )}
@@ -187,7 +187,7 @@ function renderDefaultToolCall(tc: ToolCall, idx: number): React.ReactElement {
                 </td>
                 <td className="px-4 py-2 text-gray-500 text-sm">
                   {isComplexValue(value) ? (
-                    <code className="break-all rounded bg-gray-50 px-2 py-1 font-mono text-sm">
+                    <code className="break-all rounded-sm bg-gray-50 px-2 py-1 font-mono text-sm">
                       {JSON.stringify(value, null, 2)}
                     </code>
                   ) : (
@@ -544,7 +544,7 @@ function renderJsonTable(
               </td>
               <td className="px-4 py-2 text-gray-500 text-sm">
                 {isComplexValue(value) ? (
-                  <code className="break-all rounded bg-gray-50 px-2 py-1 font-mono text-sm">
+                  <code className="break-all rounded-sm bg-gray-50 px-2 py-1 font-mono text-sm">
                     {JSON.stringify(value, null, 2)}
                   </code>
                 ) : (
@@ -597,7 +597,7 @@ function DefaultContentRenderer({
             {message.name ? (
               <h3 className="font-medium text-gray-900">
                 Tool Result:{" "}
-                <code className="rounded bg-gray-100 px-2 py-1">
+                <code className="rounded-sm bg-gray-100 px-2 py-1">
                   {message.name}
                 </code>
               </h3>
@@ -605,7 +605,7 @@ function DefaultContentRenderer({
               <h3 className="font-medium text-gray-900">Tool Result</h3>
             )}
             {message.tool_call_id && (
-              <code className="ml-2 rounded bg-gray-100 px-2 py-1 text-sm">
+              <code className="ml-2 rounded-sm bg-gray-100 px-2 py-1 text-sm">
                 {message.tool_call_id}
               </code>
             )}
@@ -639,7 +639,7 @@ function DefaultContentRenderer({
               Array.isArray(parsedContent) &&
               parsedContent.length > maxArrayItems)) && (
             <motion.button
-              className="flex w-full cursor-pointer items-center justify-center border-gray-200 border-t-[1px] py-2 text-gray-500 transition-all duration-200 ease-in-out hover:bg-gray-50 hover:text-gray-600"
+              className="flex w-full cursor-pointer items-center justify-center border-gray-200 border-t py-2 text-gray-500 transition-all duration-200 ease-in-out hover:bg-gray-50 hover:text-gray-600"
               initial={{ scale: 1 }}
               onClick={() => setIsExpanded(!isExpanded)}
               onKeyDown={(e) => {

@@ -3,7 +3,7 @@
 import "./markdown-styles.css";
 
 import { CheckIcon, CopyIcon } from "lucide-react";
-import { Fragment, type FC, memo, useState } from "react";
+import { type FC, Fragment, memo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
@@ -232,7 +232,7 @@ const defaultComponents: Record<string, React.ComponentType<ComponentProps>> = {
     }
 
     return (
-      <code className={cn("rounded font-semibold", className)} {...props}>
+      <code className={cn("rounded-sm font-semibold", className)} {...props}>
         {children}
       </code>
     );

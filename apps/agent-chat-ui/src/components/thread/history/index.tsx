@@ -44,7 +44,9 @@ function ThreadList({
               onClick={(e) => {
                 e.preventDefault();
                 onThreadClick?.(t.thread_id);
-                if (t.thread_id === threadId) return;
+                if (t.thread_id === threadId) {
+                  return;
+                }
                 setThreadId(t.thread_id);
               }}
               variant="ghost"
@@ -79,17 +81,19 @@ export default function ThreadHistory() {
     useThreads();
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined") {
+      return;
+    }
     setThreadsLoading(true);
     getThreads()
       .then(setThreads)
       .catch(console.error)
       .finally(() => setThreadsLoading(false));
-  }, []);
+  }, [getThreads, setThreads, setThreadsLoading]);
 
   return (
     <>
-      <div className="hidden h-screen w-[300px] shrink-0 flex-col items-start justify-start gap-6 border-slate-300 border-r-[1px] shadow-inner-right lg:flex">
+      <div className="hidden h-screen w-[300px] shrink-0 flex-col items-start justify-start gap-6 border-slate-300 border-r shadow-inner-right lg:flex">
         <div className="flex w-full items-center justify-between px-4 pt-1.5">
           <Button
             className="hover:bg-gray-100"
@@ -115,7 +119,9 @@ export default function ThreadHistory() {
       <div className="lg:hidden">
         <Sheet
           onOpenChange={(open) => {
-            if (isLargeScreen) return;
+            if (isLargeScreen) {
+              return;
+            }
             setChatHistoryOpen(open);
           }}
           open={!!chatHistoryOpen && !isLargeScreen}

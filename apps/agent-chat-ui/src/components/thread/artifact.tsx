@@ -13,13 +13,42 @@ import {
 import { createPortal } from "react-dom";
 
 const ArtifactSlotContext = createContext<{
-  open: [string | null, (value: string | null | ((value: string | null) => string | null)) => void];
-  mounted: [string | null, (value: string | null | ((value: string | null) => string | null)) => void];
+  open: [
+    string | null,
+    (value: string | null | ((value: string | null) => string | null)) => void,
+  ];
+  mounted: [
+    string | null,
+    (value: string | null | ((value: string | null) => string | null)) => void,
+  ];
 
-  title: [HTMLElement | null, (value: HTMLElement | null | ((value: HTMLElement | null) => HTMLElement | null)) => void];
-  content: [HTMLElement | null, (value: HTMLElement | null | ((value: HTMLElement | null) => HTMLElement | null)) => void];
+  title: [
+    HTMLElement | null,
+    (
+      value:
+        | HTMLElement
+        | null
+        | ((value: HTMLElement | null) => HTMLElement | null)
+    ) => void,
+  ];
+  content: [
+    HTMLElement | null,
+    (
+      value:
+        | HTMLElement
+        | null
+        | ((value: HTMLElement | null) => HTMLElement | null)
+    ) => void,
+  ];
 
-  context: [Record<string, unknown>, (value: Record<string, unknown> | ((value: Record<string, unknown>) => Record<string, unknown>)) => void];
+  context: [
+    Record<string, unknown>,
+    (
+      value:
+        | Record<string, unknown>
+        | ((value: Record<string, unknown>) => Record<string, unknown>)
+    ) => void,
+  ];
 } | null>(null);
 
 /**
@@ -165,7 +194,12 @@ export function useArtifact() {
 
   return [
     ArtifactContentComponent,
-    { open: isOpen, setOpen: setArtifactOpenState, context: ctxContext, setContext: ctxSetContext },
+    {
+      open: isOpen,
+      setOpen: setArtifactOpenState,
+      context: ctxContext,
+      setContext: ctxSetContext,
+    },
   ] as [
     typeof ArtifactContentComponent,
     {

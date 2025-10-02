@@ -1,5 +1,11 @@
 import type { Base64ContentBlock } from "@langchain/core/messages";
-import { type ChangeEvent, useEffect, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "sonner";
 import { fileToContentBlock } from "@/lib/multimodal-utils";
 
@@ -11,9 +17,9 @@ export const SUPPORTED_FILE_TYPES = [
   "application/pdf",
 ];
 
-interface UseFileUploadOptions {
+type UseFileUploadOptions = {
   initialBlocks?: Base64ContentBlock[];
-}
+};
 
 export function useFileUpload({
   initialBlocks = [],
@@ -24,29 +30,34 @@ export function useFileUpload({
   const [dragOver, setDragOver] = useState(false);
   const dragCounter = useRef(0);
 
-  const isDuplicate = (file: File, blocks: Base64ContentBlock[]) => {
-    if (file.type === "application/pdf") {
-      return blocks.some(
-        (b) =>
-          b.type === "file" &&
-          b.mime_type === "application/pdf" &&
-          b.metadata?.filename === file.name
-      );
-    }
-    if (SUPPORTED_FILE_TYPES.includes(file.type)) {
-      return blocks.some(
-        (b) =>
-          b.type === "image" &&
-          b.metadata?.name === file.name &&
-          b.mime_type === file.type
-      );
-    }
-    return false;
-  };
+  const isDuplicate = useCallback(
+    (file: File, blocks: Base64ContentBlock[]) => {
+      if (file.type === "application/pdf") {
+        return blocks.some(
+          (b) =>
+            b.type === "file" &&
+            b.mime_type === "application/pdf" &&
+            b.metadata?.filename === file.name
+        );
+      }
+      if (SUPPORTED_FILE_TYPES.includes(file.type)) {
+        return blocks.some(
+          (b) =>
+            b.type === "image" &&
+            b.metadata?.name === file.name &&
+            b.mime_type === file.type
+        );
+      }
+      return false;
+    },
+    []
+  );
 
   const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
+    if (!files) {
+      return;
+    }
     const fileArray = Array.from(files);
     const validFiles = fileArray.filter((file) =>
       SUPPORTED_FILE_TYPES.includes(file.type)
@@ -81,7 +92,9 @@ export function useFileUpload({
 
   // Drag and drop handlers
   useEffect(() => {
-    if (!dropRef.current) return;
+    if (!dropRef.current) {
+      return;
+    }
 
     // Global drag events with counter for robust dragOver state
     const handleWindowDragEnter = (e: DragEvent) => {
@@ -105,7 +118,9 @@ export function useFileUpload({
       dragCounter.current = 0;
       setDragOver(false);
 
-      if (!e.dataTransfer) return;
+      if (!e.dataTransfer) {
+        return;
+      }
 
       const files = Array.from(e.dataTransfer.files);
       const validFiles = files.filter((file) =>
@@ -137,7 +152,7 @@ export function useFileUpload({
         : [];
       setContentBlocks((prev) => [...prev, ...newBlocks]);
     };
-    const handleWindowDragEnd = (e: DragEvent) => {
+    const handleWindowDragEnd = () => {
       dragCounter.current = 0;
       setDragOver(false);
     };
@@ -185,7 +200,7 @@ export function useFileUpload({
       window.removeEventListener("dragover", handleWindowDragOver);
       dragCounter.current = 0;
     };
-  }, [contentBlocks]);
+  }, [contentBlocks, isDuplicate]);
 
   const removeBlock = (idx: number) => {
     setContentBlocks((prev) => prev.filter((_, i) => i !== idx));
@@ -199,15 +214,19 @@ export function useFileUpload({
    */
   const handlePaste = async (
     e: React.ClipboardEvent<HTMLTextAreaElement | HTMLInputElement>
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: <It's fine>
   ) => {
     const items = e.clipboardData.items;
-    if (!items) return;
+    if (!items) {
+      return;
+    }
     const files: File[] = [];
-    for (let i = 0; i < items.length; i += 1) {
-      const item = items[i];
+    for (const item of items) {
       if (item.kind === "file") {
         const file = item.getAsFile();
-        if (file) files.push(file);
+        if (file) {
+          files.push(file);
+        }
       }
     }
     if (files.length === 0) {
@@ -220,27 +239,12 @@ export function useFileUpload({
     const invalidFiles = files.filter(
       (file) => !SUPPORTED_FILE_TYPES.includes(file.type)
     );
-    const isDuplicate = (file: File) => {
-      if (file.type === "application/pdf") {
-        return contentBlocks.some(
-          (b) =>
-            b.type === "file" &&
-            b.mime_type === "application/pdf" &&
-            b.metadata?.filename === file.name
-        );
-      }
-      if (SUPPORTED_FILE_TYPES.includes(file.type)) {
-        return contentBlocks.some(
-          (b) =>
-            b.type === "image" &&
-            b.metadata?.name === file.name &&
-            b.mime_type === file.type
-        );
-      }
-      return false;
-    };
-    const duplicateFiles = validFiles.filter(isDuplicate);
-    const uniqueFiles = validFiles.filter((file) => !isDuplicate(file));
+    const duplicateFiles = validFiles.filter((file) =>
+      isDuplicate(file, contentBlocks)
+    );
+    const uniqueFiles = validFiles.filter(
+      (file) => !isDuplicate(file, contentBlocks)
+    );
     if (invalidFiles.length > 0) {
       toast.error(
         "You have pasted an invalid file type. Please paste a JPEG, PNG, GIF, WEBP image or a PDF."

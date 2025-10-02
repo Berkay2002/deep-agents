@@ -89,7 +89,9 @@ export function isSubagentResponse(message: Message): boolean {
  * Extracts the string content from a message
  */
 function getMessageContentString(content: Message["content"]): string {
-  if (typeof content === "string") return content;
+  if (typeof content === "string") {
+    return content;
+  }
   if (Array.isArray(content)) {
     return content
       .filter((c): c is { type: "text"; text: string } => c.type === "text")

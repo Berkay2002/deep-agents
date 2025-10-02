@@ -27,7 +27,7 @@ function isUrl(value: unknown): boolean {
 function renderInterruptStateItem(value: unknown): React.ReactNode {
   if (isComplexValue(value)) {
     return (
-      <code className="rounded bg-gray-50 px-2 py-1 font-mono text-sm">
+      <code className="rounded-sm bg-gray-50 px-2 py-1 font-mono text-sm">
         {JSON.stringify(value, null, 2)}
       </code>
     );
@@ -56,7 +56,9 @@ export function GenericInterruptView({
 
   const contentStr = JSON.stringify(interrupt, null, 2);
   const contentLines = contentStr.split("\n");
-  const shouldTruncate = contentLines.length > MAX_CONTENT_LINES || contentStr.length > MAX_CONTENT_LENGTH;
+  const shouldTruncate =
+    contentLines.length > MAX_CONTENT_LINES ||
+    contentStr.length > MAX_CONTENT_LENGTH;
 
   // Function to truncate long string values (but preserve URLs)
   const truncateValue = (value: unknown): unknown => {
@@ -151,7 +153,7 @@ export function GenericInterruptView({
         {(shouldTruncate ||
           (Array.isArray(interrupt) && interrupt.length > MAX_ARRAY_ITEMS)) && (
           <motion.button
-            className="flex w-full cursor-pointer items-center justify-center border-gray-200 border-t-[1px] py-2 text-gray-500 transition-all duration-200 ease-in-out hover:bg-gray-50 hover:text-gray-600"
+            className="flex w-full cursor-pointer items-center justify-center border-gray-200 border-t py-2 text-gray-500 transition-all duration-200 ease-in-out hover:bg-gray-50 hover:text-gray-600"
             initial={{ scale: 1 }}
             onClick={() => setIsExpanded(!isExpanded)}
             onKeyDown={(e) => {

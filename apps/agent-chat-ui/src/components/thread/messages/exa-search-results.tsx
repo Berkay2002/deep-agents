@@ -53,7 +53,9 @@ function ExaSearchResultCard({ result }: { result: ExaSearchResult }) {
 
   // Determine what content to show
   const mainContent =
-    result.summary || result.snippet || result.fullText?.slice(0, CONTENT_PREVIEW_LENGTH);
+    result.summary ||
+    result.snippet ||
+    result.fullText?.slice(0, CONTENT_PREVIEW_LENGTH);
   const hasExpandableContent =
     (result.fullText && result.fullText.length > FULL_TEXT_THRESHOLD) ||
     (result.snippet && result.snippet.length > SNIPPET_THRESHOLD);
@@ -95,12 +97,14 @@ function ExaSearchResultCard({ result }: { result: ExaSearchResult }) {
           <div className="mb-2">
             {result.summary && (
               <div className="mb-2 flex items-start gap-2">
-                <Sparkles className="mt-0.5 h-3 w-3 flex-shrink-0 text-indigo-500" />
+                <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-indigo-500" />
                 <p className="whitespace-pre-wrap text-gray-700 text-sm italic leading-relaxed">
                   {isExpanded
                     ? mainContent
                     : mainContent.slice(0, PREVIEW_TRUNCATE_LENGTH) +
-                      (mainContent.length > PREVIEW_TRUNCATE_LENGTH ? "..." : "")}
+                      (mainContent.length > PREVIEW_TRUNCATE_LENGTH
+                        ? "..."
+                        : "")}
                 </p>
               </div>
             )}
@@ -109,7 +113,9 @@ function ExaSearchResultCard({ result }: { result: ExaSearchResult }) {
                 {isExpanded
                   ? result.snippet
                   : result.snippet.slice(0, PREVIEW_TRUNCATE_LENGTH) +
-                    (result.snippet.length > PREVIEW_TRUNCATE_LENGTH ? "..." : "")}
+                    (result.snippet.length > PREVIEW_TRUNCATE_LENGTH
+                      ? "..."
+                      : "")}
               </p>
             )}
           </div>
@@ -125,14 +131,16 @@ function ExaSearchResultCard({ result }: { result: ExaSearchResult }) {
               </span>
             </div>
             <div className="space-y-1.5 pl-4">
-              {result.highlights?.slice(0, isExpanded ? undefined : 2).map((highlight, idx) => (
-                <div
-                  className="border-indigo-200 border-l-2 pl-2 text-gray-600 text-xs leading-relaxed"
-                  key={`highlight-${highlight.snippet?.slice(0, HIGHLIGHT_SNIPPET_LENGTH)}-${idx}`}
-                >
-                  {highlight.snippet}
-                </div>
-              ))}
+              {result.highlights
+                ?.slice(0, isExpanded ? undefined : 2)
+                .map((highlight, idx) => (
+                  <div
+                    className="border-indigo-200 border-l-2 pl-2 text-gray-600 text-xs leading-relaxed"
+                    key={`highlight-${highlight.snippet?.slice(0, HIGHLIGHT_SNIPPET_LENGTH)}-${idx}`}
+                  >
+                    {highlight.snippet}
+                  </div>
+                ))}
               {!isExpanded && (result.highlights?.length ?? 0) > 2 && (
                 <p className="pl-2 text-indigo-600 text-xs italic">
                   +{(result.highlights?.length ?? 0) - 2} more highlights
@@ -146,15 +154,15 @@ function ExaSearchResultCard({ result }: { result: ExaSearchResult }) {
         {(hasExpandableContent ||
           (hasHighlights && (result.highlights?.length ?? 0) > 2)) && (
           <button
-            type="button"
             className="mt-2 flex items-center gap-1 font-medium text-indigo-600 text-xs hover:text-indigo-800"
             onClick={() => setIsExpanded(!isExpanded)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
+              if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 setIsExpanded(!isExpanded);
               }
             }}
+            type="button"
           >
             {isExpanded ? (
               <>
@@ -193,7 +201,7 @@ export function ExaSearchResults({
         <div className="border-indigo-200 border-b bg-indigo-50 px-4 py-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <Sparkles className="h-4 w-4 flex-shrink-0 text-indigo-600" />
+              <Sparkles className="h-4 w-4 shrink-0 text-indigo-600" />
               <div className="min-w-0 flex-1">
                 <h3 className="truncate font-medium text-gray-900 text-sm">
                   {query}
@@ -211,15 +219,15 @@ export function ExaSearchResults({
               </div>
             </div>
             <button
-              type="button"
-              className="flex-shrink-0 text-indigo-600 hover:text-indigo-800"
+              className="shrink-0 text-indigo-600 hover:text-indigo-800"
               onClick={() => setIsExpanded(!isExpanded)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
+                if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
                   setIsExpanded(!isExpanded);
                 }
               }}
+              type="button"
             >
               {isExpanded ? (
                 <ChevronUp className="h-4 w-4" />
@@ -242,7 +250,10 @@ export function ExaSearchResults({
         >
           <div className="max-h-[500px] overflow-y-auto">
             {validResults.map((result, idx) => (
-              <ExaSearchResultCard key={`${result.url}-${idx}`} result={result} />
+              <ExaSearchResultCard
+                key={`${result.url}-${idx}`}
+                result={result}
+              />
             ))}
           </div>
         </motion.div>

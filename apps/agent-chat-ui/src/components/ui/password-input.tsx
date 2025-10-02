@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/performance/noNamespaceImport: <Shadcn> */
 "use client";
 
 import { EyeIcon, EyeOffIcon } from "lucide-react";

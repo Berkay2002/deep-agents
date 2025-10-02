@@ -88,7 +88,7 @@ export function ResearchAgentContainer({
         <div className="border-gray-200 border-b bg-gray-50 px-4 py-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <Search className="h-4 w-4 flex-shrink-0 text-blue-600">
+              <Search className="h-4 w-4 shrink-0 text-blue-600">
                 <title>Search</title>
               </Search>
               <div className="min-w-0 flex-1">
@@ -105,7 +105,7 @@ export function ResearchAgentContainer({
             </div>
             <button
               aria-label={isExpanded ? "Collapse" : "Expand"}
-              className="flex-shrink-0 text-gray-500 hover:text-gray-700"
+              className="shrink-0 text-gray-500 hover:text-gray-700"
               onClick={() => setIsExpanded(!isExpanded)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -134,7 +134,7 @@ export function ResearchAgentContainer({
             <div className="flex overflow-x-auto">
               {agents.map((agent, idx) => (
                 <button
-                  className={`flex-shrink-0 border-b-2 px-4 py-2 font-medium text-sm transition-colors ${
+                  className={`shrink-0 border-b-2 px-4 py-2 font-medium text-sm transition-colors ${
                     activeTab === idx
                       ? `border-blue-600 ${getStatusColor(agent.status)}`
                       : "border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900"
@@ -220,7 +220,10 @@ export function ResearchAgentContainer({
                   </div>
                   <div className="space-y-3">
                     {currentAgent.statusUpdates.map((update, idx) => (
-                      <div className="pl-4" key={`status-update-${update.substring(0, KEY_PREFIX_LENGTH)}-${idx}`}>
+                      <div
+                        className="pl-4"
+                        key={`status-update-${update.substring(0, KEY_PREFIX_LENGTH)}-${idx}`}
+                      >
                         <div className="prose prose-sm max-w-none">
                           <p className="text-gray-700 text-sm leading-relaxed">
                             {update}
@@ -249,7 +252,10 @@ export function ResearchAgentContainer({
                 </div>
                 <div className="space-y-4">
                   {currentAgent.searchResults.map((searchData, idx) => (
-                    <div className="pl-4" key={`search-result-${searchData.searchType}-${idx}`}>
+                    <div
+                      className="pl-4"
+                      key={`search-result-${searchData.searchType}-${idx}`}
+                    >
                       {searchData.searchType === "tavily" ? (
                         <TavilySearchResults
                           query={searchData.query}

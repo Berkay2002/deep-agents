@@ -21,7 +21,7 @@ export function ReadFileCall({ toolCall }: ReadFileCallProps) {
           <h3 className="font-medium text-gray-900">
             {toolCall.name}
             {toolCall.id && (
-              <code className="ml-2 rounded bg-gray-100 px-2 py-1 text-sm">
+              <code className="ml-2 rounded-sm bg-gray-100 px-2 py-1 text-sm">
                 {toolCall.id}
               </code>
             )}
@@ -35,7 +35,7 @@ export function ReadFileCall({ toolCall }: ReadFileCallProps) {
               file_path
             </td>
             <td className="px-4 py-2 text-gray-500 text-sm">
-              <code className="break-all rounded bg-gray-50 px-2 py-1 font-mono text-sm">
+              <code className="break-all rounded-sm bg-gray-50 px-2 py-1 font-mono text-sm">
                 {String(filePath)}
               </code>
             </td>
@@ -46,7 +46,7 @@ export function ReadFileCall({ toolCall }: ReadFileCallProps) {
                 start_line
               </td>
               <td className="px-4 py-2 text-gray-500 text-sm">
-                <code className="break-all rounded bg-gray-50 px-2 py-1 font-mono text-sm">
+                <code className="break-all rounded-sm bg-gray-50 px-2 py-1 font-mono text-sm">
                   {String(startLine)}
                 </code>
               </td>
@@ -58,7 +58,7 @@ export function ReadFileCall({ toolCall }: ReadFileCallProps) {
                 end_line
               </td>
               <td className="px-4 py-2 text-gray-500 text-sm">
-                <code className="break-all rounded bg-gray-50 px-2 py-1 font-mono text-sm">
+                <code className="break-all rounded-sm bg-gray-50 px-2 py-1 font-mono text-sm">
                   {String(endLine)}
                 </code>
               </td>

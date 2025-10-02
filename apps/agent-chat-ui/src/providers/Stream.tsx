@@ -19,7 +19,7 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
-import { LangGraphLogoSVG } from "@/components/icons/langgraph";
+import { LanggraphLogoSvg } from "@/components/icons/langgraph";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +27,11 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { getApiKey } from "@/lib/api-key";
 import { useGithubSettings } from "./GithubSettings";
 import { useThreads } from "./Thread";
+
+// Constants
+const DEFAULT_SLEEP_DURATION = 4000;
+const STATUS_CHECK_DELAY = 1000;
+const TOAST_DURATION = 10_000;
 
 export type StateType = { messages: Message[]; ui?: UIMessage[] };
 
@@ -45,7 +50,7 @@ const useTypedStream = useStream<
 type StreamContextType = ReturnType<typeof useTypedStream>;
 const StreamContext = createContext<StreamContextType | undefined>(undefined);
 
-async function sleep(ms = 4000) {
+function sleep(ms = DEFAULT_SLEEP_DURATION) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
@@ -63,8 +68,7 @@ async function checkGraphStatus(
     });
 
     return res.ok;
-  } catch (e) {
-    console.error(e);
+  } catch (_e) {
     return false;
   }
 }
@@ -117,10 +121,14 @@ const StreamSession = ({
   // Only check graph status if user is authenticated
   useEffect(() => {
     // Wait for Clerk to load and check if user is signed in
-    if (!isLoaded) return;
+    if (!isLoaded) {
+      return;
+    }
 
     // Only check if user is signed in
-    if (!isSignedIn) return;
+    if (!isSignedIn) {
+      return;
+    }
 
     const timeoutId = setTimeout(() => {
       checkGraphStatus(apiUrl, apiKey).then((ok) => {
@@ -133,13 +141,13 @@ const StreamSession = ({
                 graph).
               </p>
             ),
-            duration: 10_000,
+            duration: TOAST_DURATION,
             richColors: true,
             closeButton: true,
           });
         }
       });
-    }, 1000); // Wait 1 second before checking
+    }, STATUS_CHECK_DELAY);
 
     return () => clearTimeout(timeoutId);
   }, [apiKey, apiUrl, isSignedIn, isLoaded]);
@@ -193,7 +201,7 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
         <div className="fade-in-0 zoom-in-95 flex max-w-3xl animate-in flex-col rounded-lg border bg-background shadow-lg">
           <div className="mt-14 flex flex-col gap-2 border-b p-6">
             <div className="flex flex-col items-start gap-2">
-              <LangGraphLogoSVG className="h-7" />
+              <LanggraphLogoSvg className="h-7" />
               <h1 className="font-semibold text-xl tracking-tight">
                 Agent Chat
               </h1>
@@ -210,13 +218,13 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
 
               const form = e.target as HTMLFormElement;
               const formData = new FormData(form);
-              const apiUrl = formData.get("apiUrl") as string;
-              const assistantId = formData.get("assistantId") as string;
-              const apiKey = formData.get("apiKey") as string;
+              const formApiUrl = formData.get("apiUrl") as string;
+              const formAssistantId = formData.get("assistantId") as string;
+              const formApiKey = formData.get("apiKey") as string;
 
-              setApiUrl(apiUrl);
-              setApiKey(apiKey);
-              setAssistantId(assistantId);
+              setApiUrl(formApiUrl);
+              setApiKey(formApiKey);
+              setAssistantId(formAssistantId);
 
               form.reset();
             }}

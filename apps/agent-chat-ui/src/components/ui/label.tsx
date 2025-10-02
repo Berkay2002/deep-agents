@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/performance/noNamespaceImport: <Shadcn> */
 import * as LabelPrimitive from "@radix-ui/react-label";
 import type * as React from "react";
 

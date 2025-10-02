@@ -45,7 +45,7 @@ export function TodoList({ todos }: TodoListProps) {
               transition={{ delay: index * ANIMATION_DELAY }}
             >
               {/* Status indicator */}
-              <div className="flex-shrink-0 pt-0.5" aria-hidden="true">
+              <div aria-hidden="true" className="shrink-0 pt-0.5">
                 {todo.status === "completed" && (
                   <motion.div
                     animate={{ scale: 1 }}
@@ -69,7 +69,8 @@ export function TodoList({ todos }: TodoListProps) {
                   className={cn(
                     "text-sm leading-relaxed",
                     todo.status === "completed" && "text-gray-500 line-through",
-                    todo.status === "in_progress" && "font-medium text-gray-900",
+                    todo.status === "in_progress" &&
+                      "font-medium text-gray-900",
                     todo.status === "pending" && "text-gray-700"
                   )}
                 >
@@ -83,7 +84,7 @@ export function TodoList({ todos }: TodoListProps) {
               {todo.status === "in_progress" && (
                 <motion.div
                   animate={{ opacity: 1, x: 0 }}
-                  className="flex-shrink-0"
+                  className="shrink-0"
                   initial={{ opacity: 0, x: -10 }}
                 >
                   <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 font-medium text-blue-700 text-xs">

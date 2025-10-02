@@ -19,7 +19,7 @@ type ScopeEstimationResultProps = {
       expertiseLevel?: string;
     };
   };
-}
+};
 
 function getPriorityColor(priority: string): string {
   const colors: Record<string, string> = {
@@ -94,13 +94,22 @@ export function ScopeEstimationResult({ result }: ScopeEstimationResultProps) {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th scope="col" className="px-4 py-2 text-left font-medium text-gray-500 text-xs uppercase tracking-wide">
+                      <th
+                        className="px-4 py-2 text-left font-medium text-gray-500 text-xs uppercase tracking-wide"
+                        scope="col"
+                      >
                         Area
                       </th>
-                      <th scope="col" className="px-4 py-2 text-left font-medium text-gray-500 text-xs uppercase tracking-wide">
+                      <th
+                        className="px-4 py-2 text-left font-medium text-gray-500 text-xs uppercase tracking-wide"
+                        scope="col"
+                      >
                         Time
                       </th>
-                      <th scope="col" className="px-4 py-2 text-left font-medium text-gray-500 text-xs uppercase tracking-wide">
+                      <th
+                        className="px-4 py-2 text-left font-medium text-gray-500 text-xs uppercase tracking-wide"
+                        scope="col"
+                      >
                         Priority
                       </th>
                     </tr>
@@ -152,7 +161,7 @@ export function ScopeEstimationResult({ result }: ScopeEstimationResultProps) {
                     className="flex items-start gap-3 text-gray-600 text-sm"
                     key={`milestone-${index}-${milestone.substring(0, 10)}`}
                   >
-                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 font-semibold text-emerald-700 text-xs">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 font-semibold text-emerald-700 text-xs">
                       {index + 1}
                     </span>
                     <span className="pt-0.5">{milestone}</span>

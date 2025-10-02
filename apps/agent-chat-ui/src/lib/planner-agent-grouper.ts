@@ -1,19 +1,15 @@
-import {
-  AIMessage,
-  type Message,
-  type ToolMessage,
-} from "@langchain/langgraph-sdk";
+import type { Message, ToolMessage } from "@langchain/langgraph-sdk";
 
-export interface PlanningToolResult {
+export type PlanningToolResult = {
   toolName: "topic_analysis" | "scope_estimation" | "plan_optimization";
   args: any;
   result: any; // Parsed JSON result
   toolCallId: string;
-}
+};
 
 export type PlannerAgentStatus = "pending" | "in_progress" | "completed";
 
-export interface PlannerAgentGroup {
+export type PlannerAgentGroup = {
   taskDescription: string;
   taskToolCallId: string;
   topicAnalysis?: any;
@@ -23,13 +19,15 @@ export interface PlannerAgentGroup {
   status: PlannerAgentStatus;
   startIndex: number;
   endIndex: number;
-}
+};
 
 /**
  * Checks if a tool call is a planner agent task invocation
  */
 function isPlannerAgentTask(toolCall: any): boolean {
-  if (!toolCall || toolCall.name !== "task") return false;
+  if (!toolCall || toolCall.name !== "task") {
+    return false;
+  }
   const args = toolCall.args as Record<string, any>;
   return args?.subagent_type === "planner-agent" && !!args?.description;
 }
@@ -37,7 +35,7 @@ function isPlannerAgentTask(toolCall: any): boolean {
 /**
  * Extracts planning tool result from a tool message content
  */
-function extractPlanningToolResult(content: any, toolName: string): any {
+function extractPlanningToolResult(content: any, _toolName: string): any {
   try {
     let parsedContent: any;
 
@@ -59,7 +57,9 @@ function extractPlanningToolResult(content: any, toolName: string): any {
  * Extracts final plan from a tool message
  */
 function extractFinalPlan(message: ToolMessage): string | null {
-  if (typeof message.content !== "string") return null;
+  if (typeof message.content !== "string") {
+    return null;
+  }
 
   // Return the content if it exists and is non-empty
   return message.content.trim().length > 0 ? message.content : null;
@@ -104,12 +104,6 @@ export function groupPlannerAgentMessages(
 
         // Debug logging
         if (process.env.NODE_ENV === "development") {
-          console.log(
-            `[Planner Agent] Processing task: ${taskDescription.substring(0, 50)}...`
-          );
-          console.log(
-            `[Planner Agent] Looking for tool_call_id: ${taskToolCallId}`
-          );
         }
 
         // Look ahead for planning tool results and final plan
@@ -167,12 +161,6 @@ export function groupPlannerAgentMessages(
               process.env.NODE_ENV === "development" &&
               "tool_call_id" in toolMsg
             ) {
-              console.log(
-                `[Planner Agent] Found tool message with tool_call_id: ${toolMsg.tool_call_id}`
-              );
-              console.log(
-                `[Planner Agent] Matches expected? ${toolMsg.tool_call_id === taskToolCallId}`
-              );
             }
 
             // Check for final plan (final response from planner agent)
@@ -185,16 +173,6 @@ export function groupPlannerAgentMessages(
 
               // Debug: log when we find a matching tool result
               if (process.env.NODE_ENV === "development") {
-                console.log(
-                  `[Planner Agent] Found result for task ${taskToolCallId.substring(0, 8)}:`,
-                  {
-                    hasPlan: !!planResult,
-                    contentLength:
-                      typeof toolMsg.content === "string"
-                        ? toolMsg.content.length
-                        : 0,
-                  }
-                );
               }
 
               // If we have final plan (tool result with matching ID), mark as completed
@@ -234,16 +212,6 @@ export function groupPlannerAgentMessages(
 
         // Debug: log final status
         if (process.env.NODE_ENV === "development") {
-          console.log(`[Planner Agent] Final status for task: ${status}`);
-          console.log(`[Planner Agent] Has final plan: ${!!finalPlan}`);
-          console.log(`[Planner Agent] Has topic analysis: ${!!topicAnalysis}`);
-          console.log(
-            `[Planner Agent] Has scope estimation: ${!!scopeEstimation}`
-          );
-          console.log(
-            `[Planner Agent] Has plan optimization: ${!!planOptimization}`
-          );
-          console.log("---");
         }
 
         groups.push({

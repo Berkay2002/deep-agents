@@ -14,8 +14,8 @@ import { Command, getCurrentTaskInput } from "@langchain/langgraph";
 import { z } from "zod";
 import type { DeepAgentStateType } from "../../../deep-agent-experimental/types.js";
 import {
-	performTavilySearch,
-	type TavilySearchArgs,
+  performTavilySearch,
+  type TavilySearchArgs,
 } from "../../../utils/tavily.js";
 
 /**
@@ -322,10 +322,10 @@ const MARKDOWN_H3_PREFIX = "### ";
 const MARKDOWN_H4_PREFIX = "#### ";
 const MARKDOWN_H5_PREFIX = "##### ";
 const MARKDOWN_H6_PREFIX = "###### ";
-const MIN_INTRODUCTION_PARAGRAPHS = 2;
+const _MIN_INTRODUCTION_PARAGRAPHS = 2;
 const MIN_SECTION_PARAGRAPHS = 3;
-const MAX_PARAGRAPH_LENGTH = 1000;
-const MIN_PARAGRAPH_LENGTH = 50;
+const _MAX_PARAGRAPH_LENGTH = 1000;
+const _MIN_PARAGRAPH_LENGTH = 50;
 const MIN_SECTIONS_FOR_REPORT = 3;
 const HIGH_COVERAGE_THRESHOLD = 80;
 const MEDIUM_COVERAGE_THRESHOLD = 60;
@@ -334,359 +334,363 @@ const MEDIUM_COVERAGE_THRESHOLD = 60;
  * Helper function to sanitize claim for filesystem paths
  */
 function sanitizeClaimForPath(claim: string): string {
-	return claim
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, "_")
-		.replace(/^_+|_+$/g, "")
-		.substring(0, MAX_CLAIM_LENGTH);
+  return claim
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .substring(0, MAX_CLAIM_LENGTH);
 }
 
 /**
  * Helper function to sanitize category for filesystem paths
  */
 function sanitizeCategoryForPath(category: string): string {
-	return category
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, "_")
-		.replace(/^_+|_+$/g, "")
-		.substring(0, MAX_FILENAME_LENGTH);
+  return category
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .substring(0, MAX_FILENAME_LENGTH);
 }
 
 /**
  * Helper function to parse markdown structure
  */
 function parseMarkdownStructure(content: string): {
-	sections: Array<{ level: number; title: string; lineNumber: number }>;
-	paragraphCount: number;
-	wordCount: number;
-	paragraphsPerSection: Record<string, number>;
+  sections: Array<{ level: number; title: string; lineNumber: number }>;
+  paragraphCount: number;
+  wordCount: number;
+  paragraphsPerSection: Record<string, number>;
 } {
-	const lines = content.split("\n");
-	const sections: Array<{ level: number; title: string; lineNumber: number }> =
-		[];
-	let paragraphCount = 0;
-	let wordCount = 0;
-	const paragraphsPerSection: Record<string, number> = {};
-	let currentSection = "Introduction";
+  const lines = content.split("\n");
+  const sections: Array<{ level: number; title: string; lineNumber: number }> =
+    [];
+  let paragraphCount = 0;
+  let wordCount = 0;
+  const paragraphsPerSection: Record<string, number> = {};
+  let currentSection = "Introduction";
 
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i] ?? "";
-		const trimmedLine = line.trim();
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    const trimmedLine = line.trim();
 
-		// Detect headings
-		if (trimmedLine.startsWith(MARKDOWN_H6_PREFIX)) {
-			const title = trimmedLine.slice(MARKDOWN_H6_PREFIX.length).trim();
-			sections.push({ level: 6, title, lineNumber: i + 1 });
-			currentSection = title;
-			paragraphsPerSection[currentSection] = 0;
-		} else if (trimmedLine.startsWith(MARKDOWN_H5_PREFIX)) {
-			const title = trimmedLine.slice(MARKDOWN_H5_PREFIX.length).trim();
-			sections.push({ level: 5, title, lineNumber: i + 1 });
-			currentSection = title;
-			paragraphsPerSection[currentSection] = 0;
-		} else if (trimmedLine.startsWith(MARKDOWN_H4_PREFIX)) {
-			const title = trimmedLine.slice(MARKDOWN_H4_PREFIX.length).trim();
-			sections.push({ level: 4, title, lineNumber: i + 1 });
-			currentSection = title;
-			paragraphsPerSection[currentSection] = 0;
-		} else if (trimmedLine.startsWith(MARKDOWN_H3_PREFIX)) {
-			const title = trimmedLine.slice(MARKDOWN_H3_PREFIX.length).trim();
-			sections.push({ level: 3, title, lineNumber: i + 1 });
-			currentSection = title;
-			paragraphsPerSection[currentSection] = 0;
-		} else if (trimmedLine.startsWith(MARKDOWN_H2_PREFIX)) {
-			const title = trimmedLine.slice(MARKDOWN_H2_PREFIX.length).trim();
-			sections.push({ level: 2, title, lineNumber: i + 1 });
-			currentSection = title;
-			paragraphsPerSection[currentSection] = 0;
-		} else if (trimmedLine.startsWith(MARKDOWN_H1_PREFIX)) {
-			const title = trimmedLine.slice(MARKDOWN_H1_PREFIX.length).trim();
-			sections.push({ level: 1, title, lineNumber: i + 1 });
-			currentSection = title;
-			paragraphsPerSection[currentSection] = 0;
-		}
+    // Detect headings
+    if (trimmedLine.startsWith(MARKDOWN_H6_PREFIX)) {
+      const title = trimmedLine.slice(MARKDOWN_H6_PREFIX.length).trim();
+      sections.push({ level: 6, title, lineNumber: i + 1 });
+      currentSection = title;
+      paragraphsPerSection[currentSection] = 0;
+    } else if (trimmedLine.startsWith(MARKDOWN_H5_PREFIX)) {
+      const title = trimmedLine.slice(MARKDOWN_H5_PREFIX.length).trim();
+      sections.push({ level: 5, title, lineNumber: i + 1 });
+      currentSection = title;
+      paragraphsPerSection[currentSection] = 0;
+    } else if (trimmedLine.startsWith(MARKDOWN_H4_PREFIX)) {
+      const title = trimmedLine.slice(MARKDOWN_H4_PREFIX.length).trim();
+      sections.push({ level: 4, title, lineNumber: i + 1 });
+      currentSection = title;
+      paragraphsPerSection[currentSection] = 0;
+    } else if (trimmedLine.startsWith(MARKDOWN_H3_PREFIX)) {
+      const title = trimmedLine.slice(MARKDOWN_H3_PREFIX.length).trim();
+      sections.push({ level: 3, title, lineNumber: i + 1 });
+      currentSection = title;
+      paragraphsPerSection[currentSection] = 0;
+    } else if (trimmedLine.startsWith(MARKDOWN_H2_PREFIX)) {
+      const title = trimmedLine.slice(MARKDOWN_H2_PREFIX.length).trim();
+      sections.push({ level: 2, title, lineNumber: i + 1 });
+      currentSection = title;
+      paragraphsPerSection[currentSection] = 0;
+    } else if (trimmedLine.startsWith(MARKDOWN_H1_PREFIX)) {
+      const title = trimmedLine.slice(MARKDOWN_H1_PREFIX.length).trim();
+      sections.push({ level: 1, title, lineNumber: i + 1 });
+      currentSection = title;
+      paragraphsPerSection[currentSection] = 0;
+    }
 
-		// Count paragraphs (non-empty lines that aren't headings or list items)
-		if (
-			trimmedLine.length > 0 &&
-			!trimmedLine.startsWith("#") &&
-			!trimmedLine.startsWith("-") &&
-			!trimmedLine.startsWith("*")
-		) {
-			paragraphCount++;
-			paragraphsPerSection[currentSection] =
-				(paragraphsPerSection[currentSection] || 0) + 1;
-		}
+    // Count paragraphs (non-empty lines that aren't headings or list items)
+    if (
+      trimmedLine.length > 0 &&
+      !trimmedLine.startsWith("#") &&
+      !trimmedLine.startsWith("-") &&
+      !trimmedLine.startsWith("*")
+    ) {
+      paragraphCount++;
+      paragraphsPerSection[currentSection] =
+        (paragraphsPerSection[currentSection] || 0) + 1;
+    }
 
-		// Count words
-		wordCount += trimmedLine.split(/\s+/).filter((w) => w.length > 0).length;
-	}
+    // Count words
+    wordCount += trimmedLine.split(/\s+/).filter((w) => w.length > 0).length;
+  }
 
-	return {
-		sections,
-		paragraphCount,
-		wordCount,
-		paragraphsPerSection,
-	};
+  return {
+    sections,
+    paragraphCount,
+    wordCount,
+    paragraphsPerSection,
+  };
 }
 
 /**
  * Helper function to evaluate structure and identify issues
  */
 function evaluateStructureQuality(
-	sections: Array<{ level: number; title: string; lineNumber: number }>,
-	paragraphsPerSection: Record<string, number>
+  sections: Array<{ level: number; title: string; lineNumber: number }>,
+  paragraphsPerSection: Record<string, number>
 ): {
-	issues: Array<{ issue: string; severity: string; location: string }>;
-	recommendations: string[];
-	score: number;
+  issues: Array<{ issue: string; severity: string; location: string }>;
+  recommendations: string[];
+  score: number;
 } {
-	const issues: Array<{ issue: string; severity: string; location: string }> =
-		[];
-	const recommendations: string[] = [];
-	let score = 100;
+  const issues: Array<{ issue: string; severity: string; location: string }> =
+    [];
+  const recommendations: string[] = [];
+  let score = 100;
 
-	// Check for heading hierarchy issues
-	for (let i = 1; i < sections.length; i++) {
-		const prev = sections[i - 1];
-		const current = sections[i];
-		if (!prev || !current) continue;
+  // Check for heading hierarchy issues
+  for (let i = 1; i < sections.length; i++) {
+    const prev = sections[i - 1];
+    const current = sections[i];
+    if (!(prev && current)) {
+      continue;
+    }
 
-		if (current.level - prev.level > 1) {
-			issues.push({
-				issue: `Skipped heading level from H${prev.level} to H${current.level}`,
-				severity: "medium",
-				location: `Line ${current.lineNumber} (${current.title})`,
-			});
-			score -= 5;
-		}
-	}
+    if (current.level - prev.level > 1) {
+      issues.push({
+        issue: `Skipped heading level from H${prev.level} to H${current.level}`,
+        severity: "medium",
+        location: `Line ${current.lineNumber} (${current.title})`,
+      });
+      score -= 5;
+    }
+  }
 
-	// Check for missing introduction
-	const hasIntroduction = sections.some(
-		(s) =>
-			s.title.toLowerCase().includes("introduction") ||
-			s.title.toLowerCase().includes("overview")
-	);
-	if (!hasIntroduction) {
-		issues.push({
-			issue: "Missing clear introduction section",
-			severity: "high",
-			location: "Beginning of report",
-		});
-		recommendations.push(
-			"Add an introduction section to provide context and overview"
-		);
-		score -= 10;
-	}
+  // Check for missing introduction
+  const hasIntroduction = sections.some(
+    (s) =>
+      s.title.toLowerCase().includes("introduction") ||
+      s.title.toLowerCase().includes("overview")
+  );
+  if (!hasIntroduction) {
+    issues.push({
+      issue: "Missing clear introduction section",
+      severity: "high",
+      location: "Beginning of report",
+    });
+    recommendations.push(
+      "Add an introduction section to provide context and overview"
+    );
+    score -= 10;
+  }
 
-	// Check for missing conclusion
-	const hasConclusion = sections.some(
-		(s) =>
-			s.title.toLowerCase().includes("conclusion") ||
-			s.title.toLowerCase().includes("summary")
-	);
-	if (!hasConclusion) {
-		issues.push({
-			issue: "Missing conclusion or summary section",
-			severity: "high",
-			location: "End of report",
-		});
-		recommendations.push(
-			"Add a conclusion section to summarize findings and insights"
-		);
-		score -= 10;
-	}
+  // Check for missing conclusion
+  const hasConclusion = sections.some(
+    (s) =>
+      s.title.toLowerCase().includes("conclusion") ||
+      s.title.toLowerCase().includes("summary")
+  );
+  if (!hasConclusion) {
+    issues.push({
+      issue: "Missing conclusion or summary section",
+      severity: "high",
+      location: "End of report",
+    });
+    recommendations.push(
+      "Add a conclusion section to summarize findings and insights"
+    );
+    score -= 10;
+  }
 
-	// Check for very short sections
-	for (const [section, count] of Object.entries(paragraphsPerSection)) {
-		if (count < MIN_SECTION_PARAGRAPHS && section !== "Introduction") {
-			issues.push({
-				issue: `Section "${section}" has only ${count} paragraph(s)`,
-				severity: "medium",
-				location: section,
-			});
-			recommendations.push(`Expand "${section}" section with more detail`);
-			score -= 5;
-		}
-	}
+  // Check for very short sections
+  for (const [section, count] of Object.entries(paragraphsPerSection)) {
+    if (count < MIN_SECTION_PARAGRAPHS && section !== "Introduction") {
+      issues.push({
+        issue: `Section "${section}" has only ${count} paragraph(s)`,
+        severity: "medium",
+        location: section,
+      });
+      recommendations.push(`Expand "${section}" section with more detail`);
+      score -= 5;
+    }
+  }
 
-	// Check for too few main sections
-	const mainSections = sections.filter((s) => s.level <= 2);
-	if (mainSections.length < MIN_SECTIONS_FOR_REPORT) {
-		issues.push({
-			issue: `Report has only ${mainSections.length} main section(s)`,
-			severity: "high",
-			location: "Overall structure",
-		});
-		recommendations.push(
-			"Break down content into more main sections for better organization"
-		);
-		score -= 10;
-	}
+  // Check for too few main sections
+  const mainSections = sections.filter((s) => s.level <= 2);
+  if (mainSections.length < MIN_SECTIONS_FOR_REPORT) {
+    issues.push({
+      issue: `Report has only ${mainSections.length} main section(s)`,
+      severity: "high",
+      location: "Overall structure",
+    });
+    recommendations.push(
+      "Break down content into more main sections for better organization"
+    );
+    score -= 10;
+  }
 
-	return {
-		issues,
-		recommendations,
-		score: Math.max(0, score),
-	};
+  return {
+    issues,
+    recommendations,
+    score: Math.max(0, score),
+  };
 }
 
 /**
  * Helper function to calculate completeness score
  */
 function calculateCompletenessScore(
-	report: string,
-	question: string,
-	expectedAreas: string[]
+  report: string,
+  question: string,
+  expectedAreas: string[]
 ): {
-	score: number;
-	coveredAreas: string[];
-	missingAreas: string[];
-	questionAlignment: string;
+  score: number;
+  coveredAreas: string[];
+  missingAreas: string[];
+  questionAlignment: string;
 } {
-	const reportLower = report.toLowerCase();
-	const questionLower = question.toLowerCase();
+  const reportLower = report.toLowerCase();
+  const questionLower = question.toLowerCase();
 
-	// Extract key terms from question
-	const questionTerms = questionLower
-		.split(/\s+/)
-		.filter((w) => w.length > 3 && !["what", "how", "why", "when"].includes(w));
+  // Extract key terms from question
+  const questionTerms = questionLower
+    .split(/\s+/)
+    .filter((w) => w.length > 3 && !["what", "how", "why", "when"].includes(w));
 
-	// Check coverage of question terms
-	const coveredTerms = questionTerms.filter((term) =>
-		reportLower.includes(term)
-	);
-	const termCoverageScore =
-		questionTerms.length > 0
-			? (coveredTerms.length / questionTerms.length) * 100
-			: 100;
+  // Check coverage of question terms
+  const coveredTerms = questionTerms.filter((term) =>
+    reportLower.includes(term)
+  );
+  const termCoverageScore =
+    questionTerms.length > 0
+      ? (coveredTerms.length / questionTerms.length) * 100
+      : 100;
 
-	// Check coverage of expected areas
-	const coveredAreas: string[] = [];
-	const missingAreas: string[] = [];
+  // Check coverage of expected areas
+  const coveredAreas: string[] = [];
+  const missingAreas: string[] = [];
 
-	for (const area of expectedAreas) {
-		if (reportLower.includes(area.toLowerCase())) {
-			coveredAreas.push(area);
-		} else {
-			missingAreas.push(area);
-		}
-	}
+  for (const area of expectedAreas) {
+    if (reportLower.includes(area.toLowerCase())) {
+      coveredAreas.push(area);
+    } else {
+      missingAreas.push(area);
+    }
+  }
 
-	const areaCoverageScore =
-		expectedAreas.length > 0
-			? (coveredAreas.length / expectedAreas.length) * 100
-			: 100;
+  const areaCoverageScore =
+    expectedAreas.length > 0
+      ? (coveredAreas.length / expectedAreas.length) * 100
+      : 100;
 
-	// Average the scores
-	const score = Math.round((termCoverageScore + areaCoverageScore) / 2);
+  // Average the scores
+  const score = Math.round((termCoverageScore + areaCoverageScore) / 2);
 
-	// Determine alignment
-	let questionAlignment = "excellent";
-	if (score < HIGH_COVERAGE_THRESHOLD) questionAlignment = "good";
-	if (score < MEDIUM_COVERAGE_THRESHOLD) questionAlignment = "needs improvement";
+  // Determine alignment
+  let questionAlignment = "excellent";
+  if (score < HIGH_COVERAGE_THRESHOLD) {
+    questionAlignment = "good";
+  }
+  if (score < MEDIUM_COVERAGE_THRESHOLD) {
+    questionAlignment = "needs improvement";
+  }
 
-	return {
-		score,
-		coveredAreas,
-		missingAreas,
-		questionAlignment,
-	};
+  return {
+    score,
+    coveredAreas,
+    missingAreas,
+    questionAlignment,
+  };
 }
 
 /**
  * Fact check tool - verifies claims against authoritative sources
  */
 export const factCheck = tool(
-	async (input: unknown, config: ToolRunnableConfig) => {
-		const state = getCurrentTaskInput<DeepAgentStateType>();
-		const files = { ...(state.files || {}) };
-		const { claim, context } = input as { claim: string; context?: string };
+  async (input: unknown, config: ToolRunnableConfig) => {
+    const state = getCurrentTaskInput<DeepAgentStateType>();
+    const files = { ...(state.files || {}) };
+    const { claim, context } = input as { claim: string; context?: string };
 
-		// Perform search to verify claim
-		const searchArgs: TavilySearchArgs = {
-			query: claim,
-			maxResults: 5,
-			includeAnswer: true,
-			searchDepth: "advanced",
-		};
+    // Perform search to verify claim
+    const searchArgs: TavilySearchArgs = {
+      query: claim,
+      maxResults: 5,
+      includeAnswer: true,
+      searchDepth: "advanced",
+    };
 
-		const searchResult = await performTavilySearch(searchArgs, {
-			toolName: "fact_check",
-		});
+    const searchResult = await performTavilySearch(searchArgs, {
+      toolName: "fact_check",
+    });
 
-		// Analyze results for verification
-		const hasResults = searchResult.results.length > 0;
-		const hasAnswer = !!searchResult.answer && !searchResult.error;
+    // Analyze results for verification
+    const hasResults = searchResult.results.length > 0;
+    const hasAnswer = !!searchResult.answer && !searchResult.error;
 
-		let verified = false;
-		let confidence: "high" | "medium" | "low" = "low";
-		let notes = "";
+    let verified = false;
+    let confidence: "high" | "medium" | "low" = "low";
+    let notes = "";
 
-		if (hasAnswer && hasResults) {
-			// Check if answer supports the claim
-			const answerLower = searchResult.answer?.toLowerCase() || "";
-			const claimLower = claim.toLowerCase();
-			const claimTerms = claimLower
-				.split(/\s+/)
-				.filter((w) => w.length > 3);
-			const matchingTerms = claimTerms.filter((term) =>
-				answerLower.includes(term)
-			);
+    if (hasAnswer && hasResults) {
+      // Check if answer supports the claim
+      const answerLower = searchResult.answer?.toLowerCase() || "";
+      const claimLower = claim.toLowerCase();
+      const claimTerms = claimLower.split(/\s+/).filter((w) => w.length > 3);
+      const matchingTerms = claimTerms.filter((term) =>
+        answerLower.includes(term)
+      );
 
-			if (matchingTerms.length >= claimTerms.length * 0.7) {
-				verified = true;
-				confidence = "high";
-				notes =
-					"Multiple sources confirm this claim with consistent information.";
-			} else if (matchingTerms.length >= claimTerms.length * 0.5) {
-				verified = true;
-				confidence = "medium";
-				notes =
-					"Some sources support this claim but with minor variations or incomplete information.";
-			} else {
-				verified = false;
-				confidence = "low";
-				notes =
-					"Unable to find strong verification for this claim. May need manual review.";
-			}
-		} else if (hasResults) {
-			verified = true;
-			confidence = "medium";
-			notes =
-				"Found related sources but no synthesized answer. Manual verification recommended.";
-		} else {
-			verified = false;
-			confidence = "low";
-			notes = searchResult.error
-				? `Search error: ${searchResult.error}`
-				: "No authoritative sources found to verify this claim.";
-		}
+      if (matchingTerms.length >= claimTerms.length * 0.7) {
+        verified = true;
+        confidence = "high";
+        notes =
+          "Multiple sources confirm this claim with consistent information.";
+      } else if (matchingTerms.length >= claimTerms.length * 0.5) {
+        verified = true;
+        confidence = "medium";
+        notes =
+          "Some sources support this claim but with minor variations or incomplete information.";
+      } else {
+        verified = false;
+        confidence = "low";
+        notes =
+          "Unable to find strong verification for this claim. May need manual review.";
+      }
+    } else if (hasResults) {
+      verified = true;
+      confidence = "medium";
+      notes =
+        "Found related sources but no synthesized answer. Manual verification recommended.";
+    } else {
+      verified = false;
+      confidence = "low";
+      notes = searchResult.error
+        ? `Search error: ${searchResult.error}`
+        : "No authoritative sources found to verify this claim.";
+    }
 
-		// Store results in mock filesystem
-		const sanitizedClaim = sanitizeClaimForPath(claim);
-		const filePath = `/research/critiques/fact_checks/${sanitizedClaim}_check.json`;
+    // Store results in mock filesystem
+    const sanitizedClaim = sanitizeClaimForPath(claim);
+    const filePath = `/research/critiques/fact_checks/${sanitizedClaim}_check.json`;
 
-		const verificationResult = {
-			claim,
-			context: context || "",
-			verified,
-			sources: searchResult.results.map((r) => ({
-				title: r.title,
-				url: r.url,
-				snippet: r.content?.substring(0, 200),
-			})),
-			synthesizedAnswer: searchResult.answer || null,
-			confidence,
-			notes,
-			timestamp: new Date().toISOString(),
-		};
+    const verificationResult = {
+      claim,
+      context: context || "",
+      verified,
+      sources: searchResult.results.map((r) => ({
+        title: r.title,
+        url: r.url,
+        snippet: r.content?.substring(0, 200),
+      })),
+      synthesizedAnswer: searchResult.answer || null,
+      confidence,
+      notes,
+      timestamp: new Date().toISOString(),
+    };
 
-		files[filePath] = JSON.stringify(verificationResult, null, 2);
+    files[filePath] = JSON.stringify(verificationResult, null, 2);
 
-		const statusText = verified ? "✓ Verified" : "✗ Not verified";
-		const messageContent = `Fact check completed: ${statusText}
+    const statusText = verified ? "✓ Verified" : "✗ Not verified";
+    const messageContent = `Fact check completed: ${statusText}
 
 Claim: "${claim}"
 Confidence: ${confidence}
@@ -697,91 +701,91 @@ Use read_file to access full verification details: read_file({ filePath: "${file
 
 ${notes}`;
 
-		return new Command({
-			update: {
-				files,
-				messages: [
-					new ToolMessage({
-						content: messageContent,
-						// biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
-						tool_call_id: config.toolCall?.id as string,
-					}),
-				],
-			},
-		});
-	},
-	{
-		name: "fact_check",
-		description: FACT_CHECK_DESCRIPTION,
-		schema: z.object({
-			claim: z.string().describe("The specific claim or fact to verify"),
-			context: z
-				.string()
-				.optional()
-				.describe("Optional surrounding context from the report"),
-		}),
-	}
+    return new Command({
+      update: {
+        files,
+        messages: [
+          new ToolMessage({
+            content: messageContent,
+            // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
+            tool_call_id: config.toolCall?.id as string,
+          }),
+        ],
+      },
+    });
+  },
+  {
+    name: "fact_check",
+    description: FACT_CHECK_DESCRIPTION,
+    schema: z.object({
+      claim: z.string().describe("The specific claim or fact to verify"),
+      context: z
+        .string()
+        .optional()
+        .describe("Optional surrounding context from the report"),
+    }),
+  }
 );
 
 /**
  * Evaluate structure tool - analyzes report structure and organization
  */
 export const evaluateStructure = tool(
-	(input: unknown, config: ToolRunnableConfig) => {
-		const state = getCurrentTaskInput<DeepAgentStateType>();
-		const files = { ...(state.files || {}) };
-		const { reportPath } = input as { reportPath: string };
+  (input: unknown, config: ToolRunnableConfig) => {
+    const state = getCurrentTaskInput<DeepAgentStateType>();
+    const files = { ...(state.files || {}) };
+    const { reportPath } = input as { reportPath: string };
 
-		// Read report from mock filesystem
-		const report = files[reportPath] || "";
-		if (!report) {
-			return new Command({
-				update: {
-					files,
-					messages: [
-						new ToolMessage({
-							content: `Error: Report not found at ${reportPath}. Use read_file first to ensure the report exists.`,
-							// biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
-							tool_call_id: config.toolCall?.id as string,
-						}),
-					],
-				},
-			});
-		}
+    // Read report from mock filesystem
+    const report = files[reportPath] || "";
+    if (!report) {
+      return new Command({
+        update: {
+          files,
+          messages: [
+            new ToolMessage({
+              content: `Error: Report not found at ${reportPath}. Use read_file first to ensure the report exists.`,
+              // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
+              tool_call_id: config.toolCall?.id as string,
+            }),
+          ],
+        },
+      });
+    }
 
-		// Parse structure
-		const { sections, paragraphCount, wordCount, paragraphsPerSection } =
-			parseMarkdownStructure(report);
+    // Parse structure
+    const { sections, paragraphCount, wordCount, paragraphsPerSection } =
+      parseMarkdownStructure(report);
 
-		// Evaluate quality
-		const { issues, recommendations, score } = evaluateStructureQuality(
-			sections,
-			paragraphsPerSection
-		);
+    // Evaluate quality
+    const { issues, recommendations, score } = evaluateStructureQuality(
+      sections,
+      paragraphsPerSection
+    );
 
-		// Store results
-		const filePath = "/research/critiques/structure_evaluation.json";
-		const evaluationResult = {
-			reportPath,
-			sectionCount: sections.length,
-			mainSections: sections.filter((s) => s.level <= 2).length,
-			headingHierarchy: sections.map((s) => ({
-				level: s.level,
-				title: s.title,
-				line: s.lineNumber,
-			})),
-			paragraphCount,
-			wordCount,
-			paragraphsPerSection,
-			issues,
-			recommendations,
-			score,
-			timestamp: new Date().toISOString(),
-		};
+    // Store results
+    const filePath = "/research/critiques/structure_evaluation.json";
+    const evaluationResult = {
+      reportPath,
+      sectionCount: sections.length,
+      mainSections: sections.filter((s) => s.level <= 2).length,
+      headingHierarchy: sections.map((s) => ({
+        level: s.level,
+        title: s.title,
+        line: s.lineNumber,
+      })),
+      paragraphCount,
+      wordCount,
+      paragraphsPerSection,
+      issues,
+      recommendations,
+      score,
+      timestamp: new Date().toISOString(),
+    };
 
-		files[filePath] = JSON.stringify(evaluationResult, null, 2);
+    files[filePath] = JSON.stringify(evaluationResult, null, 2);
 
-		const messageContent = `Structure evaluation completed
+    const messageContent = `Structure evaluation completed
 
 Overall Score: ${score}/100
 Sections: ${sections.length} total (${sections.filter((s) => s.level <= 2).length} main)
@@ -792,125 +796,126 @@ Issues Found: ${issues.length}
 Result saved to: ${filePath}
 Use read_file to access full evaluation: read_file({ filePath: "${filePath}" })`;
 
-		return new Command({
-			update: {
-				files,
-				messages: [
-					new ToolMessage({
-						content: messageContent,
-						// biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
-						tool_call_id: config.toolCall?.id as string,
-					}),
-				],
-			},
-		});
-	},
-	{
-		name: "evaluate_structure",
-		description: EVALUATE_STRUCTURE_DESCRIPTION,
-		schema: z.object({
-			reportPath: z
-				.string()
-				.default("/final_report.md")
-				.describe("Path to the report file (defaults to /final_report.md)"),
-		}),
-	}
+    return new Command({
+      update: {
+        files,
+        messages: [
+          new ToolMessage({
+            content: messageContent,
+            // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
+            tool_call_id: config.toolCall?.id as string,
+          }),
+        ],
+      },
+    });
+  },
+  {
+    name: "evaluate_structure",
+    description: EVALUATE_STRUCTURE_DESCRIPTION,
+    schema: z.object({
+      reportPath: z
+        .string()
+        .default("/final_report.md")
+        .describe("Path to the report file (defaults to /final_report.md)"),
+    }),
+  }
 );
 
 /**
  * Analyze completeness tool - evaluates report coverage and completeness
  */
 export const analyzeCompleteness = tool(
-	(input: unknown, config: ToolRunnableConfig) => {
-		const state = getCurrentTaskInput<DeepAgentStateType>();
-		const files = { ...(state.files || {}) };
-		const { reportPath, questionPath } = input as {
-			reportPath: string;
-			questionPath: string;
-		};
+  (input: unknown, config: ToolRunnableConfig) => {
+    const state = getCurrentTaskInput<DeepAgentStateType>();
+    const files = { ...(state.files || {}) };
+    const { reportPath, questionPath } = input as {
+      reportPath: string;
+      questionPath: string;
+    };
 
-		// Read report and question
-		const report = files[reportPath] || "";
-		const question = files[questionPath] || "";
+    // Read report and question
+    const report = files[reportPath] || "";
+    const question = files[questionPath] || "";
 
-		if (!report) {
-			return new Command({
-				update: {
-					files,
-					messages: [
-						new ToolMessage({
-							content: `Error: Report not found at ${reportPath}`,
-							// biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
-							tool_call_id: config.toolCall?.id as string,
-						}),
-					],
-				},
-			});
-		}
+    if (!report) {
+      return new Command({
+        update: {
+          files,
+          messages: [
+            new ToolMessage({
+              content: `Error: Report not found at ${reportPath}`,
+              // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
+              tool_call_id: config.toolCall?.id as string,
+            }),
+          ],
+        },
+      });
+    }
 
-		if (!question) {
-			return new Command({
-				update: {
-					files,
-					messages: [
-						new ToolMessage({
-							content: `Error: Question not found at ${questionPath}`,
-							// biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
-							tool_call_id: config.toolCall?.id as string,
-						}),
-					],
-				},
-			});
-		}
+    if (!question) {
+      return new Command({
+        update: {
+          files,
+          messages: [
+            new ToolMessage({
+              content: `Error: Question not found at ${questionPath}`,
+              // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
+              tool_call_id: config.toolCall?.id as string,
+            }),
+          ],
+        },
+      });
+    }
 
-		// Try to read planning artifacts for expected areas
-		let expectedAreas: string[] = [];
-		const topicAnalysisFiles = Object.keys(files).filter((path) =>
-			path.includes("/research/plans/") && path.includes("_analysis.json")
-		);
+    // Try to read planning artifacts for expected areas
+    let expectedAreas: string[] = [];
+    const topicAnalysisFiles = Object.keys(files).filter(
+      (path) =>
+        path.includes("/research/plans/") && path.includes("_analysis.json")
+    );
 
-		if (topicAnalysisFiles.length > 0) {
-			try {
-				const analysisPath = topicAnalysisFiles[0];
-				const analysisData = JSON.parse(files[analysisPath] || "{}");
-				expectedAreas = analysisData.researchAreas || [];
-			} catch {
-				// Ignore parsing errors
-			}
-		}
+    if (topicAnalysisFiles.length > 0) {
+      try {
+        const analysisPath = topicAnalysisFiles[0];
+        const analysisData = JSON.parse(files[analysisPath] || "{}");
+        expectedAreas = analysisData.researchAreas || [];
+      } catch {
+        // Ignore parsing errors
+      }
+    }
 
-		// If no planning artifacts, extract from question
-		if (expectedAreas.length === 0) {
-			expectedAreas = question
-				.split(/[.!?]/)
-				.filter((s) => s.trim().length > 0)
-				.map((s) => s.trim());
-		}
+    // If no planning artifacts, extract from question
+    if (expectedAreas.length === 0) {
+      expectedAreas = question
+        .split(/[.!?]/)
+        .filter((s) => s.trim().length > 0)
+        .map((s) => s.trim());
+    }
 
-		// Calculate completeness
-		const { score, coveredAreas, missingAreas, questionAlignment } =
-			calculateCompletenessScore(report, question, expectedAreas);
+    // Calculate completeness
+    const { score, coveredAreas, missingAreas, questionAlignment } =
+      calculateCompletenessScore(report, question, expectedAreas);
 
-		// Store results
-		const filePath = "/research/critiques/completeness_analysis.json";
-		const analysisResult = {
-			reportPath,
-			questionPath,
-			coverageScore: score,
-			coveredAreas,
-			missingAreas,
-			recommendations: missingAreas.map(
-				(area) => `Add more coverage for: ${area}`
-			),
-			questionAlignment,
-			expectedAreaCount: expectedAreas.length,
-			coveredAreaCount: coveredAreas.length,
-			timestamp: new Date().toISOString(),
-		};
+    // Store results
+    const filePath = "/research/critiques/completeness_analysis.json";
+    const analysisResult = {
+      reportPath,
+      questionPath,
+      coverageScore: score,
+      coveredAreas,
+      missingAreas,
+      recommendations: missingAreas.map(
+        (area) => `Add more coverage for: ${area}`
+      ),
+      questionAlignment,
+      expectedAreaCount: expectedAreas.length,
+      coveredAreaCount: coveredAreas.length,
+      timestamp: new Date().toISOString(),
+    };
 
-		files[filePath] = JSON.stringify(analysisResult, null, 2);
+    files[filePath] = JSON.stringify(analysisResult, null, 2);
 
-		const messageContent = `Completeness analysis completed
+    const messageContent = `Completeness analysis completed
 
 Coverage Score: ${score}/100
 Question Alignment: ${questionAlignment}
@@ -922,111 +927,109 @@ Use read_file to access full analysis: read_file({ filePath: "${filePath}" })
 
 ${missingAreas.length > 0 ? `\nMissing areas:\n${missingAreas.map((a) => `- ${a}`).join("\n")}` : ""}`;
 
-		return new Command({
-			update: {
-				files,
-				messages: [
-					new ToolMessage({
-						content: messageContent,
-						// biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
-						tool_call_id: config.toolCall?.id as string,
-					}),
-				],
-			},
-		});
-	},
-	{
-		name: "analyze_completeness",
-		description: ANALYZE_COMPLETENESS_DESCRIPTION,
-		schema: z.object({
-			reportPath: z
-				.string()
-				.default("/final_report.md")
-				.describe("Path to the report file (defaults to /final_report.md)"),
-			questionPath: z
-				.string()
-				.default("/question.txt")
-				.describe(
-					"Path to the question file (defaults to /question.txt)"
-				),
-		}),
-	}
+    return new Command({
+      update: {
+        files,
+        messages: [
+          new ToolMessage({
+            content: messageContent,
+            // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
+            tool_call_id: config.toolCall?.id as string,
+          }),
+        ],
+      },
+    });
+  },
+  {
+    name: "analyze_completeness",
+    description: ANALYZE_COMPLETENESS_DESCRIPTION,
+    schema: z.object({
+      reportPath: z
+        .string()
+        .default("/final_report.md")
+        .describe("Path to the report file (defaults to /final_report.md)"),
+      questionPath: z
+        .string()
+        .default("/question.txt")
+        .describe("Path to the question file (defaults to /question.txt)"),
+    }),
+  }
 );
 
 /**
  * Save critique tool - stores structured critique findings
  */
 export const saveCritique = tool(
-	(input: unknown, config: ToolRunnableConfig) => {
-		const state = getCurrentTaskInput<DeepAgentStateType>();
-		const files = { ...(state.files || {}) };
-		const { category, findings, metadata } = input as {
-			category: string;
-			findings: Array<{
-				issue: string;
-				severity: string;
-				suggestion: string;
-				location: string;
-			}>;
-			metadata?: Record<string, unknown>;
-		};
+  (input: unknown, config: ToolRunnableConfig) => {
+    const state = getCurrentTaskInput<DeepAgentStateType>();
+    const files = { ...(state.files || {}) };
+    const { category, findings, metadata } = input as {
+      category: string;
+      findings: Array<{
+        issue: string;
+        severity: string;
+        suggestion: string;
+        location: string;
+      }>;
+      metadata?: Record<string, unknown>;
+    };
 
-		// Sanitize category for file path
-		const sanitizedCategory = sanitizeCategoryForPath(category);
-		const filePath = `/research/critiques/${sanitizedCategory}_critique.json`;
+    // Sanitize category for file path
+    const sanitizedCategory = sanitizeCategoryForPath(category);
+    const filePath = `/research/critiques/${sanitizedCategory}_critique.json`;
 
-		// Check if critique file already exists
-		let existingFindings: Array<{
-			issue: string;
-			severity: string;
-			suggestion: string;
-			location: string;
-		}> = [];
-		let existingMetadata: Record<string, unknown> = {};
+    // Check if critique file already exists
+    let existingFindings: Array<{
+      issue: string;
+      severity: string;
+      suggestion: string;
+      location: string;
+    }> = [];
+    let existingMetadata: Record<string, unknown> = {};
 
-		if (filePath in files) {
-			try {
-				const existing = JSON.parse(files[filePath] || "{}");
-				existingFindings = existing.findings || [];
-				existingMetadata = existing.metadata || {};
-			} catch {
-				// If parsing fails, start fresh
-			}
-		}
+    if (filePath in files) {
+      try {
+        const existing = JSON.parse(files[filePath] || "{}");
+        existingFindings = existing.findings || [];
+        existingMetadata = existing.metadata || {};
+      } catch {
+        // If parsing fails, start fresh
+      }
+    }
 
-		// Merge new findings with existing
-		const mergedFindings = [...existingFindings, ...findings];
+    // Merge new findings with existing
+    const mergedFindings = [...existingFindings, ...findings];
 
-		// Calculate severity breakdown
-		const severityBreakdown = {
-			critical: mergedFindings.filter((f) => f.severity === "critical").length,
-			high: mergedFindings.filter((f) => f.severity === "high").length,
-			medium: mergedFindings.filter((f) => f.severity === "medium").length,
-			low: mergedFindings.filter((f) => f.severity === "low").length,
-		};
+    // Calculate severity breakdown
+    const severityBreakdown = {
+      critical: mergedFindings.filter((f) => f.severity === "critical").length,
+      high: mergedFindings.filter((f) => f.severity === "high").length,
+      medium: mergedFindings.filter((f) => f.severity === "medium").length,
+      low: mergedFindings.filter((f) => f.severity === "low").length,
+    };
 
-		// Merge metadata
-		const mergedMetadata = { ...existingMetadata, ...metadata };
+    // Merge metadata
+    const mergedMetadata = { ...existingMetadata, ...metadata };
 
-		// Create critique result
-		const critiqueResult = {
-			category,
-			findings: mergedFindings,
-			totalIssues: mergedFindings.length,
-			severityBreakdown,
-			metadata: mergedMetadata,
-			timestamp: new Date().toISOString(),
-		};
+    // Create critique result
+    const critiqueResult = {
+      category,
+      findings: mergedFindings,
+      totalIssues: mergedFindings.length,
+      severityBreakdown,
+      metadata: mergedMetadata,
+      timestamp: new Date().toISOString(),
+    };
 
-		// Store in mock filesystem
-		files[filePath] = JSON.stringify(critiqueResult, null, 2);
+    // Store in mock filesystem
+    files[filePath] = JSON.stringify(critiqueResult, null, 2);
 
-		return new Command({
-			update: {
-				files,
-				messages: [
-					new ToolMessage({
-						content: `Critique saved to ${filePath}
+    return new Command({
+      update: {
+        files,
+        messages: [
+          new ToolMessage({
+            content: `Critique saved to ${filePath}
 
 Category: ${category}
 New Findings: ${findings.length}
@@ -1038,58 +1041,58 @@ Severity Breakdown:
 - Low: ${severityBreakdown.low}
 
 Use read_file to access critique: read_file({ filePath: "${filePath}" })`,
-						// biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
-						tool_call_id: config.toolCall?.id as string,
-					}),
-				],
-			},
-		});
-	},
-	{
-		name: "save_critique",
-		description: SAVE_CRITIQUE_DESCRIPTION,
-		schema: z.object({
-			category: z
-				.string()
-				.describe(
-					"Critique category (structure, completeness, accuracy, clarity, citations)"
-				),
-			findings: z
-				.array(
-					z.object({
-						issue: z.string().describe("Description of the issue"),
-						severity: z
-							.enum(["critical", "high", "medium", "low"])
-							.describe("Severity level of the issue"),
-						suggestion: z
-							.string()
-							.describe("Specific recommendation for improvement"),
-						location: z
-							.string()
-							.describe("Where in report (section name, line number)"),
-					})
-				)
-				.describe("Array of structured findings"),
-			metadata: z
-				.record(z.string(), z.unknown())
-				.optional()
-				.describe("Optional additional context"),
-		}),
-	}
+            // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
+            tool_call_id: config.toolCall?.id as string,
+          }),
+        ],
+      },
+    });
+  },
+  {
+    name: "save_critique",
+    description: SAVE_CRITIQUE_DESCRIPTION,
+    schema: z.object({
+      category: z
+        .string()
+        .describe(
+          "Critique category (structure, completeness, accuracy, clarity, citations)"
+        ),
+      findings: z
+        .array(
+          z.object({
+            issue: z.string().describe("Description of the issue"),
+            severity: z
+              .enum(["critical", "high", "medium", "low"])
+              .describe("Severity level of the issue"),
+            suggestion: z
+              .string()
+              .describe("Specific recommendation for improvement"),
+            location: z
+              .string()
+              .describe("Where in report (section name, line number)"),
+          })
+        )
+        .describe("Array of structured findings"),
+      metadata: z
+        .record(z.string(), z.unknown())
+        .optional()
+        .describe("Optional additional context"),
+    }),
+  }
 );
 
 /**
  * Critique tools collection
  */
 export const critiqueTools = [
-	factCheck,
-	evaluateStructure,
-	analyzeCompleteness,
-	saveCritique,
+  factCheck,
+  evaluateStructure,
+  analyzeCompleteness,
+  saveCritique,
 ];
 
 /**
  * Message modifier for adding critique system prompts
  */
 export const critiqueMessageModifier = (message: string) =>
-	message + CRITIQUE_SYSTEM_PROMPT;
+  message + CRITIQUE_SYSTEM_PROMPT;

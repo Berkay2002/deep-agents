@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertCircle, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,18 +13,28 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
-interface GithubConfigDialogProps {
+type GithubConfigDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}
+};
 
-interface McpServer {
+type McpServer = {
   name: string;
   displayName: string;
   description: string;
   enabled: boolean;
   requiresAuth: boolean;
-}
+};
+
+type McpStatusResponse = {
+  servers?: McpServer[];
+};
+
+const normalizeServers = (data: McpStatusResponse): McpServer[] =>
+  Array.isArray(data.servers) ? data.servers : [];
+
+const toErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : "Failed to fetch MCP status";
 
 export function GithubConfigDialog({
   open,
@@ -32,28 +42,52 @@ export function GithubConfigDialog({
 }: GithubConfigDialogProps) {
   const [servers, setServers] = useState<McpServer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (open) {
-      fetchMcpStatus();
+  const fetchMcpStatus = useCallback(async (signal: AbortSignal) => {
+    if (signal.aborted) {
+      return;
     }
-  }, [open]);
 
-  const fetchMcpStatus = async () => {
+    setLoading(true);
+    setErrorMessage(null);
+
     try {
-      setLoading(true);
-      const response = await fetch("/api/mcp-status");
+      const response = await fetch("/api/mcp-status", { signal });
       if (!response.ok) {
         throw new Error("Failed to fetch MCP status");
       }
-      const data = await response.json();
-      setServers(data.servers || []);
+
+      const data = (await response.json()) as McpStatusResponse;
+      if (signal.aborted) {
+        return;
+      }
+
+      setServers(normalizeServers(data));
     } catch (error) {
-      console.error("Error fetching MCP status:", error);
+      if (!signal.aborted) {
+        setErrorMessage(toErrorMessage(error));
+      }
     } finally {
-      setLoading(false);
+      if (!signal.aborted) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    fetchMcpStatus(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
+  }, [fetchMcpStatus, open]);
 
   const handleClose = () => {
     onOpenChange(false);
@@ -125,10 +159,19 @@ export function GithubConfigDialog({
             )}
           </div>
 
+          {errorMessage && (
+            <div className="rounded-sm border border-red-200 bg-red-50 p-3">
+              <div className="flex items-start gap-2 text-sm">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+                <span className="text-red-800">{errorMessage}</span>
+              </div>
+            </div>
+          )}
+
           {/* MCP Info */}
           <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
             <div className="flex items-start gap-2">
-              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600" />
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
               <div className="text-blue-800 text-sm">
                 <strong>What is MCP?</strong> Model Context Protocol enables AI
                 agents to connect to external tools and services, expanding
@@ -141,15 +184,15 @@ export function GithubConfigDialog({
           {servers.some((s) => s.name === "github-copilot" && !s.enabled) && (
             <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3">
               <div className="flex items-start gap-2">
-                <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-yellow-600" />
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-yellow-600" />
                 <div className="text-sm text-yellow-800">
                   <strong>Developer Note:</strong> To enable GitHub Copilot MCP,
                   set the{" "}
-                  <code className="rounded bg-yellow-100 px-1 py-0.5 text-xs">
+                  <code className="rounded-sm bg-yellow-100 px-1 py-0.5 text-xs">
                     GITHUB_PAT
                   </code>{" "}
                   environment variable in{" "}
-                  <code className="rounded bg-yellow-100 px-1 py-0.5 text-xs">
+                  <code className="rounded-sm bg-yellow-100 px-1 py-0.5 text-xs">
                     apps/agent/.env
                   </code>
                   . Leave empty in production for security.

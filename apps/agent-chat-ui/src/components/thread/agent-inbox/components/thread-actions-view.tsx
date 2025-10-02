@@ -8,12 +8,12 @@ import { constructOpenInStudioURL } from "../utils";
 import { InboxItemInput } from "./inbox-item-input";
 import { ThreadIdCopyable } from "./thread-id";
 
-interface ThreadActionsViewProps {
+type ThreadActionsViewProps = {
   interrupt: HumanInterrupt;
   handleShowSidePanel: (showState: boolean, showDescription: boolean) => void;
   showState: boolean;
   showDescription: boolean;
-}
+};
 
 function ButtonGroup({
   handleShowState,
@@ -30,7 +30,7 @@ function ButtonGroup({
     <div className="flex flex-row items-center justify-center gap-0">
       <Button
         className={cn(
-          "rounded-r-none rounded-l-md border-r-[0px]",
+          "rounded-r-none rounded-l-md border-r-0",
           showingState ? "text-black" : "bg-white"
         )}
         onClick={handleShowState}
@@ -41,7 +41,7 @@ function ButtonGroup({
       </Button>
       <Button
         className={cn(
-          "rounded-r-md rounded-l-none border-l-[0px]",
+          "rounded-r-md rounded-l-none border-l-0",
           showingDescription ? "text-black" : "bg-white"
         )}
         onClick={handleShowDescription}

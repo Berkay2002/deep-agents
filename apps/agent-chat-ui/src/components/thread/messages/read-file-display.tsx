@@ -28,7 +28,7 @@ const getButtonText = (
   if (!isExpanded) {
     return `Show more (${totalLines - previewLines} more lines)`;
   }
-  
+
   return canShowAll ? "Show all" : "Show less";
 };
 
@@ -40,7 +40,7 @@ const getButtonIcon = (
   if (!isExpanded) {
     return <ChevronDown className="h-4 w-4" />;
   }
-  
+
   return canShowAll ? (
     <ChevronDown className="h-4 w-4" />
   ) : (
@@ -48,10 +48,7 @@ const getButtonIcon = (
   );
 };
 
-export function ReadFileDisplay({
-  args,
-  content,
-}: ReadFileDisplayProps) {
+export function ReadFileDisplay({ args, content }: ReadFileDisplayProps) {
   const [isExpanded, setIsExpanded] = useState(false); // Start with preview
 
   const filePath = args.filePath || "unknown";
@@ -82,7 +79,7 @@ export function ReadFileDisplay({
           className="cursor-pointer border-blue-200 border-b bg-blue-50 px-4 py-2 transition-colors hover:bg-blue-100"
           onClick={() => setIsExpanded(!isExpanded)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+            if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               setIsExpanded(!isExpanded);
             }
@@ -96,7 +93,7 @@ export function ReadFileDisplay({
               <code className="font-medium text-blue-900 text-sm">
                 {filePath}
               </code>
-              <span className="rounded bg-blue-100 px-2 py-0.5 font-medium text-blue-700 text-xs">
+              <span className="rounded-sm bg-blue-100 px-2 py-0.5 font-medium text-blue-700 text-xs">
                 <Eye className="mr-1 inline h-3 w-3" />
                 Read
               </span>
@@ -160,18 +157,23 @@ export function ReadFileDisplay({
           {/* Expand/Collapse Button */}
           {shouldShowExpand && (
             <motion.button
-              type="button"
               className="flex w-full cursor-pointer items-center justify-center border-blue-200 border-t bg-blue-50 py-2 text-blue-500 transition-all duration-200 ease-in-out hover:bg-blue-100 hover:text-blue-600"
               initial={{ scale: 1 }}
               onClick={(e) => {
                 e.stopPropagation();
                 setIsExpanded(!isExpanded);
               }}
+              type="button"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
               <span className="mr-2 text-sm">
-                {getButtonText(isExpanded, canShowAll, totalLines, PREVIEW_LINES)}
+                {getButtonText(
+                  isExpanded,
+                  canShowAll,
+                  totalLines,
+                  PREVIEW_LINES
+                )}
               </span>
               {getButtonIcon(isExpanded, canShowAll)}
             </motion.button>

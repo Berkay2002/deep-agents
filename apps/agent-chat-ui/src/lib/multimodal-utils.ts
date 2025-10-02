@@ -25,8 +25,8 @@ export async function fileToContentBlock(
   if (supportedImageTypes.includes(file.type)) {
     return {
       type: "image",
-      source_type: "base64",
-      mime_type: file.type,
+      sourceType: "base64",
+      mimeType: file.type,
       data,
       metadata: { name: file.name },
     };
@@ -35,15 +35,15 @@ export async function fileToContentBlock(
   // PDF
   return {
     type: "file",
-    source_type: "base64",
-    mime_type: "application/pdf",
+    sourceType: "base64",
+    mimeType: "application/pdf",
     data,
     metadata: { filename: file.name },
   };
 }
 
 // Helper to convert File to base64 string
-export async function fileToBase64(file: File): Promise<string> {
+export function fileToBase64(file: File): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -60,28 +60,29 @@ export async function fileToBase64(file: File): Promise<string> {
 export function isBase64ContentBlock(
   block: unknown
 ): block is Base64ContentBlock {
-  if (typeof block !== "object" || block === null || !("type" in block))
+  if (typeof block !== "object" || block === null || !("type" in block)) {
     return false;
+  }
   // file type (legacy)
   if (
     (block as { type: unknown }).type === "file" &&
-    "source_type" in block &&
-    (block as { source_type: unknown }).source_type === "base64" &&
-    "mime_type" in block &&
-    typeof (block as { mime_type?: unknown }).mime_type === "string" &&
-    ((block as { mime_type: string }).mime_type.startsWith("image/") ||
-      (block as { mime_type: string }).mime_type === "application/pdf")
+    "sourceType" in block &&
+    (block as { sourceType: unknown }).sourceType === "base64" &&
+    "mimeType" in block &&
+    typeof (block as { mimeType?: unknown }).mimeType === "string" &&
+    ((block as { mimeType: string }).mimeType.startsWith("image/") ||
+      (block as { mimeType: string }).mimeType === "application/pdf")
   ) {
     return true;
   }
   // image type (new)
   if (
     (block as { type: unknown }).type === "image" &&
-    "source_type" in block &&
-    (block as { source_type: unknown }).source_type === "base64" &&
-    "mime_type" in block &&
-    typeof (block as { mime_type?: unknown }).mime_type === "string" &&
-    (block as { mime_type: string }).mime_type.startsWith("image/")
+    "sourceType" in block &&
+    (block as { sourceType: unknown }).sourceType === "base64" &&
+    "mimeType" in block &&
+    typeof (block as { mimeType?: unknown }).mimeType === "string" &&
+    (block as { mimeType: string }).mimeType.startsWith("image/")
   ) {
     return true;
   }

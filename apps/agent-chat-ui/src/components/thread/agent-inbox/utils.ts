@@ -114,14 +114,6 @@ export function createDefaultHumanResponse(
           k in initialHumanInterruptEditValue.current &&
           initialHumanInterruptEditValue.current[k] !== stringValue
         ) {
-          console.error(
-            "KEY AND VALUE FOUND IN initialHumanInterruptEditValue.current THAT DOES NOT MATCH THE ACTION REQUEST",
-            {
-              key: k,
-              value: stringValue,
-              expectedValue: initialHumanInterruptEditValue.current[k],
-            }
-          );
         }
       });
       responses.push({

@@ -46,7 +46,7 @@ export const MultimodalPreview: React.FC<MultimodalPreviewProps> = ({
     block.mime_type.startsWith("image/")
   ) {
     const url = `data:${block.mime_type};base64,${block.data}`;
-    
+
     let imgClass: string;
     if (size === "sm") {
       imgClass = "rounded-md object-cover h-10 w-10 text-base";
@@ -90,7 +90,7 @@ export const MultimodalPreview: React.FC<MultimodalPreviewProps> = ({
   ) {
     const filename =
       block.metadata?.filename || block.metadata?.name || "PDF file";
-    
+
     return (
       <div
         className={cn(
@@ -98,16 +98,11 @@ export const MultimodalPreview: React.FC<MultimodalPreviewProps> = ({
           className
         )}
       >
-        <div className="flex flex-shrink-0 flex-col items-start justify-start">
-          <File
-            className={cn(
-              "text-teal-700",
-              ICON_SIZES[size]
-            )}
-          />
+        <div className="flex shrink-0 flex-col items-start justify-start">
+          <File className={cn("text-teal-700", ICON_SIZES[size])} />
         </div>
-        <span className="break-all min-w-0 flex-1 text-gray-800 text-sm [word-break:break-all] [white-space:pre-wrap]">
-          {(filename as string)}
+        <span className="min-w-0 flex-1 whitespace-pre-wrap break-all break-all text-gray-800 text-sm">
+          {filename as string}
         </span>
         {removable && (
           <button
@@ -132,7 +127,7 @@ export const MultimodalPreview: React.FC<MultimodalPreviewProps> = ({
         className
       )}
     >
-      <File className="h-5 w-5 flex-shrink-0" />
+      <File className="h-5 w-5 shrink-0" />
       <span className="truncate text-xs">Unsupported file type</span>
       {removable && (
         <button
