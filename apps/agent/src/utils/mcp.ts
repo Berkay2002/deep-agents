@@ -21,8 +21,8 @@ let cachedTools: LoadedTool[] | null = null;
 const cachedToolsByServer: Partial<Record<McpServerName, LoadedTool[]>> = {};
 const failedServers = new Set<McpServerName>();
 
-// Connection timeout for MCP servers (10 seconds)
-const MCP_CONNECTION_TIMEOUT_MS = 10000;
+// Connection timeout for MCP servers (5 seconds to prevent hanging)
+const MCP_CONNECTION_TIMEOUT_MS = 5000;
 
 /**
  * Load MCP servers configuration from environment variables
@@ -114,12 +114,21 @@ async function initializeMCPClient(): Promise<MultiServerMCPClient | null> {
 
   try {
     console.log(`🔌 Initializing MCP client with ${serverNames.length} server(s)...`);
-    const { client, tools } = await createMultiMCPClient(serversConfig, {
+    console.log("⏱️  MCP connection timeout set to", MCP_CONNECTION_TIMEOUT_MS, "ms");
+    
+    // Add overall timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("MCP client initialization timed out")), 15000);
+    });
+    
+    const initPromise = createMultiMCPClient(serversConfig, {
       useStandardContentBlocks: true,
       defaultToolTimeout: MCP_CONNECTION_TIMEOUT_MS,
       throwOnLoadError: false, // Don't throw on individual server failures
       prefixToolNameWithServerName: true, // Prefix to avoid name collisions
     });
+    
+    const { client, tools } = await Promise.race([initPromise, timeoutPromise]) as any;
 
     mcpClientInstance = client;
     cachedTools = tools;

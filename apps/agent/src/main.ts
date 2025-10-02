@@ -16,11 +16,54 @@ import type { AgentRunInput, AgentFile } from "./shared/types.js";
 // TODO: Implement agent load balancing for high traffic
 
 // Export individual agents for LangGraph configuration
-export const deepResearchAgent = await createDeepResearchAgent();
-// Temporarily disabled: Code assistant
-// export const codeAssistantAgent = await createCodeAssistantAgent();
+// Use lazy initialization to prevent blocking server startup
+let _deepResearchAgent: any = null;
+let _agentInitPromise: Promise<any> | null = null;
 
-// Keep the original deepAgentGraph export for backward compatibility
+async function initializeDeepResearchAgent() {
+  try {
+    console.log("🔧 Initializing deep research agent...");
+    const agent = await createDeepResearchAgent();
+    console.log("✅ Deep research agent initialized successfully");
+    return agent;
+  } catch (error) {
+    console.error("❌ Failed to initialize deep research agent:", error);
+    console.log("🔄 Continuing without MCP tools...");
+    // Return a basic agent without MCP tools
+    return await createBasicAgent();
+  }
+}
+
+async function createBasicAgent() {
+  // Import here to avoid circular dependencies
+  const { createDeepAgent } = await import("deepagents");
+  const { createAgentModel } = await import("./shared/model.js");
+  const { RESEARCH_AGENT_INSTRUCTIONS } = await import("./agents/deep-research/prompts.js");
+  
+  const model = createAgentModel(0.1);
+  
+  // Create agent with minimal tools (no MCP tools)
+  return createDeepAgent({
+    model,
+    tools: [], // No MCP tools
+    instructions: RESEARCH_AGENT_INSTRUCTIONS,
+    subagents: [], // No subagents for now
+  }).withConfig({ recursionLimit: 1000 });
+}
+
+// Export a function that returns the agent (lazy initialization)
+export async function getDeepResearchAgent() {
+  if (!_deepResearchAgent) {
+    if (!_agentInitPromise) {
+      _agentInitPromise = initializeDeepResearchAgent();
+    }
+    _deepResearchAgent = await _agentInitPromise;
+  }
+  return _deepResearchAgent;
+}
+
+// Export the agent promise for LangGraph (it will handle the await)
+export const deepResearchAgent = initializeDeepResearchAgent();
 export const deepAgentGraph = deepResearchAgent;
 
 /**

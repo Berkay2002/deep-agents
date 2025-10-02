@@ -124,6 +124,7 @@ export function CommandBar({
   handleSubmitEdit,
   handleRegenerate,
   isLoading,
+  hideButtons = false,
 }: {
   content: string;
   isHumanMessage?: boolean;
@@ -133,6 +134,7 @@ export function CommandBar({
   handleSubmitEdit?: () => void;
   handleRegenerate?: () => void;
   isLoading: boolean;
+  hideButtons?: boolean;
 }) {
   if (isHumanMessage && isAiMessage) {
     throw new Error(
@@ -186,6 +188,11 @@ export function CommandBar({
         </TooltipIconButton>
       </div>
     );
+  }
+
+  // If hideButtons is true, render nothing
+  if (hideButtons) {
+    return null;
   }
 
   return (
