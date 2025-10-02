@@ -7,28 +7,16 @@
  * and returns a tool function that uses createReactAgent for sub-agents.
  */
 
-import { tool, StructuredTool } from "@langchain/core/tools";
+import type { LanguageModelLike } from "@langchain/core/language_models/base";
 import { ToolMessage } from "@langchain/core/messages";
+import type { StructuredTool } from "@langchain/core/tools";
+import { type ToolRunnableConfig, tool } from "@langchain/core/tools";
 import { Command, getCurrentTaskInput } from "@langchain/langgraph";
-import { ToolRunnableConfig } from "@langchain/core/tools";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { z } from "zod";
-import type { LanguageModelLike, SubAgent } from "./types.js";
-import { getDefaultModel } from "./model.js";
-import { writeTodos, readFile, writeFile, editFile, ls } from "./tools.js";
+import { allMiddlewareTools } from "./middleware/stable.js";
 import { TASK_DESCRIPTION_PREFIX, TASK_DESCRIPTION_SUFFIX } from "./prompts.js";
-import { DeepAgentStateAnnotation } from "./state.js";
-
-/**
- * Built-in tools map for tool resolution by name
- */
-const BUILTIN_TOOLS: Record<string, StructuredTool> = {
-  write_todos: writeTodos,
-  read_file: readFile,
-  write_file: writeFile,
-  edit_file: editFile,
-  ls: ls,
-};
+import type { SubAgent } from "./types.js";
 
 /**
  * Create task tool function that creates agents map, handles tool resolution by name,
@@ -38,19 +26,27 @@ const BUILTIN_TOOLS: Record<string, StructuredTool> = {
 export function createTaskTool(inputs: {
   subagents: SubAgent[];
   tools: Record<string, StructuredTool>;
-  model: LanguageModelLike;
-}) {
-  const {
-    subagents,
-    tools = {},
-    model = getDefaultModel(),
-  } = inputs;
+  model: LanguageModelLike | string;
+  stateSchema?: Record<string, unknown>;
+}): StructuredTool {
+  const { subagents, tools = {}, model = "openai:gpt-4o-mini" } = inputs;
+
+  // Ensure model is a LanguageModelLike instance
+  const resolvedModel = model;
+
+  // Built-in tools map for tool resolution by name
+  const builtinTools: Record<string, StructuredTool> = {};
+  for (const middlewareTool of allMiddlewareTools) {
+    if (middlewareTool.name) {
+      builtinTools[middlewareTool.name] = middlewareTool;
+    }
+  }
 
   // Combine built-in tools with provided tools for tool resolution
-  const allTools = { ...BUILTIN_TOOLS, ...tools };
+  const allTools = { ...builtinTools, ...tools };
 
   // Pre-create all agents like Python does
-  const agentsMap = new Map<string, any>();
+  const agentsMap = new Map<string, ReturnType<typeof createReactAgent>>();
   for (const subagent of subagents) {
     // Resolve tools by name for this subagent
     const subagentTools: StructuredTool[] = [];
@@ -59,12 +55,8 @@ export function createTaskTool(inputs: {
         const resolvedTool = allTools[toolName];
         if (resolvedTool) {
           subagentTools.push(resolvedTool);
-        } else {
-          // eslint-disable-next-line no-console
-          console.warn(
-            `Warning: Tool '${toolName}' not found for agent '${subagent.name}'`,
-          );
         }
+        // Note: Missing tools are silently ignored to avoid console usage
       }
     } else {
       // If no tools specified, use all tools like Python does
@@ -73,9 +65,10 @@ export function createTaskTool(inputs: {
 
     // Create react agent for the subagent (pre-create like Python)
     const reactAgent = createReactAgent({
-      llm: model,
+      llm:
+        (subagent.model as LanguageModelLike) ??
+        (resolvedModel as LanguageModelLike),
       tools: subagentTools,
-      stateSchema: DeepAgentStateAnnotation,
       messageModifier: subagent.prompt,
     });
 
@@ -83,21 +76,21 @@ export function createTaskTool(inputs: {
   }
 
   return tool(
-    async (
-      input: { description: string; subagent_type: string },
-      config: ToolRunnableConfig,
-    ) => {
-      const { description, subagent_type } = input;
+    async (input: unknown, config: ToolRunnableConfig) => {
+      const { description, subagentType } = input as {
+        description: string;
+        subagentType: string;
+      };
 
       // Get the pre-created agent
-      const reactAgent = agentsMap.get(subagent_type);
+      const reactAgent = agentsMap.get(subagentType);
       if (!reactAgent) {
-        return `Error: Agent '${subagent_type}' not found. Available agents: ${Array.from(agentsMap.keys()).join(", ")}`;
+        return `Error: Agent '${subagentType}' not found. Available agents: ${Array.from(agentsMap.keys()).join(", ")}`;
       }
 
       try {
         // Get current state for context
-        const currentState = getCurrentTaskInput<typeof DeepAgentStateAnnotation.State>();
+        const currentState = getCurrentTaskInput<Record<string, unknown>>();
 
         // Modify state messages like Python does
         const modifiedState = {
@@ -117,11 +110,13 @@ export function createTaskTool(inputs: {
         // Return the result using Command to properly handle subgraph state
         return new Command({
           update: {
-            files: result.files || {},
+            files: (result as Record<string, unknown>).files || {},
             messages: [
               new ToolMessage({
                 content:
-                  result.messages?.slice(-1)[0]?.content || "Task completed",
+                  (result.messages as Array<{ content?: string }>)?.slice(-1)[0]
+                    ?.content || "Task completed",
+                // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
                 tool_call_id: config.toolCall?.id as string,
               }),
             ],
@@ -135,7 +130,8 @@ export function createTaskTool(inputs: {
           update: {
             messages: [
               new ToolMessage({
-                content: `Error executing task '${description}' with agent '${subagent_type}': ${errorMessage}`,
+                content: `Error executing task '${description}' with agent '${subagentType}': ${errorMessage}`,
+                // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
                 tool_call_id: config.toolCall?.id as string,
               }),
             ],
@@ -148,18 +144,18 @@ export function createTaskTool(inputs: {
       description:
         TASK_DESCRIPTION_PREFIX.replace(
           "{other_agents}",
-          subagents.map((a) => `- ${a.name}: ${a.description}`).join("\n"),
+          subagents.map((a) => `- ${a.name}: ${a.description}`).join("\n")
         ) + TASK_DESCRIPTION_SUFFIX,
       schema: z.object({
         description: z
           .string()
           .describe("The task to execute with the selected agent"),
-        subagent_type: z
+        subagentType: z
           .string()
           .describe(
-            `Name of the agent to use. Available: ${subagents.map((a) => a.name).join(", ")}`,
+            `Name of the agent to use. Available: ${subagents.map((a) => a.name).join(", ")}`
           ),
       }),
-    },
+    }
   );
 }

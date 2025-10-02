@@ -1,6 +1,9 @@
 "use client";
 
-import { FileUpdateNotification, Collaborator } from "./file-update-notification";
+import {
+  type Collaborator,
+  FileUpdateNotification,
+} from "./file-update-notification";
 
 // Demo data
 const collaborators: Collaborator[] = [
@@ -58,32 +61,40 @@ We have summarized the main points and provided recommendations for future work.
 export function FileUpdateNotificationDemo() {
   return (
     <div className="space-y-6 p-6">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">File Update Notification Demo</h2>
-      
+      <h2 className="mb-6 font-bold text-2xl text-gray-900">
+        File Update Notification Demo
+      </h2>
+
       {/* Example 1: Successful file modification with collaborators */}
       <div className="space-y-2">
-        <h3 className="text-lg font-semibold text-gray-800">File Modification with Collaborators</h3>
+        <h3 className="font-semibold text-gray-800 text-lg">
+          File Modification with Collaborators
+        </h3>
         <FileUpdateNotification
-          fileName="final_report.md"
-          editorName="Alice Johnson"
-          timestamp={new Date(Date.now() - 2 * 60 * 1000)} // 2 minutes ago
-          oldContent={oldContent}
-          newContent={newContent}
-          changeType="modified"
-          collaborators={collaborators}
           branch="main"
+          changeType="modified"
+          collaborators={collaborators} // 2 minutes ago
+          editorName="Alice Johnson"
+          fileName="final_report.md"
           isRealTime={true}
+          newContent={newContent}
+          oldContent={oldContent}
           success={true}
+          timestamp={new Date(Date.now() - 2 * 60 * 1000)}
         />
       </div>
 
       {/* Example 2: File creation */}
       <div className="space-y-2">
-        <h3 className="text-lg font-semibold text-gray-800">New File Creation</h3>
+        <h3 className="font-semibold text-gray-800 text-lg">
+          New File Creation
+        </h3>
         <FileUpdateNotification
+          branch="feature/project-planning"
+          changeType="created"
+          editorName="Bob Smith" // 10 minutes ago
           fileName="project_plan.md"
-          editorName="Bob Smith"
-          timestamp={new Date(Date.now() - 10 * 60 * 1000)} // 10 minutes ago
+          isRealTime={false}
           newContent={`# Project Plan
 
 ## Overview
@@ -99,25 +110,22 @@ This document outlines the plan for our upcoming project.
 - Development team: 3 people
 - Budget: $50,000
 - Tools: React, TypeScript, Node.js`}
-          changeType="created"
-          branch="feature/project-planning"
-          isRealTime={false}
           success={true}
+          timestamp={new Date(Date.now() - 10 * 60 * 1000)}
         />
       </div>
 
       {/* Example 3: Failed file update */}
       <div className="space-y-2">
-        <h3 className="text-lg font-semibold text-gray-800">Failed File Update</h3>
+        <h3 className="font-semibold text-gray-800 text-lg">
+          Failed File Update
+        </h3>
         <FileUpdateNotification
+          changeType="modified"
+          collaborators={[collaborators[2]]}
+          editorName="Carol Davis" // 5 minutes ago
+          error="Failed to parse JSON: Unexpected token at line 8, column 25"
           fileName="config.json"
-          editorName="Carol Davis"
-          timestamp={new Date(Date.now() - 5 * 60 * 1000)} // 5 minutes ago
-          oldContent={`{
-  "apiUrl": "https://api.example.com",
-  "timeout": 5000,
-  "retries": 3
-}`}
           newContent={`{
   "apiUrl": "https://api.example.com",
   "timeout": 5000,
@@ -126,55 +134,41 @@ This document outlines the plan for our upcoming project.
     "enabled": true,
     "config": "invalid-json"
 }`}
-          changeType="modified"
-          collaborators={[collaborators[2]]}
-          error="Failed to parse JSON: Unexpected token at line 8, column 25"
+          oldContent={`{
+  "apiUrl": "https://api.example.com",
+  "timeout": 5000,
+  "retries": 3
+}`}
           success={false}
+          timestamp={new Date(Date.now() - 5 * 60 * 1000)}
         />
       </div>
 
       {/* Example 4: File deletion */}
       <div className="space-y-2">
-        <h3 className="text-lg font-semibold text-gray-800">File Deletion</h3>
+        <h3 className="font-semibold text-gray-800 text-lg">File Deletion</h3>
         <FileUpdateNotification
-          fileName="old_draft.md"
-          editorName="Alice Johnson"
-          timestamp={new Date(Date.now() - 15 * 60 * 1000)} // 15 minutes ago
-          changeType="deleted"
-          collaborators={[collaborators[0]]}
           branch="cleanup"
+          changeType="deleted"
+          collaborators={[collaborators[0]]} // 15 minutes ago
+          editorName="Alice Johnson"
+          fileName="old_draft.md"
           success={true}
+          timestamp={new Date(Date.now() - 15 * 60 * 1000)}
         />
       </div>
 
       {/* Example 5: Large diff with many changes */}
       <div className="space-y-2">
-        <h3 className="text-lg font-semibold text-gray-800">Large File Update</h3>
+        <h3 className="font-semibold text-gray-800 text-lg">
+          Large File Update
+        </h3>
         <FileUpdateNotification
-          fileName="source_code.ts"
+          branch="feature/large-refactor"
+          changeType="modified"
+          collaborators={[collaborators[1]]} // 1 minute ago
           editorName="Bob Smith"
-          timestamp={new Date(Date.now() - 1 * 60 * 1000)} // 1 minute ago
-          oldContent={`// This is a large file with many lines of code
-// Line 1
-// Line 2
-// Line 3
-// Line 4
-// Line 5
-// Line 6
-// Line 7
-// Line 8
-// Line 9
-// Line 10
-// Line 11
-// Line 12
-// Line 13
-// Line 14
-// Line 15
-// Line 16
-// Line 17
-// Line 18
-// Line 19
-// Line 20`}
+          fileName="source_code.ts"
           newContent={`// This is a large file with many lines of code
 // Line 1
 // Line 2
@@ -206,10 +200,29 @@ This document outlines the plan for our upcoming project.
 // Line 28 (Added)
 // Line 29 (Added)
 // Line 30 (Added)`}
-          changeType="modified"
-          collaborators={[collaborators[1]]}
-          branch="feature/large-refactor"
+          oldContent={`// This is a large file with many lines of code
+// Line 1
+// Line 2
+// Line 3
+// Line 4
+// Line 5
+// Line 6
+// Line 7
+// Line 8
+// Line 9
+// Line 10
+// Line 11
+// Line 12
+// Line 13
+// Line 14
+// Line 15
+// Line 16
+// Line 17
+// Line 18
+// Line 19
+// Line 20`}
           success={true}
+          timestamp={new Date(Date.now() - 1 * 60 * 1000)}
         />
       </div>
     </div>

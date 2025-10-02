@@ -1,7 +1,7 @@
 "use client";
 
+import { AlertCircle, Briefcase, CheckCircle2, Clock } from "lucide-react";
 import React from "react";
-import { Clock, CheckCircle2, AlertCircle, Briefcase } from "lucide-react";
 
 interface ResearchTask {
   area: string;
@@ -55,7 +55,7 @@ export function ScopeEstimationResult({ result }: ScopeEstimationResultProps) {
     <div className="mx-auto grid max-w-3xl grid-rows-[1fr_auto] gap-2">
       <div className="overflow-hidden rounded-lg border border-emerald-200 bg-white">
         {/* Header */}
-        <div className="border-b border-emerald-200 bg-emerald-50 px-4 py-3">
+        <div className="border-emerald-200 border-b bg-emerald-50 px-4 py-3">
           <div className="flex items-center gap-2">
             <Briefcase className="h-4 w-4 text-emerald-600" />
             <h3 className="font-semibold text-gray-900 text-sm">
@@ -65,20 +65,21 @@ export function ScopeEstimationResult({ result }: ScopeEstimationResultProps) {
         </div>
 
         {/* Content */}
-        <div className="p-4 space-y-4">
+        <div className="space-y-4 p-4">
           {/* Estimated Total Hours */}
           {estimatedTotalHours > 0 && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-100 rounded-full">
+                <div className="rounded-full bg-emerald-100 p-2">
                   <Clock className="h-5 w-5 text-emerald-600" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <p className="font-medium text-gray-500 text-xs uppercase tracking-wide">
                     Estimated Total Time
                   </p>
-                  <p className="text-2xl font-bold text-emerald-700">
-                    {estimatedTotalHours} {estimatedTotalHours === 1 ? "hour" : "hours"}
+                  <p className="font-bold text-2xl text-emerald-700">
+                    {estimatedTotalHours}{" "}
+                    {estimatedTotalHours === 1 ? "hour" : "hours"}
                   </p>
                 </div>
               </div>
@@ -88,36 +89,40 @@ export function ScopeEstimationResult({ result }: ScopeEstimationResultProps) {
           {/* Research Tasks */}
           {researchTasks.length > 0 && (
             <div>
-              <h4 className="text-sm font-medium text-gray-700 mb-3">
+              <h4 className="mb-3 font-medium text-gray-700 text-sm">
                 Research Tasks
               </h4>
               <div className="overflow-hidden rounded-lg border border-gray-200">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
+                      <th className="px-4 py-2 text-left font-medium text-gray-500 text-xs uppercase tracking-wide">
                         Area
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
+                      <th className="px-4 py-2 text-left font-medium text-gray-500 text-xs uppercase tracking-wide">
                         Time
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
+                      <th className="px-4 py-2 text-left font-medium text-gray-500 text-xs uppercase tracking-wide">
                         Priority
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="divide-y divide-gray-200 bg-white">
                     {researchTasks.map((task, index) => (
-                      <tr key={index} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-sm text-gray-700">
+                      <tr
+                        className="transition-colors hover:bg-gray-50"
+                        key={index}
+                      >
+                        <td className="px-4 py-3 text-gray-700 text-sm">
                           {task.area}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {task.estimatedTime} {task.estimatedTime === 1 ? "hr" : "hrs"}
+                        <td className="px-4 py-3 text-gray-600 text-sm">
+                          {task.estimatedTime}{" "}
+                          {task.estimatedTime === 1 ? "hr" : "hrs"}
                         </td>
                         <td className="px-4 py-3">
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-1 font-medium text-xs ${getPriorityColor(
                               task.priority
                             )}`}
                           >
@@ -137,19 +142,19 @@ export function ScopeEstimationResult({ result }: ScopeEstimationResultProps) {
           {/* Suggested Milestones */}
           {suggestedMilestones.length > 0 && (
             <div>
-              <div className="flex items-center gap-2 mb-3">
+              <div className="mb-3 flex items-center gap-2">
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                <h4 className="text-sm font-medium text-gray-700">
+                <h4 className="font-medium text-gray-700 text-sm">
                   Suggested Milestones
                 </h4>
               </div>
               <ol className="space-y-2">
                 {suggestedMilestones.map((milestone, index) => (
                   <li
+                    className="flex items-start gap-3 text-gray-600 text-sm"
                     key={index}
-                    className="flex items-start gap-3 text-sm text-gray-600"
                   >
-                    <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold">
+                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 font-semibold text-emerald-700 text-xs">
                       {index + 1}
                     </span>
                     <span className="pt-0.5">{milestone}</span>
@@ -161,14 +166,16 @@ export function ScopeEstimationResult({ result }: ScopeEstimationResultProps) {
 
           {/* Resource Requirements */}
           {Object.keys(resourceRequirements).length > 0 && (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-3">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <h4 className="mb-3 font-medium text-gray-700 text-sm">
                 Resource Requirements
               </h4>
               <div className="space-y-2 text-sm">
                 {resourceRequirements.searchTools && (
                   <div>
-                    <span className="font-medium text-gray-600">Search Tools:</span>{" "}
+                    <span className="font-medium text-gray-600">
+                      Search Tools:
+                    </span>{" "}
                     <span className="text-gray-700">
                       {resourceRequirements.searchTools.join(", ")}
                     </span>
@@ -176,7 +183,9 @@ export function ScopeEstimationResult({ result }: ScopeEstimationResultProps) {
                 )}
                 {resourceRequirements.timeAllocation && (
                   <div>
-                    <span className="font-medium text-gray-600">Time Allocation:</span>{" "}
+                    <span className="font-medium text-gray-600">
+                      Time Allocation:
+                    </span>{" "}
                     <span className="text-gray-700">
                       {resourceRequirements.timeAllocation}
                     </span>
@@ -184,7 +193,9 @@ export function ScopeEstimationResult({ result }: ScopeEstimationResultProps) {
                 )}
                 {resourceRequirements.expertiseLevel && (
                   <div>
-                    <span className="font-medium text-gray-600">Expertise Level:</span>{" "}
+                    <span className="font-medium text-gray-600">
+                      Expertise Level:
+                    </span>{" "}
                     <span className="text-gray-700">
                       {resourceRequirements.expertiseLevel}
                     </span>

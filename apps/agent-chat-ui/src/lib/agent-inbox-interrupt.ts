@@ -1,7 +1,7 @@
-import { HumanInterrupt } from "@langchain/langgraph/prebuilt";
+import type { HumanInterrupt } from "@langchain/langgraph/prebuilt";
 
 export function isAgentInboxInterruptSchema(
-  value: unknown,
+  value: unknown
 ): value is HumanInterrupt | HumanInterrupt[] {
   const valueAsObject = Array.isArray(value) ? value[0] : value;
   return (

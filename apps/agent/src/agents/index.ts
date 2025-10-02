@@ -1,7 +1,8 @@
 // Agent registry and factory
-import { deepResearchAgentFactory } from "./deep-research/agent.js";
+
+import type { AgentFactory, AgentType } from "../shared/types.js";
 import { codeAssistantAgentFactory } from "./code-assistant/agent.js";
-import type { AgentType, AgentFactory } from "../shared/types.js";
+import { deepResearchAgentFactory } from "./deep-research/agent.js";
 
 // TODO: Add general-chat agent implementation
 // TODO: Add specialized domain agents (data-analyst, creative-writer, etc.)
@@ -33,16 +34,19 @@ export const agentRegistry: Record<AgentType, AgentFactory> = {
  * @param config Optional configuration overrides
  * @returns Agent instance
  */
-export async function createAgent(type: AgentType, config = {}) {
+export function createAgent(
+  type: AgentType,
+  config: Record<string, unknown> = {}
+) {
   const factory = agentRegistry[type];
   if (!factory) {
     throw new Error(`Unknown agent type: ${type}`);
   }
-  
+
   // TODO: Add agent instance caching for performance
   // TODO: Add agent health checks and failover
   // TODO: Add agent usage tracking and analytics
-  
+
   return factory.create(config);
 }
 
@@ -93,13 +97,13 @@ export function isAgentAvailable(type: string): type is AgentType {
 //   userSatisfaction: number;
 //   usageCount: number;
 // }
-// 
+//
 // const agentMetrics = new Map<AgentType, AgentMetrics>();
-// 
+//
 // export function getAgentMetrics(type: AgentType): AgentMetrics | undefined {
 //   return agentMetrics.get(type);
 // }
-// 
+//
 // export function updateAgentMetrics(type: AgentType, metrics: Partial<AgentMetrics>) {
 //   const current = agentMetrics.get(type) || { responseTime: 0, successRate: 0, userSatisfaction: 0, usageCount: 0 };
 //   agentMetrics.set(type, { ...current, ...metrics });

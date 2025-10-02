@@ -38,20 +38,19 @@
     "@langchain/langgraph": "^0.4.9",
     "@langchain/langgraph-sdk": "^0.1.0",
     "@langchain/mcp-adapters": "^0.6.0",
+    "@langchain/openai": "^0.6.14",
     "@langchain/tavily": "^0.1.5",
     "jose": "^5.9.3",
     "langchain": "^0.3.35",
     "zod": "^4.1.11"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.36.0",
     "@langchain/langgraph-cli": "^0.0.69",
     "@tsconfig/recommended": "^1.0.10",
     "@types/node": "^24.6.1",
     "dotenv": "^17.2.3",
     "eslint": "^9.36.0",
-    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-no-instanceof": "^1.0.1",
     "eslint-plugin-prettier": "^5.5.4",
@@ -64,7 +63,7 @@
   "engines": {
     "node": ">=20"
   },
-    "files": [
+  "files": [
     "dist/**/*"
   ],
   "packageManager": "yarn@1.22.22"

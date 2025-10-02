@@ -6,29 +6,42 @@
  * Implements mock filesystem operations using state.files similar to Python version.
  */
 
-import { tool, ToolRunnableConfig } from "@langchain/core/tools";
 import { ToolMessage } from "@langchain/core/messages";
+import { type ToolRunnableConfig, tool } from "@langchain/core/tools";
 import { Command, getCurrentTaskInput } from "@langchain/langgraph";
 import { z } from "zod";
 import {
-  WRITE_TODOS_DESCRIPTION,
   EDIT_DESCRIPTION,
   TOOL_DESCRIPTION,
+  WRITE_TODOS_DESCRIPTION,
 } from "./prompts.js";
-import { DeepAgentStateType } from "./types.js";
+import type { DeepAgentStateType } from "./types.js";
+
+// Constants for magic numbers
+const MAX_LINE_LENGTH = 2000;
+const LINE_NUMBER_PADDING = 6;
+const DEFAULT_LIMIT = 2000;
+
+// Type for todo items
+type TodoItem = {
+  content: string;
+  status: "pending" | "in_progress" | "completed";
+};
 
 /**
  * Write todos tool - manages todo list with Command return
  * Uses getCurrentTaskInput() instead of Python's InjectedState
  */
 export const writeTodos = tool(
-  (input, config: ToolRunnableConfig) => {
+  (input: unknown, config: ToolRunnableConfig) => {
+    const { todos } = input as { todos: TodoItem[] };
     return new Command({
       update: {
-        todos: input.todos,
+        todos,
         messages: [
           new ToolMessage({
-            content: `Updated todo list to ${JSON.stringify(input.todos)}`,
+            content: `Updated todo list to ${JSON.stringify(todos)}`,
+            // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
             tool_call_id: config.toolCall?.id as string,
           }),
         ],
@@ -46,11 +59,11 @@ export const writeTodos = tool(
             status: z
               .enum(["pending", "in_progress", "completed"])
               .describe("Status of the todo"),
-          }),
+          })
         )
         .describe("List of todo items to update"),
     }),
-  },
+  }
 );
 
 /**
@@ -67,7 +80,7 @@ export const ls = tool(
     name: "ls",
     description: "List all files in the mock filesystem",
     schema: z.object({}),
-  },
+  }
 );
 
 /**
@@ -75,17 +88,21 @@ export const ls = tool(
  * Matches Python read_file function behavior exactly
  */
 export const readFile = tool(
-  (input: { file_path: string; offset?: number; limit?: number }) => {
+  (input: unknown) => {
     const state = getCurrentTaskInput<DeepAgentStateType>();
     const mockFilesystem = state.files || {};
-    const { file_path, offset = 0, limit = 2000 } = input;
+    const {
+      filePath,
+      offset = 0,
+      limit = DEFAULT_LIMIT,
+    } = input as { filePath: string; offset?: number; limit?: number };
 
-    if (!(file_path in mockFilesystem)) {
-      return `Error: File '${file_path}' not found`;
+    if (!(filePath in mockFilesystem)) {
+      return `Error: File '${filePath}' not found`;
     }
 
     // Get file content
-    const content = mockFilesystem[file_path];
+    const content = mockFilesystem[filePath];
 
     // Handle empty file
     if (!content || content.trim() === "") {
@@ -114,14 +131,16 @@ export const readFile = tool(
         lineContent = "";
       }
 
-      // Truncate lines longer than 2000 characters
-      if (lineContent.length > 2000) {
-        lineContent = lineContent.substring(0, 2000);
+      // Truncate lines longer than MAX_LINE_LENGTH characters
+      if (lineContent.length > MAX_LINE_LENGTH) {
+        lineContent = lineContent.substring(0, MAX_LINE_LENGTH);
       }
 
       // Line numbers start at 1, so add 1 to the index
       const lineNumber = i + 1;
-      resultLines.push(`${lineNumber.toString().padStart(6)}	${lineContent}`);
+      resultLines.push(
+        `${lineNumber.toString().padStart(LINE_NUMBER_PADDING)}	${lineContent}`
+      );
     }
 
     return resultLines.join("\n");
@@ -130,7 +149,7 @@ export const readFile = tool(
     name: "read_file",
     description: TOOL_DESCRIPTION,
     schema: z.object({
-      file_path: z.string().describe("Absolute path to the file to read"),
+      filePath: z.string().describe("Absolute path to the file to read"),
       offset: z
         .number()
         .optional()
@@ -139,10 +158,10 @@ export const readFile = tool(
       limit: z
         .number()
         .optional()
-        .default(2000)
+        .default(DEFAULT_LIMIT)
         .describe("Maximum number of lines to read"),
     }),
-  },
+  }
 );
 
 /**
@@ -150,20 +169,22 @@ export const readFile = tool(
  * Matches Python write_file function behavior exactly
  */
 export const writeFile = tool(
-  (
-    input: { file_path: string; content: string },
-    config: ToolRunnableConfig,
-  ) => {
+  (input: unknown, config: ToolRunnableConfig) => {
     const state = getCurrentTaskInput<DeepAgentStateType>();
     const files = { ...(state.files || {}) };
-    files[input.file_path] = input.content;
+    const { filePath, content } = input as {
+      filePath: string;
+      content: string;
+    };
+    files[filePath] = content;
 
     return new Command({
       update: {
-        files: files,
+        files,
         messages: [
           new ToolMessage({
-            content: `Updated file ${input.file_path}`,
+            content: `Updated file ${filePath}`,
+            // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
             tool_call_id: config.toolCall?.id as string,
           }),
         ],
@@ -174,10 +195,10 @@ export const writeFile = tool(
     name: "write_file",
     description: "Write content to a file in the mock filesystem",
     schema: z.object({
-      file_path: z.string().describe("Absolute path to the file to write"),
+      filePath: z.string().describe("Absolute path to the file to write"),
       content: z.string().describe("Content to write to the file"),
     }),
-  },
+  }
 );
 
 /**
@@ -185,83 +206,81 @@ export const writeFile = tool(
  * Matches Python edit_file function behavior exactly
  */
 export const editFile = tool(
-  (
-    input: {
-      file_path: string;
-      old_string: string;
-      new_string: string;
-      replace_all?: boolean;
-    },
-    config: ToolRunnableConfig,
-  ) => {
+  (input: unknown, config: ToolRunnableConfig) => {
     const state = getCurrentTaskInput<DeepAgentStateType>();
     const mockFilesystem = { ...(state.files || {}) };
-    const { file_path, old_string, new_string, replace_all = false } = input;
+    const {
+      filePath,
+      oldString,
+      newString,
+      replaceAll = false,
+    } = input as {
+      filePath: string;
+      oldString: string;
+      newString: string;
+      replaceAll?: boolean;
+    };
 
     // Check if file exists in mock filesystem
-    if (!(file_path in mockFilesystem)) {
-      return `Error: File '${file_path}' not found`;
+    if (!(filePath in mockFilesystem)) {
+      return `Error: File '${filePath}' not found`;
     }
 
     // Get current file content
-    const content = mockFilesystem[file_path];
+    const content = mockFilesystem[filePath];
 
     // Handle undefined content
     if (content === undefined) {
-      return `Error: File '${file_path}' has undefined content`;
+      return `Error: File '${filePath}' has undefined content`;
     }
 
-    // Check if old_string exists in the file
-    if (!content.includes(old_string)) {
-      return `Error: String not found in file: '${old_string}'`;
+    // Check if oldString exists in the file
+    if (!content.includes(oldString)) {
+      return `Error: String not found in file: '${oldString}'`;
     }
 
-    // If not replace_all, check for uniqueness
-    if (!replace_all) {
-      const escapedOldString = old_string.replace(
-        /[.*+?^${}()|[\]\\]/g,
-        "\\$&",
-      );
+    // If not replaceAll, check for uniqueness
+    if (!replaceAll) {
+      const escapedOldString = oldString.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const occurrences = (
         content.match(new RegExp(escapedOldString, "g")) || []
       ).length;
       if (occurrences > 1) {
-        return `Error: String '${old_string}' appears ${occurrences} times in file. Use replace_all=True to replace all instances, or provide a more specific string with surrounding context.`;
-      } else if (occurrences === 0) {
-        return `Error: String not found in file: '${old_string}'`;
+        return `Error: String '${oldString}' appears ${occurrences} times in file. Use replace_all=True to replace all instances, or provide a more specific string with surrounding context.`;
+      }
+      if (occurrences === 0) {
+        return `Error: String not found in file: '${oldString}'`;
       }
     }
 
     // Perform the replacement
     let newContent: string;
 
-    if (replace_all) {
-      const escapedOldString = old_string.replace(
-        /[.*+?^${}()|[\]\\]/g,
-        "\\$&",
-      );
+    if (replaceAll) {
+      const escapedOldString = oldString.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       newContent = content.replace(
         new RegExp(escapedOldString, "g"),
-        new_string,
+        newString
       );
     } else {
-      newContent = content.replace(old_string, new_string);
+      newContent = content.replace(oldString, newString);
     }
 
     // Handle undefined newContent
     if (newContent === undefined) {
-      return `Error: Failed to replace content in file '${file_path}'`;
+      return `Error: Failed to replace content in file '${filePath}'`;
     }
 
     // Update the mock filesystem
-    mockFilesystem[file_path] = newContent;
+    mockFilesystem[filePath] = newContent;
 
     return new Command({
       update: {
         files: mockFilesystem,
         messages: [
           new ToolMessage({
-            content: `Updated file ${file_path}`,
+            content: `Updated file ${filePath}`,
+            // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
             tool_call_id: config.toolCall?.id as string,
           }),
         ],
@@ -272,16 +291,16 @@ export const editFile = tool(
     name: "edit_file",
     description: EDIT_DESCRIPTION,
     schema: z.object({
-      file_path: z.string().describe("Absolute path to the file to edit"),
-      old_string: z
+      filePath: z.string().describe("Absolute path to the file to edit"),
+      oldString: z
         .string()
         .describe("String to be replaced (must match exactly)"),
-      new_string: z.string().describe("String to replace with"),
-      replace_all: z
+      newString: z.string().describe("String to replace with"),
+      replaceAll: z
         .boolean()
         .optional()
         .default(false)
         .describe("Whether to replace all occurrences"),
     }),
-  },
+  }
 );

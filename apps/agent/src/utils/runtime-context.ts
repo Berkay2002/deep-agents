@@ -3,11 +3,11 @@
 
 import { AsyncLocalStorage } from "node:async_hooks";
 
-interface RuntimeContext {
+type RuntimeContext = {
   githubPat?: string;
   userId?: string;
   [key: string]: unknown;
-}
+};
 
 const asyncLocalStorage = new AsyncLocalStorage<RuntimeContext>();
 
@@ -43,10 +43,7 @@ export function getGithubPat(): string | undefined {
  * @param fn Function to run with context
  * @returns Result of function
  */
-export function runWithContext<T>(
-  context: RuntimeContext,
-  fn: () => T
-): T {
+export function runWithContext<T>(context: RuntimeContext, fn: () => T): T {
   return asyncLocalStorage.run(context, fn);
 }
 
@@ -56,7 +53,7 @@ export function runWithContext<T>(
  * @param fn Async function to run with context
  * @returns Promise resolving to result of function
  */
-export async function runWithContextAsync<T>(
+export function runWithContextAsync<T>(
   context: RuntimeContext,
   fn: () => Promise<T>
 ): Promise<T> {

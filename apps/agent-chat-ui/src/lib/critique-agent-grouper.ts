@@ -1,4 +1,8 @@
-import { Message, AIMessage, ToolMessage } from "@langchain/langgraph-sdk";
+import {
+  AIMessage,
+  type Message,
+  type ToolMessage,
+} from "@langchain/langgraph-sdk";
 
 export interface FileRead {
   filePath: string;
@@ -38,7 +42,9 @@ function extractCritique(message: ToolMessage): string | null {
  * Groups critique agent related messages together
  * Returns an array of critique agent groups found in the messages
  */
-export function groupCritiqueAgentMessages(messages: Message[]): CritiqueAgentGroup[] {
+export function groupCritiqueAgentMessages(
+  messages: Message[]
+): CritiqueAgentGroup[] {
   const groups: CritiqueAgentGroup[] = [];
 
   for (let i = 0; i < messages.length; i++) {
@@ -64,7 +70,7 @@ export function groupCritiqueAgentMessages(messages: Message[]): CritiqueAgentGr
         const fileReads: FileRead[] = [];
 
         // Collect all AI message content between task invocation and completion
-        const allAIContent: string[] = [];
+        const allAiContent: string[] = [];
 
         // Look ahead for critique response
         for (let j = i + 1; j < messages.length; j++) {
@@ -76,22 +82,34 @@ export function groupCritiqueAgentMessages(messages: Message[]): CritiqueAgentGr
 
             // Check if this is a file read (from any AI message, not just critique task)
             // File reads can come from intermediate AI messages during critique execution
-            if (toolMsg.name === "Read" || toolMsg.name === "read_file" || toolMsg.name === "ReadFile") {
+            if (
+              toolMsg.name === "Read" ||
+              toolMsg.name === "read_file" ||
+              toolMsg.name === "ReadFile"
+            ) {
               // Find the corresponding tool call in previous AI messages
               for (let k = j - 1; k >= i; k--) {
                 const prevMsg = messages[k];
-                if (prevMsg.type === "ai" && "tool_calls" in prevMsg && prevMsg.tool_calls) {
+                if (
+                  prevMsg.type === "ai" &&
+                  "tool_calls" in prevMsg &&
+                  prevMsg.tool_calls
+                ) {
                   const matchingToolCall = prevMsg.tool_calls.find(
                     (tc: any) => tc.id === toolMsg.tool_call_id
                   );
 
                   if (matchingToolCall) {
                     const args = matchingToolCall.args as any;
-                    const filePath = args.file_path || args.filePath || "unknown";
+                    const filePath =
+                      args.file_path || args.filePath || "unknown";
 
                     fileReads.push({
                       filePath,
-                      content: typeof toolMsg.content === "string" ? toolMsg.content : "",
+                      content:
+                        typeof toolMsg.content === "string"
+                          ? toolMsg.content
+                          : "",
                       toolCallId: toolMsg.tool_call_id || "",
                     });
 
@@ -117,8 +135,11 @@ export function groupCritiqueAgentMessages(messages: Message[]): CritiqueAgentGr
             }
 
             // Only collect substantial content (not just acknowledgments)
-            if (textContent.length > 100 && !textContent.startsWith("I have completed")) {
-              allAIContent.push(textContent);
+            if (
+              textContent.length > 100 &&
+              !textContent.startsWith("I have completed")
+            ) {
+              allAiContent.push(textContent);
               endIndex = j;
             }
           }
@@ -129,19 +150,21 @@ export function groupCritiqueAgentMessages(messages: Message[]): CritiqueAgentGr
             "tool_call_id" in nextMessage &&
             nextMessage.tool_call_id === taskToolCallId
           ) {
-            const critiqueResponse = extractCritique(nextMessage as ToolMessage);
+            const critiqueResponse = extractCritique(
+              nextMessage as ToolMessage
+            );
             if (critiqueResponse) {
               // If tool response is short, prefer collected AI content
-              if (critiqueResponse.length < 200 && allAIContent.length > 0) {
-                critique = allAIContent.join("\n\n");
+              if (critiqueResponse.length < 200 && allAiContent.length > 0) {
+                critique = allAiContent.join("\n\n");
               } else {
                 critique = critiqueResponse;
               }
               endIndex = j;
             }
             // Use collected AI content if we have it
-            if (!critique && allAIContent.length > 0) {
-              critique = allAIContent.join("\n\n");
+            if (!critique && allAiContent.length > 0) {
+              critique = allAiContent.join("\n\n");
             }
           }
 
@@ -153,12 +176,13 @@ export function groupCritiqueAgentMessages(messages: Message[]): CritiqueAgentGr
             nextMessage.tool_calls.length > 0
           ) {
             // Check if it's a different critique task
-            const hasAnotherCritiqueTask = nextMessage.tool_calls.some(isCritiqueAgentTask);
+            const hasAnotherCritiqueTask =
+              nextMessage.tool_calls.some(isCritiqueAgentTask);
             if (hasAnotherCritiqueTask) {
               // Found the start of a new critique task, stop here
               // But first, use any collected content if we don't have critique yet
-              if (!critique && allAIContent.length > 0) {
-                critique = allAIContent.join("\n\n");
+              if (!critique && allAiContent.length > 0) {
+                critique = allAiContent.join("\n\n");
               }
               break;
             }
@@ -166,8 +190,8 @@ export function groupCritiqueAgentMessages(messages: Message[]): CritiqueAgentGr
         }
 
         // Final fallback: use collected AI content if we still don't have critique
-        if (!critique && allAIContent.length > 0) {
-          critique = allAIContent.join("\n\n");
+        if (!critique && allAiContent.length > 0) {
+          critique = allAiContent.join("\n\n");
         }
 
         groups.push({
@@ -193,7 +217,8 @@ export function isMessageInCritiqueGroup(
   groups: CritiqueAgentGroup[]
 ): boolean {
   return groups.some(
-    (group) => messageIndex >= group.startIndex && messageIndex <= group.endIndex
+    (group) =>
+      messageIndex >= group.startIndex && messageIndex <= group.endIndex
   );
 }
 

@@ -1,6 +1,6 @@
-import { SignJWT } from "jose";
-import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { SignJWT } from "jose";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
@@ -62,7 +62,10 @@ async function proxy(request: NextRequest, props: Params) {
   const { _path = [] } = params;
   const normalizedBaseUrl = rawBaseUrl.replace(/\/+$/, "");
   const pathname = _path.map(encodeURIComponent).join("/");
-  const targetUrl = new URL(`${pathname}${request.nextUrl.search}`, `${normalizedBaseUrl}/`);
+  const targetUrl = new URL(
+    `${pathname}${request.nextUrl.search}`,
+    `${normalizedBaseUrl}/`
+  );
 
   const forwardHeaders = new Headers();
   for (const [key, value] of request.headers.entries()) {
@@ -113,11 +116,17 @@ async function proxy(request: NextRequest, props: Params) {
     });
   } catch (err) {
     console.error("LangGraph proxy fetch failed:", err);
-    return NextResponse.json({ error: "Failed to reach LangGraph server" }, { status: 502 });
+    return NextResponse.json(
+      { error: "Failed to reach LangGraph server" },
+      { status: 502 }
+    );
   }
 }
 
-async function buildAuthorizationHeader(request: NextRequest, secret: string): Promise<AuthHeaderResult> {
+async function buildAuthorizationHeader(
+  request: NextRequest,
+  secret: string
+): Promise<AuthHeaderResult> {
   const identity = await resolveUserIdentity(request);
   if (identity.ok === false) {
     return { ok: false as const, response: identity.response };
@@ -164,7 +173,9 @@ async function buildAuthorizationHeader(request: NextRequest, secret: string): P
   };
 }
 
-async function resolveUserIdentity(request: NextRequest): Promise<IdentityResult> {
+async function resolveUserIdentity(
+  request: NextRequest
+): Promise<IdentityResult> {
   // First priority: Clerk authentication
   const { userId } = await auth();
   if (userId) {
@@ -186,7 +197,10 @@ async function resolveUserIdentity(request: NextRequest): Promise<IdentityResult
   // No authenticated user found
   return {
     ok: false as const,
-    response: NextResponse.json({ error: "Unauthorized: Please sign in to use the agent" }, { status: 401 }),
+    response: NextResponse.json(
+      { error: "Unauthorized: Please sign in to use the agent" },
+      { status: 401 }
+    ),
   };
 }
 
@@ -214,7 +228,9 @@ function collectUserMetadata(request: NextRequest): Record<string, string> {
 }
 
 function collectUserPermissions(request: NextRequest): string[] {
-  const header = request.headers.get("x-user-role") ?? request.headers.get("x-user-permissions");
+  const header =
+    request.headers.get("x-user-role") ??
+    request.headers.get("x-user-permissions");
   if (!header) return [];
   return header
     .split(",")
@@ -222,9 +238,18 @@ function collectUserPermissions(request: NextRequest): string[] {
     .filter((value) => value.length > 0);
 }
 
-function isAuthHeaderError(result: AuthHeaderResult): result is AuthHeaderError {
+function isAuthHeaderError(
+  result: AuthHeaderResult
+): result is AuthHeaderError {
   return result.ok === false;
 }
 
-export { proxy as GET, proxy as POST, proxy as PUT, proxy as PATCH, proxy as DELETE, proxy as OPTIONS, proxy as HEAD };
-
+export {
+  proxy as GET,
+  proxy as POST,
+  proxy as PUT,
+  proxy as PATCH,
+  proxy as DELETE,
+  proxy as OPTIONS,
+  proxy as HEAD,
+};

@@ -1,7 +1,7 @@
 // src/mcp/config.ts
 // Predefined MCP server configurations and environment variable loading
 
-import type { MCPServerOptions } from "./types.js";
+import type { McpServerOptions } from "./types.js";
 
 /**
  * Predefined MCP server configurations
@@ -9,52 +9,52 @@ import type { MCPServerOptions } from "./types.js";
  * These are well-known MCP servers that can be used directly
  * without manual configuration.
  */
-export const MCP_SERVERS = {
+export const mcpServers = {
   /**
    * LangChain Documentation MCP Server
    *
    * Provides access to LangChain documentation and examples.
    * Default URL can be overridden via MCP_LANGCHAIN_URL environment variable.
    */
-  LANGCHAIN_DOCS: {
+  langchainDocs: {
     url: process.env.MCP_LANGCHAIN_URL || "https://docs.langchain.com/mcp",
-    automaticSSEFallback: true,
+    automaticSseFallback: true,
     reconnect: {
       enabled: true,
       maxAttempts: 5,
       delayMs: 2000,
     },
-  } satisfies MCPServerOptions,
+  } satisfies McpServerOptions,
 
   /**
    * Sequential Thinking MCP Server
    *
    * Provides tools for structured thinking and reasoning.
    */
-  SEQUENTIAL_THINKING: {
+  sequentialThinking: {
     url: "https://remote.mcpservers.org/sequentialthinking/mcp",
-    automaticSSEFallback: true,
+    automaticSseFallback: true,
     reconnect: {
       enabled: true,
       maxAttempts: 5,
       delayMs: 2000,
     },
-  } satisfies MCPServerOptions,
+  } satisfies McpServerOptions,
 
   /**
    * DeepWiki MCP Server
    *
    * Provides access to wiki-style knowledge and documentation.
    */
-  DEEPWIKI: {
+  deepwiki: {
     url: "https://mcp.deepwiki.com/mcp",
-    automaticSSEFallback: true,
+    automaticSseFallback: true,
     reconnect: {
       enabled: true,
       maxAttempts: 5,
       delayMs: 2000,
     },
-  } satisfies MCPServerOptions,
+  } satisfies McpServerOptions,
 
   /**
    * GitHub Copilot MCP Server
@@ -62,23 +62,23 @@ export const MCP_SERVERS = {
    * Provides GitHub API access and code-related tools.
    * Requires GitHub PAT for authentication.
    */
-  GITHUB_COPILOT: {
+  githubCopilot: {
     url: "https://api.githubcopilot.com/mcp/",
-    automaticSSEFallback: true,
+    automaticSseFallback: true,
     reconnect: {
       enabled: true,
       maxAttempts: 5,
       delayMs: 2000,
     },
     // Note: Authorization header will be added dynamically at runtime
-  } satisfies MCPServerOptions,
+  } satisfies McpServerOptions,
 } as const;
 
 /**
  * Load MCP server configuration from environment variables
  *
  * Searches for environment variables with the specified prefix and
- * constructs an MCPServerOptions object.
+ * constructs an McpServerOptions object.
  *
  * Required environment variables:
  * - `{PREFIX}_URL`: The MCP server endpoint URL
@@ -94,37 +94,43 @@ export const MCP_SERVERS = {
  * @example
  * ```typescript
  * // With env vars: MCP_URL=https://api.example.com/mcp
- * const config = loadMCPServerFromEnv("MCP");
+ * const config = loadMcpServerFromEnv("MCP");
  * // Returns: { url: "https://api.example.com/mcp", ... }
  * ```
  *
  * @example
  * ```typescript
  * // With env vars: CUSTOM_URL=https://custom.com/mcp, CUSTOM_API_KEY=secret
- * const config = loadMCPServerFromEnv("CUSTOM");
+ * const config = loadMcpServerFromEnv("CUSTOM");
  * // Returns: { url: "https://custom.com/mcp", headers: { Authorization: "Bearer secret" }, ... }
  * ```
  */
-export function loadMCPServerFromEnv(
-  envPrefix: string = "MCP"
-): MCPServerOptions | null {
+export function loadMcpServerFromEnv(
+  envPrefix = "MCP"
+): McpServerOptions | null {
   const url = process.env[`${envPrefix}_URL`];
   if (!url) {
     return null;
   }
 
   const apiKey = process.env[`${envPrefix}_API_KEY`];
-  const maxRetries = parseInt(process.env[`${envPrefix}_MAX_RETRIES`] || "5", 10);
-  const retryDelay = parseInt(process.env[`${envPrefix}_RETRY_DELAY`] || "2000", 10);
+  const maxRetries = Number.parseInt(
+    process.env[`${envPrefix}_MAX_RETRIES`] || "5",
+    10
+  );
+  const retryDelay = Number.parseInt(
+    process.env[`${envPrefix}_RETRY_DELAY`] || "2000",
+    10
+  );
 
   return {
     url,
     headers: apiKey
       ? {
-          Authorization: `Bearer ${apiKey}`,
+          authorization: `Bearer ${apiKey}`,
         }
       : undefined,
-    automaticSSEFallback: true,
+    automaticSseFallback: true,
     reconnect: {
       enabled: true,
       maxAttempts: maxRetries,
@@ -150,30 +156,30 @@ export function loadMCPServerFromEnv(
  * // MCP_API_URL=https://api.example.com/mcp
  * // MCP_API_API_KEY=secret123
  *
- * const servers = loadAllMCPServersFromEnv("MCP");
+ * const servers = loadAllMcpServersFromEnv("MCP");
  * // Returns: {
  * //   "docs": { url: "https://docs.example.com/mcp", ... },
  * //   "api": { url: "https://api.example.com/mcp", headers: { ... }, ... }
  * // }
  * ```
  */
-export function loadAllMCPServersFromEnv(
-  envPrefix: string = "MCP"
-): Record<string, MCPServerOptions> {
-  const servers: Record<string, MCPServerOptions> = {};
+export function loadAllMcpServersFromEnv(
+  envPrefix = "MCP"
+): Record<string, McpServerOptions> {
+  const servers: Record<string, McpServerOptions> = {};
   const urlPattern = new RegExp(`^${envPrefix}_([A-Z_]+)_URL$`);
 
   // Find all environment variables matching the URL pattern
   for (const [key, value] of Object.entries(process.env)) {
     const match = key.match(urlPattern);
-    if (match && match[1] && value) {
+    if (match?.[1] && value) {
       const serverName = match[1].toLowerCase();
       const apiKey = process.env[`${envPrefix}_${match[1]}_API_KEY`];
-      const maxRetries = parseInt(
+      const maxRetries = Number.parseInt(
         process.env[`${envPrefix}_${match[1]}_MAX_RETRIES`] || "5",
         10
       );
-      const retryDelay = parseInt(
+      const retryDelay = Number.parseInt(
         process.env[`${envPrefix}_${match[1]}_RETRY_DELAY`] || "2000",
         10
       );
@@ -182,10 +188,10 @@ export function loadAllMCPServersFromEnv(
         url: value,
         headers: apiKey
           ? {
-              Authorization: `Bearer ${apiKey}`,
+              authorization: `Bearer ${apiKey}`,
             }
           : undefined,
-        automaticSSEFallback: true,
+        automaticSseFallback: true,
         reconnect: {
           enabled: true,
           maxAttempts: maxRetries,

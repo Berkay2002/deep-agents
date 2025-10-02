@@ -1,17 +1,17 @@
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  XIcon,
-  SendHorizontal,
-  RefreshCcw,
-  Pencil,
-  Copy,
-  CopyCheck,
   ChevronLeft,
   ChevronRight,
+  Copy,
+  CopyCheck,
+  Pencil,
+  RefreshCcw,
+  SendHorizontal,
+  XIcon,
 } from "lucide-react";
-import { TooltipIconButton } from "../tooltip-icon-button";
-import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { TooltipIconButton } from "../tooltip-icon-button";
 
 function ContentCopyable({
   content,
@@ -31,31 +31,28 @@ function ContentCopyable({
 
   return (
     <TooltipIconButton
-      onClick={(e) => handleCopy(e)}
-      variant="ghost"
-      tooltip="Copy content"
       disabled={disabled}
+      onClick={(e) => handleCopy(e)}
+      tooltip="Copy content"
+      variant="ghost"
     >
-      <AnimatePresence
-        mode="wait"
-        initial={false}
-      >
+      <AnimatePresence initial={false} mode="wait">
         {copied ? (
           <motion.div
-            key="check"
-            initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            key="check"
             transition={{ duration: 0.15 }}
           >
             <CopyCheck className="text-green-500" />
           </motion.div>
         ) : (
           <motion.div
-            key="copy"
-            initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            key="copy"
             transition={{ duration: 0.15 }}
           >
             <Copy />
@@ -77,21 +74,21 @@ export function BranchSwitcher({
   onSelect: (branch: string) => void;
   isLoading: boolean;
 }) {
-  if (!branchOptions || !branch) return null;
+  if (!(branchOptions && branch)) return null;
   const index = branchOptions.indexOf(branch);
 
   return (
     <div className="flex items-center gap-2">
       <Button
-        variant="ghost"
-        size="icon"
         className="size-6 p-1"
+        disabled={isLoading}
         onClick={() => {
           const prevBranch = branchOptions[index - 1];
           if (!prevBranch) return;
           onSelect(prevBranch);
         }}
-        disabled={isLoading}
+        size="icon"
+        variant="ghost"
       >
         <ChevronLeft />
       </Button>
@@ -99,15 +96,15 @@ export function BranchSwitcher({
         {index + 1} / {branchOptions.length}
       </span>
       <Button
-        variant="ghost"
-        size="icon"
         className="size-6 p-1"
+        disabled={isLoading}
         onClick={() => {
           const nextBranch = branchOptions[index + 1];
           if (!nextBranch) return;
           onSelect(nextBranch);
         }}
-        disabled={isLoading}
+        size="icon"
+        variant="ghost"
       >
         <ChevronRight />
       </Button>
@@ -138,13 +135,13 @@ export function CommandBar({
 }) {
   if (isHumanMessage && isAiMessage) {
     throw new Error(
-      "Can only set one of isHumanMessage or isAiMessage to true, not both.",
+      "Can only set one of isHumanMessage or isAiMessage to true, not both."
     );
   }
 
-  if (!isHumanMessage && !isAiMessage) {
+  if (!(isHumanMessage || isAiMessage)) {
     throw new Error(
-      "One of isHumanMessage or isAiMessage must be set to true.",
+      "One of isHumanMessage or isAiMessage must be set to true."
     );
   }
 
@@ -155,7 +152,7 @@ export function CommandBar({
       handleSubmitEdit === undefined)
   ) {
     throw new Error(
-      "If isHumanMessage is true, all of isEditing, setIsEditing, and handleSubmitEdit must be set.",
+      "If isHumanMessage is true, all of isEditing, setIsEditing, and handleSubmitEdit must be set."
     );
   }
 
@@ -170,19 +167,19 @@ export function CommandBar({
       <div className="flex items-center gap-2">
         <TooltipIconButton
           disabled={isLoading}
-          tooltip="Cancel edit"
-          variant="ghost"
           onClick={() => {
             setIsEditing(false);
           }}
+          tooltip="Cancel edit"
+          variant="ghost"
         >
           <XIcon />
         </TooltipIconButton>
         <TooltipIconButton
           disabled={isLoading}
+          onClick={handleSubmitEdit}
           tooltip="Submit"
           variant="secondary"
-          onClick={handleSubmitEdit}
         >
           <SendHorizontal />
         </TooltipIconButton>
@@ -197,16 +194,13 @@ export function CommandBar({
 
   return (
     <div className="flex items-center gap-2">
-      <ContentCopyable
-        content={content}
-        disabled={isLoading}
-      />
+      <ContentCopyable content={content} disabled={isLoading} />
       {isAiMessage && !!handleRegenerate && (
         <TooltipIconButton
           disabled={isLoading}
+          onClick={handleRegenerate}
           tooltip="Refresh"
           variant="ghost"
-          onClick={handleRegenerate}
         >
           <RefreshCcw />
         </TooltipIconButton>
@@ -214,11 +208,11 @@ export function CommandBar({
       {showEdit && (
         <TooltipIconButton
           disabled={isLoading}
-          tooltip="Edit"
-          variant="ghost"
           onClick={() => {
             setIsEditing?.(true);
           }}
+          tooltip="Edit"
+          variant="ghost"
         >
           <Pencil />
         </TooltipIconButton>

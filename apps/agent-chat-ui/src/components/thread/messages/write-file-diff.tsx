@@ -1,9 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { type Change, diffLines as diffLinesUtil } from "diff";
 import { motion } from "framer-motion";
-import { ChevronDown, ChevronUp, FileText, AlertCircle, CheckCircle } from "lucide-react";
-import { diffLines as diffLinesUtil, Change } from "diff";
+import {
+  AlertCircle,
+  CheckCircle,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+} from "lucide-react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface WriteFileDiffProps {
@@ -97,7 +103,12 @@ function calculateStats(diffLines: DiffLine[]) {
   return { additions, deletions };
 }
 
-export function WriteFileDiff({ toolName, args, error, success }: WriteFileDiffProps) {
+export function WriteFileDiff({
+  toolName,
+  args,
+  error,
+  success,
+}: WriteFileDiffProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showErrorDetails, setShowErrorDetails] = useState(false);
 
@@ -105,7 +116,7 @@ export function WriteFileDiff({ toolName, args, error, success }: WriteFileDiffP
   const isWriteOperation = toolName === "Write" || toolName === "write_file";
   const hasFailed = !!error;
   const hasSucceeded = success === true;
-  
+
   // Note: This component intentionally does not render copy content or refresh buttons
   // to keep the diff view clean and focused on the content changes
 
@@ -124,7 +135,7 @@ export function WriteFileDiff({ toolName, args, error, success }: WriteFileDiffP
   }
 
   // Handle empty content case
-  if (!oldContent && !newContent) {
+  if (!(oldContent || newContent)) {
     return null;
   }
 
@@ -141,15 +152,21 @@ export function WriteFileDiff({ toolName, args, error, success }: WriteFileDiffP
 
   return (
     <div className="mx-auto grid max-w-3xl grid-rows-[1fr_auto] gap-2">
-      <div className={cn(
-        "overflow-hidden rounded-lg border-2 bg-white",
-        hasFailed ? "border-red-300" : "border-gray-200"
-      )}>
+      <div
+        className={cn(
+          "overflow-hidden rounded-lg border-2 bg-white",
+          hasFailed ? "border-red-300" : "border-gray-200"
+        )}
+      >
         {/* Header */}
-        <div className={cn(
-          "border-b px-4 py-2",
-          hasFailed ? "border-red-200 bg-red-50" : "border-gray-200 bg-gray-50"
-        )}>
+        <div
+          className={cn(
+            "border-b px-4 py-2",
+            hasFailed
+              ? "border-red-200 bg-red-50"
+              : "border-gray-200 bg-gray-50"
+          )}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {hasFailed ? (
@@ -159,38 +176,42 @@ export function WriteFileDiff({ toolName, args, error, success }: WriteFileDiffP
               ) : (
                 <FileText className="h-4 w-4 text-gray-500" />
               )}
-              <code className={cn(
-                "text-sm font-medium",
-                hasFailed ? "text-red-900" : "text-gray-900"
-              )}>
+              <code
+                className={cn(
+                  "font-medium text-sm",
+                  hasFailed ? "text-red-900" : "text-gray-900"
+                )}
+              >
                 {filePath}
               </code>
               {hasFailed && (
-                <span className="text-xs font-medium text-red-700 bg-red-100 px-2 py-0.5 rounded">
+                <span className="rounded bg-red-100 px-2 py-0.5 font-medium text-red-700 text-xs">
                   Failed
                 </span>
               )}
               {hasSucceeded && (
-                <span className="text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded">
+                <span className="rounded bg-green-100 px-2 py-0.5 font-medium text-green-700 text-xs">
                   Success
                 </span>
               )}
             </div>
             <div className="flex items-center gap-3">
               {additions > 0 && (
-                <span className="text-sm font-medium text-green-600">
+                <span className="font-medium text-green-600 text-sm">
                   +{additions}
                 </span>
               )}
               {deletions > 0 && (
-                <span className="text-sm font-medium text-red-600">
+                <span className="font-medium text-red-600 text-sm">
                   -{deletions}
                 </span>
               )}
-              <span className={cn(
-                "text-xs",
-                hasFailed ? "text-red-600" : "text-gray-500"
-              )}>
+              <span
+                className={cn(
+                  "text-xs",
+                  hasFailed ? "text-red-600" : "text-gray-500"
+                )}
+              >
                 {isWriteOperation ? "Created" : "Modified"}
               </span>
             </div>
@@ -208,17 +229,17 @@ export function WriteFileDiff({ toolName, args, error, success }: WriteFileDiffP
 
                   return (
                     <tr
-                      key={index}
                       className={cn("align-baseline", {
                         "bg-[#e6ffed]": isAdded,
                         "bg-[#ffeef0]": isRemoved,
                       })}
+                      key={index}
                     >
                       {/* Left line number */}
                       <td
                         className={cn(
                           "select-none px-[10px] py-0 text-right",
-                          "min-w-[50px] w-[50px] bg-[#f7f7f7]",
+                          "w-[50px] min-w-[50px] bg-[#f7f7f7]",
                           {
                             "bg-[#cdffd8]": isAdded,
                             "bg-[#ffdce0]": isRemoved,
@@ -234,7 +255,7 @@ export function WriteFileDiff({ toolName, args, error, success }: WriteFileDiffP
                       <td
                         className={cn(
                           "select-none px-[10px] py-0 text-right",
-                          "min-w-[50px] w-[50px] bg-[#f7f7f7]",
+                          "w-[50px] min-w-[50px] bg-[#f7f7f7]",
                           {
                             "bg-[#cdffd8]": isAdded,
                             "bg-[#ffdce0]": isRemoved,
@@ -248,14 +269,11 @@ export function WriteFileDiff({ toolName, args, error, success }: WriteFileDiffP
 
                       {/* Marker (+/-) */}
                       <td
-                        className={cn(
-                          "w-[28px] px-[10px] py-0 select-none",
-                          {
-                            "bg-[#cdffd8] text-[#24292e]": isAdded,
-                            "bg-[#ffdce0] text-[#24292e]": isRemoved,
-                            "bg-[#f7f7f7]": !isAdded && !isRemoved,
-                          }
-                        )}
+                        className={cn("w-[28px] select-none px-[10px] py-0", {
+                          "bg-[#cdffd8] text-[#24292e]": isAdded,
+                          "bg-[#ffdce0] text-[#24292e]": isRemoved,
+                          "bg-[#f7f7f7]": !(isAdded || isRemoved),
+                        })}
                       >
                         <pre className="m-0 p-0">
                           {isAdded ? "+" : isRemoved ? "-" : " "}
@@ -271,18 +289,18 @@ export function WriteFileDiff({ toolName, args, error, success }: WriteFileDiffP
                       >
                         {isAdded ? (
                           <ins className="no-underline">
-                            <pre className="m-0 px-2 py-0 text-[#24292e] whitespace-pre-wrap break-anywhere leading-[1.6em]">
+                            <pre className="break-anywhere m-0 whitespace-pre-wrap px-2 py-0 text-[#24292e] leading-[1.6em]">
                               {line.value || " "}
                             </pre>
                           </ins>
                         ) : isRemoved ? (
                           <del className="no-underline">
-                            <pre className="m-0 px-2 py-0 text-[#24292e] whitespace-pre-wrap break-anywhere leading-[1.6em]">
+                            <pre className="break-anywhere m-0 whitespace-pre-wrap px-2 py-0 text-[#24292e] leading-[1.6em]">
                               {line.value || " "}
                             </pre>
                           </del>
                         ) : (
-                          <pre className="m-0 px-2 py-0 text-[#24292e] whitespace-pre-wrap break-anywhere leading-[1.6em]">
+                          <pre className="break-anywhere m-0 whitespace-pre-wrap px-2 py-0 text-[#24292e] leading-[1.6em]">
                             {line.value || " "}
                           </pre>
                         )}
@@ -297,9 +315,9 @@ export function WriteFileDiff({ toolName, args, error, success }: WriteFileDiffP
           {/* Expand/Collapse Button */}
           {shouldShowExpand && (
             <motion.button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="flex w-full cursor-pointer items-center justify-center border-t border-gray-200 bg-gray-50 py-2 text-gray-500 transition-all duration-200 ease-in-out hover:bg-gray-100 hover:text-gray-600"
+              className="flex w-full cursor-pointer items-center justify-center border-gray-200 border-t bg-gray-50 py-2 text-gray-500 transition-all duration-200 ease-in-out hover:bg-gray-100 hover:text-gray-600"
               initial={{ scale: 1 }}
+              onClick={() => setIsExpanded(!isExpanded)}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
@@ -319,33 +337,35 @@ export function WriteFileDiff({ toolName, args, error, success }: WriteFileDiffP
 
         {/* Error Section */}
         {hasFailed && error && (
-          <div className="border-t-2 border-red-200 bg-red-50 px-4 py-3">
+          <div className="border-red-200 border-t-2 bg-red-50 px-4 py-3">
             <div className="flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-600" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-red-900 mb-1">
+                <p className="mb-1 font-medium text-red-900 text-sm">
                   Operation Failed
                 </p>
-                <p className="text-sm text-red-800">
+                <p className="text-red-800 text-sm">
                   {error.length > 150 ? error.slice(0, 150) + "..." : error}
                 </p>
                 {error.length > 150 && (
                   <button
+                    className="mt-2 font-medium text-red-700 text-xs underline hover:text-red-900"
                     onClick={() => setShowErrorDetails(!showErrorDetails)}
-                    className="text-xs text-red-700 hover:text-red-900 font-medium mt-2 underline"
                   >
                     {showErrorDetails ? "Show less" : "Show full error"}
                   </button>
                 )}
                 {showErrorDetails && error.length > 150 && (
                   <div className="mt-2 rounded bg-red-100 p-2">
-                    <code className="text-xs text-red-900 whitespace-pre-wrap break-all">
+                    <code className="whitespace-pre-wrap break-all text-red-900 text-xs">
                       {error}
                     </code>
                   </div>
                 )}
-                <p className="text-xs text-red-700 mt-2">
-                  💡 <strong>Tip:</strong> The file content may have changed since it was last read. The agent may retry with a different approach.
+                <p className="mt-2 text-red-700 text-xs">
+                  💡 <strong>Tip:</strong> The file content may have changed
+                  since it was last read. The agent may retry with a different
+                  approach.
                 </p>
               </div>
             </div>

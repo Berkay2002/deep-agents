@@ -1,25 +1,26 @@
 // src/mcp/index.ts
-// Clean exports for the MCP client module
+// This file intentionally left empty to avoid barrel file anti-pattern.
+// Import directly from:
+// - ./client.js for client functions
+// - ./config.js for configuration
+// - ./types.js for types
 
-// Type exports
-export type {
-  MCPServerOptions,
-  MCPClientConfig,
-  SingleMCPClientResult,
-  MultiMCPClientResult,
-} from "./types.js";
-
-// Client function exports
+// Client exports
 export {
-  createSingleMCPClient,
-  createMultiMCPClient,
-  closeMCPClient,
-  createMCPClientWithRetry,
+  createMcpClientWithRetry,
+  createMultiMcpClient,
+  createSingleMcpClient,
 } from "./client.js";
-
 // Configuration exports
 export {
-  MCP_SERVERS,
-  loadMCPServerFromEnv,
-  loadAllMCPServersFromEnv,
+  loadAllMcpServersFromEnv,
+  loadMcpServerFromEnv,
+  mcpServers,
 } from "./config.js";
+// Type exports
+export type {
+  McpClientConfig,
+  McpServerOptions,
+  MultiMcpClientResult,
+  SingleMcpClientResult,
+} from "./types.js";

@@ -1,15 +1,15 @@
-import { BaseMessage, isBaseMessage } from "@langchain/core/messages";
+import { type BaseMessage, isBaseMessage } from "@langchain/core/messages";
+import type { HumanInterrupt } from "@langchain/langgraph/prebuilt";
 import { format } from "date-fns";
 import { startCase } from "lodash";
-import { HumanResponseWithEdits, SubmitType } from "./types";
-import { HumanInterrupt } from "@langchain/langgraph/prebuilt";
+import type { HumanResponseWithEdits, SubmitType } from "./types";
 
 export function prettifyText(action: string) {
   return startCase(action.replace(/_/g, " "));
 }
 
 export function isArrayOfMessages(
-  value: Record<string, any>[],
+  value: Record<string, any>[]
 ): value is BaseMessage[] {
   if (
     value.every(isBaseMessage) ||
@@ -20,7 +20,7 @@ export function isArrayOfMessages(
           "id" in v &&
           "type" in v &&
           "content" in v &&
-          "additional_kwargs" in v,
+          "additional_kwargs" in v
       ))
   ) {
     return true;
@@ -40,7 +40,8 @@ export function baseMessageObject(item: unknown): string {
     }
     if ("type" in item) {
       return `${item.type}:${contentText ? ` ${contentText}` : ""}${toolCallText ? ` - Tool calls: ${toolCallText}` : ""}`;
-    } else if ("_getType" in item) {
+    }
+    if ("_getType" in item) {
       return `${item._getType()}:${contentText ? ` ${contentText}` : ""}${toolCallText ? ` - Tool calls: ${toolCallText}` : ""}`;
     }
   } else if (
@@ -62,9 +63,8 @@ export function baseMessageObject(item: unknown): string {
 
   if (typeof item === "object") {
     return JSON.stringify(item, null);
-  } else {
-    return item as string;
   }
+  return item as string;
 }
 
 export function unknownToPrettyDate(input: unknown): string | undefined {
@@ -78,14 +78,12 @@ export function unknownToPrettyDate(input: unknown): string | undefined {
   } catch (_) {
     // failed to parse date. no-op
   }
-  return undefined;
+  return;
 }
 
 export function createDefaultHumanResponse(
   interrupt: HumanInterrupt,
-  initialHumanInterruptEditValue: React.MutableRefObject<
-    Record<string, string>
-  >,
+  initialHumanInterruptEditValue: React.MutableRefObject<Record<string, string>>
 ): {
   responses: HumanResponseWithEdits[];
   defaultSubmitType: SubmitType | undefined;
@@ -103,8 +101,10 @@ export function createDefaultHumanResponse(
         }
 
         if (
-          !initialHumanInterruptEditValue.current ||
-          !(k in initialHumanInterruptEditValue.current)
+          !(
+            initialHumanInterruptEditValue.current &&
+            k in initialHumanInterruptEditValue.current
+          )
         ) {
           initialHumanInterruptEditValue.current = {
             ...initialHumanInterruptEditValue.current,
@@ -120,7 +120,7 @@ export function createDefaultHumanResponse(
               key: k,
               value: stringValue,
               expectedValue: initialHumanInterruptEditValue.current[k],
-            },
+            }
           );
         }
       });
@@ -189,24 +189,24 @@ export function createDefaultHumanResponse(
 
 export function constructOpenInStudioURL(
   deploymentUrl: string,
-  threadId?: string,
+  threadId?: string
 ) {
-  const smithStudioURL = new URL("https://smith.langchain.com/studio/thread");
+  const smithStudioUrl = new URL("https://smith.langchain.com/studio/thread");
   // trim the trailing slash from deploymentUrl
   const trimmedDeploymentUrl = deploymentUrl.replace(/\/$/, "");
 
   if (threadId) {
-    smithStudioURL.pathname += `/${threadId}`;
+    smithStudioUrl.pathname += `/${threadId}`;
   }
 
-  smithStudioURL.searchParams.append("baseUrl", trimmedDeploymentUrl);
+  smithStudioUrl.searchParams.append("baseUrl", trimmedDeploymentUrl);
 
-  return smithStudioURL.toString();
+  return smithStudioUrl.toString();
 }
 
 export function haveArgsChanged(
   args: unknown,
-  initialValues: Record<string, string>,
+  initialValues: Record<string, string>
 ): boolean {
   if (typeof args !== "object" || !args) {
     return false;

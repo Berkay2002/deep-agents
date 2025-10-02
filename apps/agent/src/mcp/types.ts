@@ -6,7 +6,7 @@
  *
  * Only supports HTTP transport - no stdio or SSE variants
  */
-export interface MCPServerOptions {
+export type McpServerOptions = {
   /**
    * The URL of the MCP server endpoint
    * @example "https://docs.langchain.com/mcp"
@@ -24,7 +24,7 @@ export interface MCPServerOptions {
    * Whether to automatically fallback to SSE if HTTP is not supported
    * @default true
    */
-  automaticSSEFallback?: boolean;
+  automaticSseFallback?: boolean;
 
   /**
    * Reconnection settings for handling connection failures
@@ -48,12 +48,12 @@ export interface MCPServerOptions {
      */
     delayMs?: number;
   };
-}
+};
 
 /**
  * Configuration options for the MCP client
  */
-export interface MCPClientConfig {
+export type McpClientConfig = {
   /**
    * Use LangChain's standard multimodal content blocks for tools
    * @default true
@@ -78,32 +78,38 @@ export interface MCPClientConfig {
    * @default false for single server, true for multiple servers
    */
   prefixToolNameWithServerName?: boolean;
-}
+};
 
 /**
  * Result of creating a single MCP client connection
  */
-export interface SingleMCPClientResult {
+export type SingleMcpClientResult = {
   /** The MCP client instance */
-  client: any; // MultiServerMCPClient from @langchain/mcp-adapters
+  client: MultiServerMcpClient;
 
   /** Array of LangChain-compatible tools from the server */
-  tools: any[]; // DynamicStructuredTool[]
+  tools: DynamicStructuredTool[];
 
   /** Name of the connected server */
   serverName: string;
-}
+};
 
 /**
  * Result of creating a multi-server MCP client connection
  */
-export interface MultiMCPClientResult {
+export type MultiMcpClientResult = {
   /** The MCP client instance managing all servers */
-  client: any; // MultiServerMCPClient from @langchain/mcp-adapters
+  client: MultiServerMcpClient;
 
   /** Flattened array of all tools from all servers */
-  tools: any[]; // DynamicStructuredTool[]
+  tools: DynamicStructuredTool[];
 
   /** Map of server names to tool counts */
   toolsByServer: Record<string, number>;
-}
+};
+
+// Type imports from @langchain/mcp-adapters
+type MultiServerMcpClient =
+  import("@langchain/mcp-adapters").MultiServerMCPClient;
+type DynamicStructuredTool =
+  import("@langchain/core/tools").DynamicStructuredTool;

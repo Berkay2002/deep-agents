@@ -5,11 +5,9 @@
  * Defines Todo interface and DeepAgentState using MessagesAnnotation as base with proper reducer functions.
  */
 
-import "@langchain/langgraph/zod";
-import { MessagesZodState, Annotation, messagesStateReducer } from "@langchain/langgraph";
+import type { BaseMessage } from "@langchain/core/messages";
+import { Annotation, messagesStateReducer } from "@langchain/langgraph";
 import type { Todo } from "./types.js";
-import { withLangGraph } from "@langchain/langgraph/zod";
-import { z } from "zod";
 
 /**
  * File reducer function that merges file dictionaries
@@ -17,15 +15,15 @@ import { z } from "zod";
  */
 export function fileReducer(
   left: Record<string, string> | null | undefined,
-  right: Record<string, string> | null | undefined,
+  right: Record<string, string> | null | undefined
 ): Record<string, string> {
-  if (left == null) {
+  if (left === null || left === undefined) {
     return right || {};
-  } else if (right == null) {
-    return left;
-  } else {
-    return { ...left, ...right };
   }
+  if (right === null || right === undefined) {
+    return left;
+  }
+  return { ...left, ...right };
 }
 
 /**
@@ -34,9 +32,9 @@ export function fileReducer(
  */
 export function todoReducer(
   left: Todo[] | null | undefined,
-  right: Todo[] | null | undefined,
+  right: Todo[] | null | undefined
 ): Todo[] {
-  if (right != null) {
+  if (right !== null && right !== undefined) {
     return right;
   }
   return left || [];
@@ -46,28 +44,8 @@ export function todoReducer(
  * DeepAgentState using LangGraph's Annotation.Root() pattern
  * Extends MessagesAnnotation (equivalent to Python's AgentState) with todos and files channels
  */
-export const DeepAgentState = MessagesZodState.extend({
-  todos: withLangGraph(z.custom<Todo[]>(), {
-    reducer: {
-      schema: z.custom<Todo[]>(),
-      fn: todoReducer,
-    },
-  }),
-
-  files: withLangGraph(z.custom<Record<string, string>>(), {
-    reducer: {
-      schema: z.custom<Record<string, string>>(),
-      fn: fileReducer,
-    },
-  }),
-});
-
-/**
- * DeepAgentStateAnnotation using LangGraph's Annotation.Root() pattern
- * This is the AnnotationRoot version that can be used with createReactAgent
- */
-export const DeepAgentStateAnnotation = Annotation.Root({
-  messages: Annotation<any[]>({
+export const DeepAgentState = Annotation.Root({
+  messages: Annotation<BaseMessage[]>({
     reducer: messagesStateReducer,
     default: () => [],
   }),
@@ -80,3 +58,29 @@ export const DeepAgentStateAnnotation = Annotation.Root({
     default: () => ({}),
   }),
 });
+
+/**
+ * DeepAgentStateAnnotation using LangGraph's Annotation.Root() pattern
+ * This is the AnnotationRoot version that can be used with createReactAgent
+ */
+export const DeepAgentStateAnnotation = Annotation.Root({
+  messages: Annotation<BaseMessage[]>({
+    reducer: messagesStateReducer,
+    default: () => [],
+  }),
+  todos: Annotation<Todo[]>({
+    reducer: todoReducer,
+    default: () => [],
+  }),
+  files: Annotation<Record<string, string>>({
+    reducer: fileReducer,
+    default: () => ({}),
+  }),
+});
+
+// Export the inferred type for use in other files
+export type DeepAgentStateType = {
+  messages: BaseMessage[];
+  todos: Todo[];
+  files: Record<string, string>;
+};

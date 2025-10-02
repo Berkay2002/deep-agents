@@ -1,6 +1,9 @@
-import { BaseMessage } from "@langchain/core/messages";
-import { Thread, ThreadStatus } from "@langchain/langgraph-sdk";
-import { HumanInterrupt, HumanResponse } from "@langchain/langgraph/prebuilt";
+import type { BaseMessage } from "@langchain/core/messages";
+import type {
+  HumanInterrupt,
+  HumanResponse,
+} from "@langchain/langgraph/prebuilt";
+import type { Thread, ThreadStatus } from "@langchain/langgraph-sdk";
 
 export type HumanResponseWithEdits = HumanResponse &
   (

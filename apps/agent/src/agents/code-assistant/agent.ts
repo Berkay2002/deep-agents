@@ -1,10 +1,10 @@
 // Code Assistant Agent - Expert coding assistant for development tasks
-import { createDeepAgent } from "../../deep-agent/index.js";
+import { createDeepAgent } from "../../deep-agent/agent.js";
 import { createAgentModel } from "../../shared/model.js";
-import { loadCodeTools } from "./tools.js";
+import type { AgentConfig, AgentFactory } from "../../shared/types.js";
 import { codeSubAgents } from "./nodes.js";
 import { CODE_ASSISTANT_INSTRUCTIONS } from "./prompts.js";
-import type { AgentFactory, AgentConfig } from "../../shared/types.js";
+import { loadCodeTools } from "./tools.js";
 
 const defaultConfig: AgentConfig = {
   name: "code-assistant",
@@ -17,13 +17,13 @@ const defaultConfig: AgentConfig = {
     "Testing and quality assurance",
     "Documentation generation",
     "Code generation and scaffolding",
-    "Best practices guidance"
+    "Best practices guidance",
   ],
-  temperature: 0.0 // Lower temperature for more consistent code generation
+  temperature: 0.0, // Lower temperature for more consistent code generation
 };
 
 export const codeAssistantAgentFactory: AgentFactory = {
-  async create(config = {}) {
+  async create(config: Record<string, unknown> = {}) {
     const mergedConfig = { ...defaultConfig, ...config };
     const model = createAgentModel(mergedConfig.temperature);
     const tools = await loadCodeTools();
@@ -38,7 +38,7 @@ export const codeAssistantAgentFactory: AgentFactory = {
 
   getConfig() {
     return defaultConfig;
-  }
+  },
 };
 
 /**
@@ -46,7 +46,7 @@ export const codeAssistantAgentFactory: AgentFactory = {
  * @param config Optional configuration overrides
  * @returns DeepAgent configured for coding tasks
  */
-export async function createCodeAssistantAgent(config = {}) {
+export function createCodeAssistantAgent(config: Record<string, unknown> = {}) {
   return codeAssistantAgentFactory.create(config);
 }
 

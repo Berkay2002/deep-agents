@@ -1,8 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronDown, ChevronUp, MessageSquare, FileCheck, Book } from "lucide-react";
+import {
+  Book,
+  ChevronDown,
+  ChevronUp,
+  FileCheck,
+  MessageSquare,
+} from "lucide-react";
+import { useState } from "react";
 
 interface FileRead {
   filePath: string;
@@ -34,30 +40,31 @@ export function CritiqueAgentContainer({
     <div className="mx-auto grid max-w-3xl grid-rows-[1fr_auto] gap-2">
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
         {/* Header */}
-        <div className="border-b border-gray-200 bg-purple-50 px-4 py-3">
+        <div className="border-gray-200 border-b bg-purple-50 px-4 py-3">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <MessageSquare className="w-4 h-4 text-purple-600 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <MessageSquare className="h-4 w-4 flex-shrink-0 text-purple-600" />
+              <div className="min-w-0 flex-1">
                 <h3 className="font-semibold text-gray-900 text-sm">
                   Critique Agents
                 </h3>
                 {agents.length > 1 && (
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {agents.length} {agents.length === 1 ? "agent" : "agents"} active
+                  <p className="mt-0.5 text-gray-500 text-xs">
+                    {agents.length} {agents.length === 1 ? "agent" : "agents"}{" "}
+                    active
                   </p>
                 )}
               </div>
             </div>
             <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="text-gray-500 hover:text-gray-700 flex-shrink-0"
               aria-label={isExpanded ? "Collapse" : "Expand"}
+              className="flex-shrink-0 text-gray-500 hover:text-gray-700"
+              onClick={() => setIsExpanded(!isExpanded)}
             >
               {isExpanded ? (
-                <ChevronUp className="w-4 h-4" />
+                <ChevronUp className="h-4 w-4" />
               ) : (
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className="h-4 w-4" />
               )}
             </button>
           </div>
@@ -65,17 +72,17 @@ export function CritiqueAgentContainer({
 
         {/* Tabs - Show even when collapsed if there are multiple agents */}
         {agents.length > 1 && (
-          <div className="border-b border-gray-200 bg-white">
+          <div className="border-gray-200 border-b bg-white">
             <div className="flex overflow-x-auto">
               {agents.map((agent, idx) => (
                 <button
+                  className={`flex-shrink-0 border-b-2 px-4 py-2 font-medium text-sm transition-colors ${
+                    activeTab === idx
+                      ? "border-purple-600 bg-purple-50 text-purple-600"
+                      : "border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  }`}
                   key={idx}
                   onClick={() => setActiveTab(idx)}
-                  className={`flex-shrink-0 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-                    activeTab === idx
-                      ? "border-purple-600 text-purple-600 bg-purple-50"
-                      : "border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                  }`}
                 >
                   <div className="flex items-center gap-2">
                     <span>Agent {idx + 1}</span>
@@ -88,17 +95,17 @@ export function CritiqueAgentContainer({
 
         {/* Collapsed Preview - Task and Read Critique button */}
         {!isExpanded && (
-          <div className="p-4 bg-white">
-            <p className="text-sm text-gray-700 mb-3">
+          <div className="bg-white p-4">
+            <p className="mb-3 text-gray-700 text-sm">
               <span className="font-medium text-gray-900">Task:</span>{" "}
               {currentAgent.taskDescription}
             </p>
             {currentAgent.critique && (
               <button
+                className="inline-flex items-center gap-2 font-medium text-purple-600 text-sm transition-colors hover:text-purple-700"
                 onClick={() => setIsExpanded(true)}
-                className="inline-flex items-center gap-2 text-sm font-medium text-purple-600 hover:text-purple-700 transition-colors"
               >
-                <FileCheck className="w-4 h-4" />
+                <FileCheck className="h-4 w-4" />
                 Read Critique
               </button>
             )}
@@ -107,18 +114,18 @@ export function CritiqueAgentContainer({
 
         {/* Expanded Content */}
         <motion.div
-          initial={false}
           animate={{
             height: isExpanded ? "auto" : 0,
             opacity: isExpanded ? 1 : 0,
           }}
-          transition={{ duration: 0.2 }}
           className="overflow-hidden"
+          initial={false}
+          transition={{ duration: 0.2 }}
         >
           <div className="max-h-[600px] overflow-y-auto">
             {/* Task Description */}
-            <div className="border-b border-gray-100 p-4 bg-purple-50">
-              <p className="text-sm text-gray-700">
+            <div className="border-gray-100 border-b bg-purple-50 p-4">
+              <p className="text-gray-700 text-sm">
                 <span className="font-medium text-gray-900">Task:</span>{" "}
                 {currentAgent.taskDescription}
               </p>
@@ -126,16 +133,16 @@ export function CritiqueAgentContainer({
 
             {/* File Reads Section */}
             {currentAgent.fileReads && currentAgent.fileReads.length > 0 && (
-              <div className="border-b border-gray-100 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Book className="w-3.5 h-3.5 text-purple-600" />
-                  <h4 className="text-sm font-medium text-gray-700">
+              <div className="border-gray-100 border-b p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <Book className="h-3.5 w-3.5 text-purple-600" />
+                  <h4 className="font-medium text-gray-700 text-sm">
                     Files Read ({currentAgent.fileReads.length})
                   </h4>
                 </div>
                 <div className="space-y-3">
                   {currentAgent.fileReads.map((fileRead, idx) => (
-                    <FileReadItem key={idx} fileRead={fileRead} />
+                    <FileReadItem fileRead={fileRead} key={idx} />
                   ))}
                 </div>
               </div>
@@ -144,14 +151,14 @@ export function CritiqueAgentContainer({
             {/* Critique Section */}
             {currentAgent.critique && (
               <div className="p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <FileCheck className="w-3.5 h-3.5 text-purple-600" />
-                  <h4 className="text-sm font-medium text-gray-700">
+                <div className="mb-3 flex items-center gap-2">
+                  <FileCheck className="h-3.5 w-3.5 text-purple-600" />
+                  <h4 className="font-medium text-gray-700 text-sm">
                     Critique
                   </h4>
                 </div>
                 <div className="prose prose-sm max-w-none">
-                  <pre className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed font-sans">
+                  <pre className="whitespace-pre-wrap font-sans text-gray-700 text-sm leading-relaxed">
                     {currentAgent.critique}
                   </pre>
                 </div>
@@ -166,28 +173,28 @@ export function CritiqueAgentContainer({
 
 function FileReadItem({ fileRead }: { fileRead: FileRead }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const PREVIEW_LINES = 3;
+  const PreviewLines = 3;
 
   const contentLines = fileRead.content.split("\n");
   const totalLines = contentLines.length;
-  const shouldShowExpand = totalLines > PREVIEW_LINES;
+  const shouldShowExpand = totalLines > PreviewLines;
 
   const displayedLines = isExpanded
     ? contentLines
-    : contentLines.slice(0, PREVIEW_LINES);
+    : contentLines.slice(0, PreviewLines);
 
   return (
-    <div className="rounded-md border border-purple-200 bg-purple-50/30 overflow-hidden">
+    <div className="overflow-hidden rounded-md border border-purple-200 bg-purple-50/30">
       {/* File path header */}
       <div
-        className="flex items-center justify-between px-3 py-2 bg-purple-100/50 border-b border-purple-200 cursor-pointer hover:bg-purple-100 transition-colors"
+        className="flex cursor-pointer items-center justify-between border-purple-200 border-b bg-purple-100/50 px-3 py-2 transition-colors hover:bg-purple-100"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <code className="text-xs font-medium text-purple-900">
+        <code className="font-medium text-purple-900 text-xs">
           {fileRead.filePath}
         </code>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-purple-600">
+          <span className="text-purple-600 text-xs">
             {totalLines} {totalLines === 1 ? "line" : "lines"}
           </span>
           {isExpanded ? (
@@ -204,14 +211,17 @@ function FileReadItem({ fileRead }: { fileRead: FileRead }) {
           <table className="w-full border-collapse font-mono text-xs">
             <tbody>
               {displayedLines.map((line, index) => (
-                <tr key={index} className="hover:bg-purple-50 transition-colors">
-                  <td className="select-none px-2 py-0 text-right min-w-[40px] w-[40px] bg-gray-50 border-r border-purple-100">
+                <tr
+                  className="transition-colors hover:bg-purple-50"
+                  key={index}
+                >
+                  <td className="w-[40px] min-w-[40px] select-none border-purple-100 border-r bg-gray-50 px-2 py-0 text-right">
                     <pre className="m-0 p-0 text-gray-500 text-xs">
                       {index + 1}
                     </pre>
                   </td>
-                  <td className="px-2 py-0 bg-white">
-                    <pre className="m-0 px-2 py-0 text-gray-700 whitespace-pre-wrap break-anywhere leading-relaxed">
+                  <td className="bg-white px-2 py-0">
+                    <pre className="break-anywhere m-0 whitespace-pre-wrap px-2 py-0 text-gray-700 leading-relaxed">
                       {line || " "}
                     </pre>
                   </td>
@@ -224,16 +234,16 @@ function FileReadItem({ fileRead }: { fileRead: FileRead }) {
         {/* Expand/Collapse Button */}
         {shouldShowExpand && (
           <button
+            className="flex w-full cursor-pointer items-center justify-center border-purple-200 border-t bg-purple-50/50 py-1.5 text-purple-600 text-xs transition-all duration-200 ease-in-out hover:bg-purple-100"
             onClick={(e) => {
               e.stopPropagation();
               setIsExpanded(!isExpanded);
             }}
-            className="flex w-full cursor-pointer items-center justify-center border-t border-purple-200 bg-purple-50/50 py-1.5 text-purple-600 transition-all duration-200 ease-in-out hover:bg-purple-100 text-xs"
           >
             <span className="mr-1">
               {isExpanded
                 ? "Show less"
-                : `Show more (${totalLines - PREVIEW_LINES} more lines)`}
+                : `Show more (${totalLines - PreviewLines} more lines)`}
             </span>
             {isExpanded ? (
               <ChevronUp className="h-3 w-3" />

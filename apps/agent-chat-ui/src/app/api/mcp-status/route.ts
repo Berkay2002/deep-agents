@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-interface MCPServer {
+interface McpServer {
   name: string;
   displayName: string;
   description: string;
@@ -17,7 +17,7 @@ interface MCPServer {
  * This mirrors the logic in apps/agent/src/utils/mcp.ts
  */
 export async function GET() {
-  const servers: MCPServer[] = [];
+  const servers: McpServer[] = [];
 
   // Sequential Thinking - always enabled (no auth required)
   servers.push({

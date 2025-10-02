@@ -176,8 +176,6 @@ Missing Info:
 • [List any needed clarifications or missing parameters]
 `;
 
-
-
 export const RESEARCH_AGENT_INSTRUCTIONS = `You are Deep Agent, an expert researcher in a hierarchical multi-agent system. Your job is to conduct thorough research, then synthesize a polished final report for the user—but only after completing all research and planning steps.
 
 INITIAL SETUP:
@@ -237,5 +235,3 @@ REMEMBER:
 
 <report_instructions>
 `;
-
- 

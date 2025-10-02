@@ -1,12 +1,12 @@
-import { useStreamContext } from "@/providers/Stream";
-import { Message } from "@langchain/langgraph-sdk";
+import type { Message } from "@langchain/langgraph-sdk";
 import { useState } from "react";
-import { getContentString } from "../utils";
-import { cn } from "@/lib/utils";
-import { Textarea } from "@/components/ui/textarea";
-import { BranchSwitcher, CommandBar } from "./shared";
 import { MultimodalPreview } from "@/components/thread/MultimodalPreview";
+import { Textarea } from "@/components/ui/textarea";
 import { isBase64ContentBlock } from "@/lib/multimodal-utils";
+import { cn } from "@/lib/utils";
+import { useStreamContext } from "@/providers/Stream";
+import { getContentString } from "../utils";
+import { BranchSwitcher, CommandBar } from "./shared";
 
 function EditableContent({
   value,
@@ -26,10 +26,10 @@ function EditableContent({
 
   return (
     <Textarea
-      value={value}
+      className="focus-visible:ring-0"
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={handleKeyDown}
-      className="focus-visible:ring-0"
+      value={value}
     />
   );
 }
@@ -69,7 +69,7 @@ export function HumanMessage({
             messages: [...(values.messages ?? []), newMessage],
           };
         },
-      },
+      }
     );
   };
 
@@ -77,15 +77,15 @@ export function HumanMessage({
     <div
       className={cn(
         "group ml-auto flex items-center gap-2",
-        isEditing && "w-full max-w-xl",
+        isEditing && "w-full max-w-xl"
       )}
     >
       <div className={cn("flex flex-col gap-2", isEditing && "w-full")}>
         {isEditing ? (
           <EditableContent
-            value={value}
-            setValue={setValue}
             onSubmit={handleSubmitEdit}
+            setValue={setValue}
+            value={value}
           />
         ) : (
           <div className="flex flex-col gap-2">
@@ -96,22 +96,18 @@ export function HumanMessage({
                   (acc, block, idx) => {
                     if (isBase64ContentBlock(block)) {
                       acc.push(
-                        <MultimodalPreview
-                          key={idx}
-                          block={block}
-                          size="md"
-                        />,
+                        <MultimodalPreview block={block} key={idx} size="md" />
                       );
                     }
                     return acc;
                   },
-                  [],
+                  []
                 )}
               </div>
             )}
             {/* Render text if present, otherwise fallback to file/image name */}
             {contentString ? (
-              <p className="bg-muted ml-auto w-fit rounded-3xl px-4 py-2 text-right whitespace-pre-wrap">
+              <p className="ml-auto w-fit whitespace-pre-wrap rounded-3xl bg-muted px-4 py-2 text-right">
                 {contentString}
               </p>
             ) : null}
@@ -122,27 +118,27 @@ export function HumanMessage({
           className={cn(
             "ml-auto flex items-center gap-2 transition-opacity",
             "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100",
-            isEditing && "opacity-100",
+            isEditing && "opacity-100"
           )}
         >
           <BranchSwitcher
             branch={meta?.branch}
             branchOptions={meta?.branchOptions}
-            onSelect={(branch) => thread.setBranch(branch)}
             isLoading={isLoading}
+            onSelect={(branch) => thread.setBranch(branch)}
           />
           <CommandBar
-            isLoading={isLoading}
             content={contentString}
+            handleSubmitEdit={handleSubmitEdit}
             isEditing={isEditing}
+            isHumanMessage={true}
+            isLoading={isLoading}
             setIsEditing={(c) => {
               if (c) {
                 setValue(contentString);
               }
               setIsEditing(c);
             }}
-            handleSubmitEdit={handleSubmitEdit}
-            isHumanMessage={true}
           />
         </div>
       </div>

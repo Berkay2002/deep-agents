@@ -1,8 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronDown, ChevronUp, Search, ExternalLink, Sparkles, FileText } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  FileText,
+  Search,
+  Sparkles,
+} from "lucide-react";
+import { useState } from "react";
 
 interface ExaHighlight {
   snippet?: string | null;
@@ -41,34 +48,40 @@ function ExaSearchResultCard({ result }: { result: ExaSearchResult }) {
   const domain = extractDomain(result.url);
 
   // Determine what content to show
-  const mainContent = result.summary || result.snippet || result.fullText?.slice(0, 500);
-  const hasExpandableContent = (result.fullText && result.fullText.length > 500) ||
-                                (result.snippet && result.snippet.length > 300);
+  const mainContent =
+    result.summary || result.snippet || result.fullText?.slice(0, 500);
+  const hasExpandableContent =
+    (result.fullText && result.fullText.length > 500) ||
+    (result.snippet && result.snippet.length > 300);
   const hasHighlights = result.highlights && result.highlights.length > 0;
 
   return (
-    <div className="border-b border-indigo-100 last:border-b-0">
-      <div className="p-4 hover:bg-indigo-50/30 transition-colors">
+    <div className="border-indigo-100 border-b last:border-b-0">
+      <div className="p-4 transition-colors hover:bg-indigo-50/30">
         {/* Header with title and URL */}
-        <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="mb-2 flex items-start justify-between gap-2">
           <a
-            href={result.url}
-            target="_blank"
-            rel="noopener noreferrer"
             className="group flex-1"
+            href={result.url}
+            rel="noopener noreferrer"
+            target="_blank"
           >
-            <h4 className="text-sm font-medium text-indigo-700 group-hover:text-indigo-900 group-hover:underline line-clamp-2">
+            <h4 className="line-clamp-2 font-medium text-indigo-700 text-sm group-hover:text-indigo-900 group-hover:underline">
               {result.title || "Untitled"}
             </h4>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <span className="text-xs text-gray-500">{domain}</span>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <span className="text-gray-500 text-xs">{domain}</span>
               {result.author && (
-                <span className="text-xs text-gray-500">• by {result.author}</span>
+                <span className="text-gray-500 text-xs">
+                  • by {result.author}
+                </span>
               )}
               {result.publishedDate && (
-                <span className="text-xs text-gray-500">• {new Date(result.publishedDate).toLocaleDateString()}</span>
+                <span className="text-gray-500 text-xs">
+                  • {new Date(result.publishedDate).toLocaleDateString()}
+                </span>
               )}
-              <ExternalLink className="w-3 h-3 text-gray-400" />
+              <ExternalLink className="h-3 w-3 text-gray-400" />
             </div>
           </a>
         </div>
@@ -77,16 +90,22 @@ function ExaSearchResultCard({ result }: { result: ExaSearchResult }) {
         {mainContent && (
           <div className="mb-2">
             {result.summary && (
-              <div className="flex items-start gap-2 mb-2">
-                <Sparkles className="w-3 h-3 text-indigo-500 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap italic">
-                  {isExpanded ? mainContent : mainContent.slice(0, 200) + (mainContent.length > 200 ? "..." : "")}
+              <div className="mb-2 flex items-start gap-2">
+                <Sparkles className="mt-0.5 h-3 w-3 flex-shrink-0 text-indigo-500" />
+                <p className="whitespace-pre-wrap text-gray-700 text-sm italic leading-relaxed">
+                  {isExpanded
+                    ? mainContent
+                    : mainContent.slice(0, 200) +
+                      (mainContent.length > 200 ? "..." : "")}
                 </p>
               </div>
             )}
             {!result.summary && result.snippet && (
-              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                {isExpanded ? result.snippet : result.snippet.slice(0, 200) + (result.snippet.length > 200 ? "..." : "")}
+              <p className="whitespace-pre-wrap text-gray-700 text-sm leading-relaxed">
+                {isExpanded
+                  ? result.snippet
+                  : result.snippet.slice(0, 200) +
+                    (result.snippet.length > 200 ? "..." : "")}
               </p>
             )}
           </div>
@@ -96,17 +115,24 @@ function ExaSearchResultCard({ result }: { result: ExaSearchResult }) {
         {hasHighlights && showHighlights && (
           <div className="mt-3 space-y-2">
             <div className="flex items-center gap-1.5">
-              <FileText className="w-3 h-3 text-indigo-600" />
-              <span className="text-xs font-medium text-indigo-700">Neural Search Highlights</span>
+              <FileText className="h-3 w-3 text-indigo-600" />
+              <span className="font-medium text-indigo-700 text-xs">
+                Neural Search Highlights
+              </span>
             </div>
             <div className="space-y-1.5 pl-4">
-              {result.highlights!.slice(0, isExpanded ? undefined : 2).map((highlight, idx) => (
-                <div key={idx} className="text-xs text-gray-600 leading-relaxed border-l-2 border-indigo-200 pl-2">
-                  {highlight.snippet}
-                </div>
-              ))}
+              {result
+                .highlights!.slice(0, isExpanded ? undefined : 2)
+                .map((highlight, idx) => (
+                  <div
+                    className="border-indigo-200 border-l-2 pl-2 text-gray-600 text-xs leading-relaxed"
+                    key={idx}
+                  >
+                    {highlight.snippet}
+                  </div>
+                ))}
               {!isExpanded && result.highlights!.length > 2 && (
-                <p className="text-xs text-indigo-600 italic pl-2">
+                <p className="pl-2 text-indigo-600 text-xs italic">
                   +{result.highlights!.length - 2} more highlights
                 </p>
               )}
@@ -115,19 +141,20 @@ function ExaSearchResultCard({ result }: { result: ExaSearchResult }) {
         )}
 
         {/* Expand button */}
-        {(hasExpandableContent || (hasHighlights && result.highlights!.length > 2)) && (
+        {(hasExpandableContent ||
+          (hasHighlights && result.highlights!.length > 2)) && (
           <button
+            className="mt-2 flex items-center gap-1 font-medium text-indigo-600 text-xs hover:text-indigo-800"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="mt-2 flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
           >
             {isExpanded ? (
               <>
-                <ChevronUp className="w-3 h-3" />
+                <ChevronUp className="h-3 w-3" />
                 Show less
               </>
             ) : (
               <>
-                <ChevronDown className="w-3 h-3" />
+                <ChevronDown className="h-3 w-3" />
                 Show more
               </>
             )}
@@ -154,15 +181,15 @@ export function ExaSearchResults({
     <div className="mx-auto grid max-w-3xl grid-rows-[1fr_auto] gap-2">
       <div className="overflow-hidden rounded-lg border border-indigo-200 bg-white">
         {/* Header */}
-        <div className="border-b border-indigo-200 bg-indigo-50 px-4 py-3">
+        <div className="border-indigo-200 border-b bg-indigo-50 px-4 py-3">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <Sparkles className="w-4 h-4 text-indigo-600 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-gray-900 text-sm truncate">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <Sparkles className="h-4 w-4 flex-shrink-0 text-indigo-600" />
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate font-medium text-gray-900 text-sm">
                   {query}
                 </h3>
-                <p className="text-xs text-indigo-700">
+                <p className="text-indigo-700 text-xs">
                   {validResults.length} neural search result
                   {validResults.length !== 1 ? "s" : ""}
                   {responseTime && (
@@ -175,13 +202,13 @@ export function ExaSearchResults({
               </div>
             </div>
             <button
+              className="flex-shrink-0 text-indigo-600 hover:text-indigo-800"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="text-indigo-600 hover:text-indigo-800 flex-shrink-0"
             >
               {isExpanded ? (
-                <ChevronUp className="w-4 h-4" />
+                <ChevronUp className="h-4 w-4" />
               ) : (
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className="h-4 w-4" />
               )}
             </button>
           </div>
@@ -189,13 +216,13 @@ export function ExaSearchResults({
 
         {/* Results */}
         <motion.div
-          initial={false}
           animate={{
             height: isExpanded ? "auto" : 0,
             opacity: isExpanded ? 1 : 0,
           }}
-          transition={{ duration: 0.2 }}
           className="overflow-hidden"
+          initial={false}
+          transition={{ duration: 0.2 }}
         >
           <div className="max-h-[500px] overflow-y-auto">
             {validResults.map((result, idx) => (

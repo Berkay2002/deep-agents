@@ -1,21 +1,21 @@
 declare module "exa-js" {
-  interface ExaSubpage {
+  type ExaSubpage = {
     title?: string;
     url: string;
     text?: string;
     highlights?: unknown[];
     summary?: unknown;
-  }
+  };
 
-  interface ExaResult extends ExaSubpage {
+  type ExaResult = ExaSubpage & {
     author?: string;
     publishedDate?: string;
     subpages?: ExaSubpage[];
-  }
+  };
 
-  interface ExaSearchResponse {
+  type ExaSearchResponse = {
     results: ExaResult[];
-  }
+  };
 
   export default class Exa {
     constructor(apiKey: string);

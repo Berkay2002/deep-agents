@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, ChangeEvent } from "react";
-import { toast } from "sonner";
 import type { Base64ContentBlock } from "@langchain/core/messages";
+import { type ChangeEvent, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { fileToContentBlock } from "@/lib/multimodal-utils";
 
 export const SUPPORTED_FILE_TYPES = [
@@ -30,7 +30,7 @@ export function useFileUpload({
         (b) =>
           b.type === "file" &&
           b.mime_type === "application/pdf" &&
-          b.metadata?.filename === file.name,
+          b.metadata?.filename === file.name
       );
     }
     if (SUPPORTED_FILE_TYPES.includes(file.type)) {
@@ -38,7 +38,7 @@ export function useFileUpload({
         (b) =>
           b.type === "image" &&
           b.metadata?.name === file.name &&
-          b.mime_type === file.type,
+          b.mime_type === file.type
       );
     }
     return false;
@@ -49,26 +49,26 @@ export function useFileUpload({
     if (!files) return;
     const fileArray = Array.from(files);
     const validFiles = fileArray.filter((file) =>
-      SUPPORTED_FILE_TYPES.includes(file.type),
+      SUPPORTED_FILE_TYPES.includes(file.type)
     );
     const invalidFiles = fileArray.filter(
-      (file) => !SUPPORTED_FILE_TYPES.includes(file.type),
+      (file) => !SUPPORTED_FILE_TYPES.includes(file.type)
     );
     const duplicateFiles = validFiles.filter((file) =>
-      isDuplicate(file, contentBlocks),
+      isDuplicate(file, contentBlocks)
     );
     const uniqueFiles = validFiles.filter(
-      (file) => !isDuplicate(file, contentBlocks),
+      (file) => !isDuplicate(file, contentBlocks)
     );
 
     if (invalidFiles.length > 0) {
       toast.error(
-        "You have uploaded invalid file type. Please upload a JPEG, PNG, GIF, WEBP image or a PDF.",
+        "You have uploaded invalid file type. Please upload a JPEG, PNG, GIF, WEBP image or a PDF."
       );
     }
     if (duplicateFiles.length > 0) {
       toast.error(
-        `Duplicate file(s) detected: ${duplicateFiles.map((f) => f.name).join(", ")}. Each file can only be uploaded once per message.`,
+        `Duplicate file(s) detected: ${duplicateFiles.map((f) => f.name).join(", ")}. Each file can only be uploaded once per message.`
       );
     }
 
@@ -109,26 +109,26 @@ export function useFileUpload({
 
       const files = Array.from(e.dataTransfer.files);
       const validFiles = files.filter((file) =>
-        SUPPORTED_FILE_TYPES.includes(file.type),
+        SUPPORTED_FILE_TYPES.includes(file.type)
       );
       const invalidFiles = files.filter(
-        (file) => !SUPPORTED_FILE_TYPES.includes(file.type),
+        (file) => !SUPPORTED_FILE_TYPES.includes(file.type)
       );
       const duplicateFiles = validFiles.filter((file) =>
-        isDuplicate(file, contentBlocks),
+        isDuplicate(file, contentBlocks)
       );
       const uniqueFiles = validFiles.filter(
-        (file) => !isDuplicate(file, contentBlocks),
+        (file) => !isDuplicate(file, contentBlocks)
       );
 
       if (invalidFiles.length > 0) {
         toast.error(
-          "You have uploaded invalid file type. Please upload a JPEG, PNG, GIF, WEBP image or a PDF.",
+          "You have uploaded invalid file type. Please upload a JPEG, PNG, GIF, WEBP image or a PDF."
         );
       }
       if (duplicateFiles.length > 0) {
         toast.error(
-          `Duplicate file(s) detected: ${duplicateFiles.map((f) => f.name).join(", ")}. Each file can only be uploaded once per message.`,
+          `Duplicate file(s) detected: ${duplicateFiles.map((f) => f.name).join(", ")}. Each file can only be uploaded once per message.`
         );
       }
 
@@ -198,7 +198,7 @@ export function useFileUpload({
    * Can be used as onPaste={handlePaste} on a textarea or input
    */
   const handlePaste = async (
-    e: React.ClipboardEvent<HTMLTextAreaElement | HTMLInputElement>,
+    e: React.ClipboardEvent<HTMLTextAreaElement | HTMLInputElement>
   ) => {
     const items = e.clipboardData.items;
     if (!items) return;
@@ -215,10 +215,10 @@ export function useFileUpload({
     }
     e.preventDefault();
     const validFiles = files.filter((file) =>
-      SUPPORTED_FILE_TYPES.includes(file.type),
+      SUPPORTED_FILE_TYPES.includes(file.type)
     );
     const invalidFiles = files.filter(
-      (file) => !SUPPORTED_FILE_TYPES.includes(file.type),
+      (file) => !SUPPORTED_FILE_TYPES.includes(file.type)
     );
     const isDuplicate = (file: File) => {
       if (file.type === "application/pdf") {
@@ -226,7 +226,7 @@ export function useFileUpload({
           (b) =>
             b.type === "file" &&
             b.mime_type === "application/pdf" &&
-            b.metadata?.filename === file.name,
+            b.metadata?.filename === file.name
         );
       }
       if (SUPPORTED_FILE_TYPES.includes(file.type)) {
@@ -234,7 +234,7 @@ export function useFileUpload({
           (b) =>
             b.type === "image" &&
             b.metadata?.name === file.name &&
-            b.mime_type === file.type,
+            b.mime_type === file.type
         );
       }
       return false;
@@ -243,12 +243,12 @@ export function useFileUpload({
     const uniqueFiles = validFiles.filter((file) => !isDuplicate(file));
     if (invalidFiles.length > 0) {
       toast.error(
-        "You have pasted an invalid file type. Please paste a JPEG, PNG, GIF, WEBP image or a PDF.",
+        "You have pasted an invalid file type. Please paste a JPEG, PNG, GIF, WEBP image or a PDF."
       );
     }
     if (duplicateFiles.length > 0) {
       toast.error(
-        `Duplicate file(s) detected: ${duplicateFiles.map((f) => f.name).join(", ")}. Each file can only be uploaded once per message.`,
+        `Duplicate file(s) detected: ${duplicateFiles.map((f) => f.name).join(", ")}. Each file can only be uploaded once per message.`
       );
     }
     if (uniqueFiles.length > 0) {

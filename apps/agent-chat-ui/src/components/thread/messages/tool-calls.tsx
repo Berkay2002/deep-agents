@@ -1,17 +1,17 @@
-import { AIMessage, ToolMessage } from "@langchain/langgraph-sdk";
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import type { AIMessage, ToolMessage } from "@langchain/langgraph-sdk";
+import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useState } from "react";
 import { TodoList } from "../todo-list";
-import { WriteFileDiff } from "./write-file-diff";
-import { TavilySearchResults } from "./tavily-search-results";
 import { ExaSearchResults } from "./exa-search-results";
 import { FileUpdateNotification } from "./file-update-notification";
-import { ReadFileDisplay } from "./read-file-display";
 import { LsResult } from "./ls-result";
-import { TopicAnalysisResult } from "./topic-analysis-result";
-import { ScopeEstimationResult } from "./scope-estimation-result";
 import { PlanOptimizationResult } from "./plan-optimization-result";
+import { ReadFileDisplay } from "./read-file-display";
+import { ScopeEstimationResult } from "./scope-estimation-result";
+import { TavilySearchResults } from "./tavily-search-results";
+import { TopicAnalysisResult } from "./topic-analysis-result";
+import { WriteFileDiff } from "./write-file-diff";
 
 function isComplexValue(value: any): boolean {
   return Array.isArray(value) || (typeof value === "object" && value !== null);
@@ -26,17 +26,27 @@ function isTodoListArgs(toolName: string, args: Record<string, any>): boolean {
 }
 
 function isFileWriteArgs(toolName: string, args: Record<string, any>): boolean {
-  const fileWriteTools = ["Write", "Edit", "MultiEdit", "write_file", "edit_file"];
+  const fileWriteTools = [
+    "Write",
+    "Edit",
+    "MultiEdit",
+    "write_file",
+    "edit_file",
+  ];
   return (
     fileWriteTools.includes(toolName) &&
     "file_path" in args &&
     (("old_string" in args && "new_string" in args) || "content" in args)
   );
 }
-function isFileUpdateNotificationArgs(toolName: string, args: Record<string, any>): boolean {
+function isFileUpdateNotificationArgs(
+  toolName: string,
+  args: Record<string, any>
+): boolean {
   // Check if this is a collaborative file update with metadata
   return (
-    (toolName === "file_update_notification" || toolName === "collaborative_file_update") &&
+    (toolName === "file_update_notification" ||
+      toolName === "collaborative_file_update") &&
     "file_name" in args &&
     "editor_name" in args &&
     "timestamp" in args &&
@@ -55,7 +65,8 @@ export function ToolCalls({
 
   // Create a map of tool call IDs to their results
   const resultsMap = new Map(
-    toolResults?.map((r) => [r.id, { error: r.error, success: r.success }]) || []
+    toolResults?.map((r) => [r.id, { error: r.error, success: r.success }]) ||
+      []
   );
 
   return (
@@ -74,7 +85,15 @@ export function ToolCalls({
 
         // Check if this is a file write/edit tool call
         if (isFileWriteArgs(tc.name, args)) {
-          return <WriteFileDiff key={idx} toolName={tc.name} args={args} error={error} success={success} />;
+          return (
+            <WriteFileDiff
+              args={args}
+              error={error}
+              key={idx}
+              success={success}
+              toolName={tc.name}
+            />
+          );
         }
 
         // Check if this is a file update notification
@@ -89,49 +108,49 @@ export function ToolCalls({
             changeType: args.change_type || args.changeType || "modified",
             collaborators: args.collaborators || [],
             branch: args.branch,
-            isRealTime: args.is_real_time || args.isRealTime || false,
-            error: error,
-            success: success
+            isRealTime: args.is_real_time || args.isRealTime,
+            error,
+            success,
           };
           return <FileUpdateNotification key={idx} {...notificationProps} />;
         }
 
         // Check if this is a read_file tool call - don't show it here, it will be shown in ToolResult
-        const isReadFile = tc.name === "read_file" || tc.name === "Read" || tc.name === "ReadFile";
+        const isReadFile =
+          tc.name === "read_file" ||
+          tc.name === "Read" ||
+          tc.name === "ReadFile";
         if (isReadFile) {
           return null; // Will be displayed by ReadFileDisplay in ToolResult
         }
 
         // Check if this is a research agent task - don't show it here, it will be shown in ResearchAgentContainer
         const isResearchAgentTask =
-          tc.name === "task" &&
-          args?.subagent_type === "research-agent";
+          tc.name === "task" && args?.subagent_type === "research-agent";
         if (isResearchAgentTask) {
           return null; // Will be displayed by ResearchAgentContainer
         }
 
         // Check if this is a critique agent task - don't show it here, it will be shown in CritiqueAgentContainer
         const isCritiqueAgentTask =
-          tc.name === "task" &&
-          args?.subagent_type === "critique-agent";
+          tc.name === "task" && args?.subagent_type === "critique-agent";
         if (isCritiqueAgentTask) {
           return null; // Will be displayed by CritiqueAgentContainer
         }
 
         // Check if this is a planner agent task - don't show it here, it will be shown in PlannerAgentContainer
         const isPlannerAgentTask =
-          tc.name === "task" &&
-          args?.subagent_type === "planner-agent";
+          tc.name === "task" && args?.subagent_type === "planner-agent";
         if (isPlannerAgentTask) {
           return null; // Will be displayed by PlannerAgentContainer
         }
 
         return (
           <div
-            key={idx}
             className="overflow-hidden rounded-lg border border-gray-200"
+            key={idx}
           >
-            <div className="border-b border-gray-200 bg-gray-50 px-4 py-2">
+            <div className="border-gray-200 border-b bg-gray-50 px-4 py-2">
               <h3 className="font-medium text-gray-900">
                 {tc.name}
                 {tc.id && (
@@ -146,12 +165,12 @@ export function ToolCalls({
                 <tbody className="divide-y divide-gray-200">
                   {Object.entries(args).map(([key, value], argIdx) => (
                     <tr key={argIdx}>
-                      <td className="px-4 py-2 text-sm font-medium whitespace-nowrap text-gray-900">
+                      <td className="whitespace-nowrap px-4 py-2 font-medium text-gray-900 text-sm">
                         {key}
                       </td>
-                      <td className="px-4 py-2 text-sm text-gray-500">
+                      <td className="px-4 py-2 text-gray-500 text-sm">
                         {isComplexValue(value) ? (
-                          <code className="rounded bg-gray-50 px-2 py-1 font-mono text-sm break-all">
+                          <code className="break-all rounded bg-gray-50 px-2 py-1 font-mono text-sm">
                             {JSON.stringify(value, null, 2)}
                           </code>
                         ) : (
@@ -172,17 +191,17 @@ export function ToolCalls({
   );
 }
 
-export function ToolResult({ 
-  message, 
-  toolCall 
-}: { 
-  message: ToolMessage; 
-  toolCall?: { 
-    name: string; 
-    args: Record<string, any>; 
-    id?: string; 
-    type?: string; 
-  }
+export function ToolResult({
+  message,
+  toolCall,
+}: {
+  message: ToolMessage;
+  toolCall?: {
+    name: string;
+    args: Record<string, any>;
+    id?: string;
+    type?: string;
+  };
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -200,28 +219,39 @@ export function ToolResult({
   }
 
   // Check if this is a read_file result
-  const isReadFile = message.name &&
-    (message.name === "read_file" || message.name === "Read" || message.name === "ReadFile");
+  const isReadFile =
+    message.name &&
+    (message.name === "read_file" ||
+      message.name === "Read" ||
+      message.name === "ReadFile");
 
-  if (isReadFile && typeof message.content === "string" && message.content.length > 0) {
+  if (
+    isReadFile &&
+    typeof message.content === "string" &&
+    message.content.length > 0
+  ) {
     // Use the tool call args if available
     const fileReadArgs = toolCall?.args || {
       file_path: "unknown",
     };
-    
+
     return (
       <ReadFileDisplay
-        toolName={message.name || "read_file"}
         args={fileReadArgs}
         content={message.content}
+        toolName={message.name || "read_file"}
       />
     );
   }
 
   // Check if this is a file operation - hide all file operation results (shown in WriteFileDiff)
-  const isFileOperation = message.name &&
-    (message.name === "write_file" || message.name === "edit_file" ||
-     message.name === "Write" || message.name === "Edit" || message.name === "MultiEdit");
+  const isFileOperation =
+    message.name &&
+    (message.name === "write_file" ||
+      message.name === "edit_file" ||
+      message.name === "Write" ||
+      message.name === "Edit" ||
+      message.name === "MultiEdit");
 
   if (isFileOperation) {
     return null; // Will be displayed by WriteFileDiff
@@ -231,11 +261,11 @@ export function ToolResult({
   const isError =
     typeof message.content === "string" &&
     (message.content.toLowerCase().includes("error:") ||
-     message.content.toLowerCase().includes("failed") ||
-     message.content.toLowerCase().includes("string not found") ||
-     message.content.toLowerCase().includes("permission denied") ||
-     message.content.toLowerCase().includes("timeout") ||
-     message.content.toLowerCase().includes("timed out"));
+      message.content.toLowerCase().includes("failed") ||
+      message.content.toLowerCase().includes("string not found") ||
+      message.content.toLowerCase().includes("permission denied") ||
+      message.content.toLowerCase().includes("timeout") ||
+      message.content.toLowerCase().includes("timed out"));
 
   // Filter out tool errors - don't display them as they're internal mistakes
   if (isError) {
@@ -309,8 +339,8 @@ export function ToolResult({
     return (
       <TavilySearchResults
         query={parsedContent.query || ""}
-        results={parsedContent.results}
         responseTime={parsedContent.response_time}
+        results={parsedContent.results}
       />
     );
   }
@@ -324,16 +354,16 @@ export function ToolResult({
     parsedContent.results.length > 0 &&
     parsedContent.results[0].url &&
     (parsedContent.results[0].text !== undefined ||
-     parsedContent.results[0].summary !== undefined ||
-     parsedContent.results[0].snippet !== undefined ||
-     parsedContent.results[0].highlights !== undefined);
+      parsedContent.results[0].summary !== undefined ||
+      parsedContent.results[0].snippet !== undefined ||
+      parsedContent.results[0].highlights !== undefined);
 
   if (isExaSearchResult) {
     return (
       <ExaSearchResults
         query={parsedContent.query || ""}
-        results={parsedContent.results}
         responseTime={parsedContent.response_time}
+        results={parsedContent.results}
       />
     );
   }
@@ -353,7 +383,7 @@ export function ToolResult({
   return (
     <div className="mx-auto grid max-w-3xl grid-rows-[1fr_auto] gap-2">
       <div className="overflow-hidden rounded-lg border border-gray-200">
-        <div className="border-b border-gray-200 bg-gray-50 px-4 py-2">
+        <div className="border-gray-200 border-b bg-gray-50 px-4 py-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             {message.name ? (
               <h3 className="font-medium text-gray-900">
@@ -373,21 +403,18 @@ export function ToolResult({
           </div>
         </div>
         <motion.div
+          animate={{ height: "auto" }}
           className="min-w-full bg-gray-100"
           initial={false}
-          animate={{ height: "auto" }}
           transition={{ duration: 0.3 }}
         >
           <div className="p-3">
-            <AnimatePresence
-              mode="wait"
-              initial={false}
-            >
+            <AnimatePresence initial={false} mode="wait">
               <motion.div
-                key={isExpanded ? "expanded" : "collapsed"}
-                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
+                initial={{ opacity: 0, y: 20 }}
+                key={isExpanded ? "expanded" : "collapsed"}
                 transition={{ duration: 0.2 }}
               >
                 {isJsonContent ? (
@@ -404,12 +431,12 @@ export function ToolResult({
                           : [item[0], item[1]];
                         return (
                           <tr key={argIdx}>
-                            <td className="px-4 py-2 text-sm font-medium whitespace-nowrap text-gray-900">
+                            <td className="whitespace-nowrap px-4 py-2 font-medium text-gray-900 text-sm">
                               {key}
                             </td>
-                            <td className="px-4 py-2 text-sm text-gray-500">
+                            <td className="px-4 py-2 text-gray-500 text-sm">
                               {isComplexValue(value) ? (
-                                <code className="rounded bg-gray-50 px-2 py-1 font-mono text-sm break-all">
+                                <code className="break-all rounded bg-gray-50 px-2 py-1 font-mono text-sm">
                                   {JSON.stringify(value, null, 2)}
                                 </code>
                               ) : (
@@ -432,9 +459,9 @@ export function ToolResult({
               Array.isArray(parsedContent) &&
               parsedContent.length > 5)) && (
             <motion.button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="flex w-full cursor-pointer items-center justify-center border-t-[1px] border-gray-200 py-2 text-gray-500 transition-all duration-200 ease-in-out hover:bg-gray-50 hover:text-gray-600"
+              className="flex w-full cursor-pointer items-center justify-center border-gray-200 border-t-[1px] py-2 text-gray-500 transition-all duration-200 ease-in-out hover:bg-gray-50 hover:text-gray-600"
               initial={{ scale: 1 }}
+              onClick={() => setIsExpanded(!isExpanded)}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >

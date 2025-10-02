@@ -1,12 +1,16 @@
 // Main entry point for multi-agent system
 import { Buffer } from "node:buffer";
-import { coerceMessageLikeToMessage, type BaseMessageLike } from "@langchain/core/messages";
+import {
+  type BaseMessageLike,
+  coerceMessageLikeToMessage,
+} from "@langchain/core/messages";
+import type { Runnable } from "@langchain/core/runnables";
 import { createDeepResearchAgent } from "./agents/deep-research/agent.js";
 // Temporarily disabled: Code assistant and router
 // import { createCodeAssistantAgent } from "./agents/code-assistant/agent.js";
 // import { createAgent, listAvailableAgents } from "./agents/index.js";
 // import { selectAgent } from "./router.js";
-import type { AgentRunInput, AgentFile } from "./shared/types.js";
+import type { AgentFile, AgentRunInput } from "./shared/types.js";
 
 // TODO: Add agent instance caching for better performance
 // TODO: Implement agent health monitoring and failover
@@ -15,44 +19,49 @@ import type { AgentRunInput, AgentFile } from "./shared/types.js";
 // TODO: Add rate limiting and usage quotas per agent
 // TODO: Implement agent load balancing for high traffic
 
+// Define a more flexible type for the agent to handle different return types
+type AgentRunnable = Runnable<Record<string, unknown>, unknown>;
+
 // Export individual agents for LangGraph configuration
 // Use lazy initialization to prevent blocking server startup
-let _deepResearchAgent: any = null;
-let _agentInitPromise: Promise<any> | null = null;
+let _deepResearchAgent: AgentRunnable | null = null;
+let _agentInitPromise: Promise<AgentRunnable> | null = null;
 
-async function initializeDeepResearchAgent() {
+async function initializeDeepResearchAgent(): Promise<AgentRunnable> {
   try {
-    console.log("🔧 Initializing deep research agent...");
+    // Initializing deep research agent...
     const agent = await createDeepResearchAgent();
-    console.log("✅ Deep research agent initialized successfully");
-    return agent;
-  } catch (error) {
-    console.error("❌ Failed to initialize deep research agent:", error);
-    console.log("🔄 Continuing without MCP tools...");
+    // Deep research agent initialized successfully
+    return agent as unknown as AgentRunnable;
+  } catch {
+    // Failed to initialize deep research agent, continuing without MCP tools...
     // Return a basic agent without MCP tools
     return await createBasicAgent();
   }
 }
 
-async function createBasicAgent() {
+async function createBasicAgent(): Promise<AgentRunnable> {
   // Import here to avoid circular dependencies
-  const { createDeepAgent } = await import("deepagents");
+  const { createDeepAgent } = await import("./deep-agent/agent.js");
   const { createAgentModel } = await import("./shared/model.js");
-  const { RESEARCH_AGENT_INSTRUCTIONS } = await import("./agents/deep-research/prompts.js");
-  
-  const model = createAgentModel(0.1);
-  
+  const { RESEARCH_AGENT_INSTRUCTIONS } = await import(
+    "./agents/deep-research/prompts.js"
+  );
+
+  const LowTemperature = 0.1; // Low temperature for consistent responses
+  const model = createAgentModel(LowTemperature);
+
   // Create agent with minimal tools (no MCP tools)
   return createDeepAgent({
     model,
     tools: [], // No MCP tools
     instructions: RESEARCH_AGENT_INSTRUCTIONS,
     subagents: [], // No subagents for now
-  }).withConfig({ recursionLimit: 1000 });
+  }).withConfig({ recursionLimit: 1000 }) as unknown as AgentRunnable;
 }
 
 // Export a function that returns the agent (lazy initialization)
-export async function getDeepResearchAgent() {
+export async function getDeepResearchAgent(): Promise<AgentRunnable> {
   if (!_deepResearchAgent) {
     if (!_agentInitPromise) {
       _agentInitPromise = initializeDeepResearchAgent();
@@ -76,11 +85,12 @@ function normalizeFileContent(file: AgentFile): string {
     return file.data;
   }
 
-  const buffer = file.data instanceof Uint8Array
-    ? Buffer.from(file.data)
-    : Buffer.from(new Uint8Array(file.data));
+  const buffer =
+    file.data instanceof Uint8Array
+      ? Buffer.from(file.data)
+      : Buffer.from(new Uint8Array(file.data));
 
-  const mimeType = file.mimeType ?? "application/octet-stream";
+  const mimeType = file.mimeType || "application/octet-stream";
   return `data:${mimeType};base64,${buffer.toString("base64")}`;
 }
 
@@ -102,9 +112,9 @@ export async function routerAgent(input: AgentRunInput) {
 
   const selection = await selectAgent(messages, input.preferredAgent);
 
-  console.log(`🤖 Selected agent: ${selection.type}`);
-  console.log(`📊 Confidence: ${(selection.confidence * 100).toFixed(1)}%`);
-  console.log(`💭 Reasoning: ${selection.reasoning}`);
+  // Selected agent: ${selection.type}
+  // Confidence: ${(selection.confidence * 100).toFixed(1)}%
+  // Reasoning: ${selection.reasoning}
 
   const files = input.files?.length
     ? Object.fromEntries(
@@ -183,7 +193,7 @@ export async function invokeDeepAgent(input: AgentRunInput) {
     : undefined;
 
   const agent = await createDeepResearchAgent();
-  return agent.invoke({
+  return (agent as AgentRunnable).invoke({
     messages,
     files,
   });
@@ -195,7 +205,7 @@ export async function invokeDeepAgent(input: AgentRunInput) {
  * @param input Agent run input
  * @returns Agent response
  */
-export async function invokeWithAgentSelection(input: AgentRunInput) {
+export function invokeWithAgentSelection(input: AgentRunInput) {
   // Temporarily use deep research agent only
   return invokeDeepAgent(input);
 }
@@ -237,9 +247,9 @@ export function getAvailableAgents() {
 
 // Export types for external use
 export type {
+  AgentFile,
   AgentRunInput,
   AgentType,
-  AgentFile
 } from "./shared/types.js";
 
 // Temporarily disabled exports

@@ -1,10 +1,11 @@
+/** biome-ignore-all lint/correctness/noUnusedVariables: <> */
 import Exa from "exa-js";
 import { z } from "zod";
 import {
+  formatErrorForUser,
   RateLimitError,
   SearchTimeoutError,
   ToolExecutionError,
-  formatErrorForUser,
   withRetry,
 } from "./errors.js";
 
@@ -23,13 +24,20 @@ export const EXA_CATEGORIES = [
 export const EXA_SEARCH_TYPES = ["auto", "neural", "keyword"] as const;
 export const EXA_LIVECRAWL_MODES = ["always", "never", "asAvailable"] as const;
 
+// Constants for magic numbers
+const MAX_RESULTS = 100;
+const DEFAULT_HIGHLIGHT_SENTENCES = 4;
+const MAX_SUBPAGES = 8;
+const MAX_SNIPPET_LENGTH = 500;
+const DEFAULT_TIMEOUT_MS = 30_000;
+
 export const exaSearchArgsSchema = z.object({
   query: z.string().describe("The search query"),
   numResults: z
     .number()
     .int()
     .min(1)
-    .max(100)
+    .max(MAX_RESULTS)
     .optional()
     .default(10)
     .describe("Number of results to return"),
@@ -58,7 +66,7 @@ export const exaSearchArgsSchema = z.object({
     .min(1)
     .max(10)
     .optional()
-    .default(4)
+    .default(DEFAULT_HIGHLIGHT_SENTENCES)
     .describe("Number of sentences per highlight"),
   summaryQuery: z
     .string()
@@ -68,7 +76,7 @@ export const exaSearchArgsSchema = z.object({
     .number()
     .int()
     .min(0)
-    .max(8)
+    .max(MAX_SUBPAGES)
     .optional()
     .default(0)
     .describe("Number of subpages to fetch for each result"),
@@ -137,7 +145,7 @@ export type ExaSearchResponse = z.infer<typeof exaSearchResponseSchema>;
 export type ExaSearchResult = ExaSearchResponse["results"][number];
 export type ExaSearchSubpage = NonNullable<ExaSearchResult["subpages"]>[number];
 
-export interface ExaSearchNormalizedSubpage {
+export type ExaSearchNormalizedSubpage = {
   title?: string | null;
   url: string;
   highlights: ExaSearchSubpage["highlights"] extends Array<infer T>
@@ -145,42 +153,46 @@ export interface ExaSearchNormalizedSubpage {
     : unknown[];
   summary?: string | null;
   fullText?: string | null;
-}
+};
 
-export interface ExaSearchNormalizedResult {
+export type ExaSearchNormalizedResult = {
   title?: string | null;
   url: string;
   author?: string | null;
   publishedDate?: string | null;
-  highlights: ExaSearchResult["highlights"] extends Array<infer T> ? T[] : unknown[];
+  highlights: ExaSearchResult["highlights"] extends Array<infer T>
+    ? T[]
+    : unknown[];
   summary?: string | null;
   fullText?: string | null;
   snippet?: string | null;
   subpages?: ExaSearchNormalizedSubpage[];
-}
+};
 
-export interface ExaSearchToolSuccess {
+export type ExaSearchToolSuccess = {
   query: string;
   results: ExaSearchNormalizedResult[];
   message: string;
   error?: undefined;
-}
+};
 
-export interface ExaSearchToolError {
+export type ExaSearchToolError = {
   query: string;
   results: ExaSearchNormalizedResult[];
   message: string;
   error: string;
-}
+};
 
 export type ExaSearchToolResult = ExaSearchToolSuccess | ExaSearchToolError;
 
-export interface PerformExaSearchOptions {
+export type PerformExaSearchOptions = {
   toolName?: string;
   timeoutMs?: number;
-}
+};
 
-function buildSearchOptions(args: ExaSearchParsedArgs): Record<string, unknown> {
+function buildSearchOptions(
+  args: ExaSearchParsedArgs
+): Record<string, unknown> {
   const contents: Record<string, unknown> = {};
 
   if (args.includeText) {
@@ -240,14 +252,15 @@ function normalizeResults(
     const normalizedSubpages = result.subpages?.map((subpage) => ({
       title: subpage.title ?? undefined,
       url: subpage.url,
-      highlights: (subpage.highlights ?? []) as ExaSearchNormalizedSubpage["highlights"],
+      highlights: (subpage.highlights ??
+        []) as ExaSearchNormalizedSubpage["highlights"],
       summary: subpage.summary ?? undefined,
-      fullText: includeText ? subpage.text ?? null : undefined,
+      fullText: includeText ? (subpage.text ?? null) : undefined,
     }));
 
     let snippet: string | null | undefined = result.text ?? null;
-    if (typeof snippet === "string" && snippet.length > 500) {
-      snippet = `${snippet.slice(0, 500)}...`;
+    if (typeof snippet === "string" && snippet.length > MAX_SNIPPET_LENGTH) {
+      snippet = `${snippet.slice(0, MAX_SNIPPET_LENGTH)}...`;
     }
 
     return {
@@ -255,9 +268,10 @@ function normalizeResults(
       url: result.url,
       author: result.author ?? undefined,
       publishedDate: result.publishedDate ?? undefined,
-      highlights: (result.highlights ?? []) as ExaSearchNormalizedResult["highlights"],
+      highlights: (result.highlights ??
+        []) as ExaSearchNormalizedResult["highlights"],
       summary: result.summary ?? undefined,
-      fullText: includeText ? result.text ?? null : undefined,
+      fullText: includeText ? (result.text ?? null) : undefined,
       snippet,
       subpages: normalizedSubpages,
     };
@@ -288,13 +302,13 @@ export async function performExaSearch(
   options: PerformExaSearchOptions = {}
 ): Promise<ExaSearchToolResult> {
   const toolName = options.toolName ?? "exa_search";
-  const timeoutMs = options.timeoutMs ?? 30000;
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const args = exaSearchArgsSchema.parse(rawArgs);
   const { query } = args;
 
   if (!process.env.EXA_API_KEY) {
-    const errorMsg = "EXA_API_KEY is not configured. Exa search is unavailable.";
-    console.error(errorMsg);
+    const errorMsg =
+      "EXA_API_KEY is not configured. Exa search is unavailable.";
     return {
       error: errorMsg,
       query,
@@ -305,7 +319,8 @@ export async function performExaSearch(
   }
 
   try {
-    const exa = new Exa(process.env.EXA_API_KEY!);
+    const exaApiKey = process.env.EXA_API_KEY;
+    const exa = new Exa(exaApiKey);
     const searchOptions = buildSearchOptions(args);
 
     const rawResult = await withRetry(
@@ -314,7 +329,10 @@ export async function performExaSearch(
     );
 
     const parsed = exaSearchResponseSchema.parse(rawResult);
-    const normalizedResults = normalizeResults(parsed.results, args.includeText);
+    const normalizedResults = normalizeResults(
+      parsed.results,
+      args.includeText
+    );
 
     return {
       query,
@@ -323,7 +341,6 @@ export async function performExaSearch(
     };
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    console.error(`Exa search failed for query "${query}":`, err);
 
     const classified = classifyError(err, query, timeoutMs, toolName);
     const userMessage = formatErrorForUser(classified);

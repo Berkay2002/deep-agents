@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Tag, Target, BookOpen, Lightbulb } from "lucide-react";
+import { BookOpen, Clock, Lightbulb, Tag, Target } from "lucide-react";
 
 interface TopicAnalysisResultProps {
   result: {
@@ -45,7 +45,7 @@ export function TopicAnalysisResult({ result }: TopicAnalysisResultProps) {
     <div className="mx-auto grid max-w-3xl grid-rows-[1fr_auto] gap-2">
       <div className="overflow-hidden rounded-lg border border-emerald-200 bg-white">
         {/* Header */}
-        <div className="border-b border-emerald-200 bg-emerald-50 px-4 py-3">
+        <div className="border-emerald-200 border-b bg-emerald-50 px-4 py-3">
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4 text-emerald-600" />
             <h3 className="font-semibold text-gray-900 text-sm">
@@ -55,15 +55,15 @@ export function TopicAnalysisResult({ result }: TopicAnalysisResultProps) {
         </div>
 
         {/* Content */}
-        <div className="p-4 space-y-4">
+        <div className="space-y-4 p-4">
           {/* Topic Type & Complexity */}
           <div className="flex flex-wrap gap-3">
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1 block">
+              <label className="mb-1 block font-medium text-gray-500 text-xs uppercase tracking-wide">
                 Topic Type
               </label>
               <span
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium border ${getTopicTypeBadgeColor(
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-medium text-sm ${getTopicTypeBadgeColor(
                   topicType
                 )}`}
               >
@@ -73,11 +73,11 @@ export function TopicAnalysisResult({ result }: TopicAnalysisResultProps) {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1 block">
+              <label className="mb-1 block font-medium text-gray-500 text-xs uppercase tracking-wide">
                 Complexity
               </label>
               <span
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium border ${getComplexityBadgeColor(
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-medium text-sm ${getComplexityBadgeColor(
                   complexity
                 )}`}
               >
@@ -87,10 +87,10 @@ export function TopicAnalysisResult({ result }: TopicAnalysisResultProps) {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1 block">
+              <label className="mb-1 block font-medium text-gray-500 text-xs uppercase tracking-wide">
                 Estimated Timeframe
               </label>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700 border border-gray-300">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-gray-100 px-3 py-1 font-medium text-gray-700 text-sm">
                 <Clock className="h-3 w-3" />
                 {estimatedTimeframe}
               </span>
@@ -100,17 +100,17 @@ export function TopicAnalysisResult({ result }: TopicAnalysisResultProps) {
           {/* Research Areas */}
           {estimatedResearchAreas.length > 0 && (
             <div>
-              <div className="flex items-center gap-2 mb-2">
+              <div className="mb-2 flex items-center gap-2">
                 <Lightbulb className="h-3.5 w-3.5 text-emerald-600" />
-                <h4 className="text-sm font-medium text-gray-700">
+                <h4 className="font-medium text-gray-700 text-sm">
                   Key Research Areas
                 </h4>
               </div>
               <div className="flex flex-wrap gap-2">
                 {estimatedResearchAreas.map((area, index) => (
                   <span
+                    className="inline-block rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700 text-xs"
                     key={index}
-                    className="inline-block px-2.5 py-1 rounded-md text-xs bg-emerald-50 text-emerald-700 border border-emerald-200"
                   >
                     {area}
                   </span>
@@ -122,19 +122,19 @@ export function TopicAnalysisResult({ result }: TopicAnalysisResultProps) {
           {/* Suggested Sources */}
           {suggestedSources.length > 0 && (
             <div>
-              <div className="flex items-center gap-2 mb-2">
+              <div className="mb-2 flex items-center gap-2">
                 <BookOpen className="h-3.5 w-3.5 text-emerald-600" />
-                <h4 className="text-sm font-medium text-gray-700">
+                <h4 className="font-medium text-gray-700 text-sm">
                   Suggested Sources
                 </h4>
               </div>
               <ul className="space-y-1.5">
                 {suggestedSources.map((source, index) => (
                   <li
+                    className="flex items-start gap-2 text-gray-600 text-sm"
                     key={index}
-                    className="text-sm text-gray-600 flex items-start gap-2"
                   >
-                    <span className="text-emerald-600 mt-0.5">•</span>
+                    <span className="mt-0.5 text-emerald-600">•</span>
                     <span>{source}</span>
                   </li>
                 ))}

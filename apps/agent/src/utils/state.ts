@@ -9,7 +9,7 @@ export type AgentFile = {
   data: Uint8Array | ArrayBuffer | string;
 };
 
-export interface AgentRunInput {
+export type AgentRunInput = {
   messages: AgentMessage[];
   files?: AgentFile[];
-}
+};

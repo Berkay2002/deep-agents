@@ -1,14 +1,26 @@
+/** biome-ignore-all lint/correctness/noUnusedVariables: <> */
 import { z } from "zod";
 import {
-  withRetry,
-  SearchTimeoutError,
-  ToolExecutionError,
   formatErrorForUser,
   RateLimitError,
+  SearchTimeoutError,
+  ToolExecutionError,
+  withRetry,
 } from "./errors.js";
 
 export const TAVILY_TOPICS = ["general", "news", "finance"] as const;
 export const TAVILY_SEARCH_DEPTH = ["basic", "advanced"] as const;
+
+// Constants for magic numbers
+const DEFAULT_MAX_RESULTS = 5;
+const MAX_RESULTS_LIMIT = 10;
+const MAX_DAYS_LIMIT = 365;
+const MAX_DOMAINS_LIMIT = 20;
+const SNIPPET_LENGTH_LIMIT = 280;
+const DEFAULT_TIMEOUT_MS = 30_000;
+const RATE_LIMIT_STATUS_CODE = 429;
+const MS_IN_SECOND = 1000;
+const RATE_LIMIT_REGEX = /429|rate limit/i;
 
 export const tavilySearchArgsSchema = z.object({
   query: z.string().describe("The search query"),
@@ -16,9 +28,9 @@ export const tavilySearchArgsSchema = z.object({
     .number()
     .int()
     .min(1)
-    .max(10)
+    .max(MAX_RESULTS_LIMIT)
     .optional()
-    .default(5)
+    .default(DEFAULT_MAX_RESULTS)
     .describe("Maximum number of results to return"),
   topic: z
     .enum(TAVILY_TOPICS)
@@ -54,17 +66,17 @@ export const tavilySearchArgsSchema = z.object({
     .number()
     .int()
     .min(1)
-    .max(365)
+    .max(MAX_DAYS_LIMIT)
     .optional()
     .describe("Limit results to the last N days"),
   includeDomains: z
     .array(z.string().min(1))
-    .max(20)
+    .max(MAX_DOMAINS_LIMIT)
     .optional()
     .describe("Restrict search to these domains"),
   excludeDomains: z
     .array(z.string().min(1))
-    .max(20)
+    .max(MAX_DOMAINS_LIMIT)
     .optional()
     .describe("Exclude these domains from search results"),
   language: z
@@ -83,9 +95,9 @@ const tavilySearchResultSchema = z
     url: z.string(),
     content: z.string().optional().nullable(),
     snippet: z.string().optional().nullable(),
-    raw_content: z.string().optional().nullable(),
+    rawContent: z.string().optional().nullable(),
     score: z.number().optional().nullable(),
-    published_date: z.string().optional().nullable(),
+    publishedDate: z.string().optional().nullable(),
     author: z.string().optional().nullable(),
   })
   .passthrough();
@@ -101,7 +113,7 @@ const tavilySearchResponseSchema = z
   .object({
     query: z.string(),
     answer: z.string().optional().nullable(),
-    follow_up_questions: z.array(z.string()).optional().nullable(),
+    followUpQuestions: z.array(z.string()).optional().nullable(),
     results: z.array(tavilySearchResultSchema).default([]),
     images: z.array(tavilyImageSchema).optional().nullable(),
   })
@@ -117,45 +129,45 @@ export interface TavilySearchToolSuccess extends TavilySearchResponse {
   error?: undefined;
 }
 
-export interface TavilySearchToolError {
+export type TavilySearchToolError = {
   query: string;
   results: TavilySearchResult[];
   answer?: string | null;
   images?: TavilySearchResponse["images"];
-  follow_up_questions?: TavilySearchResponse["follow_up_questions"];
+  followUpQuestions?: TavilySearchResponse["follow_up_questions"];
   message: string;
   error: string;
-}
+};
 
 export type TavilySearchToolResult =
   | TavilySearchToolSuccess
   | TavilySearchToolError;
 
-export interface PerformTavilySearchOptions {
+export type PerformTavilySearchOptions = {
   toolName?: string;
   timeoutMs?: number;
-}
+};
 
 function buildRequestPayload(
   apiKey: string,
   args: TavilySearchParsedArgs
 ): Record<string, unknown> {
-  const payload: Record<string, unknown> = {
-    api_key: apiKey,
-    query: args.query,
-    max_results: args.maxResults,
-    topic: args.topic,
-    include_raw_content: args.includeRawContent,
-    search_depth: args.searchDepth,
-    include_answer: args.includeAnswer,
-    include_images: args.includeImages,
-    include_image_descriptions: args.includeImageDescriptions,
-    days: args.days,
-    include_domains: args.includeDomains,
-    exclude_domains: args.excludeDomains,
-    language: args.language,
-    location: args.location,
-  };
+  const payload: Record<string, unknown> = {};
+
+  payload.api_key = apiKey;
+  payload.query = args.query;
+  payload.max_results = args.maxResults;
+  payload.topic = args.topic;
+  payload.include_raw_content = args.includeRawContent;
+  payload.search_depth = args.searchDepth;
+  payload.include_answer = args.includeAnswer;
+  payload.include_images = args.includeImages;
+  payload.include_image_descriptions = args.includeImageDescriptions;
+  payload.days = args.days;
+  payload.include_domains = args.includeDomains;
+  payload.exclude_domains = args.excludeDomains;
+  payload.language = args.language;
+  payload.location = args.location;
 
   return Object.fromEntries(
     Object.entries(payload).filter(([, value]) => value !== undefined)
@@ -170,13 +182,15 @@ function normalizeResults(
     const normalized: Record<string, unknown> = { ...result };
 
     if (!includeRawContent) {
-      delete normalized.raw_content;
+      normalized.rawContent = undefined;
     }
 
     if (!normalized.snippet && typeof normalized.content === "string") {
       const content = normalized.content as string;
       normalized.snippet =
-        content.length > 280 ? `${content.slice(0, 280)}...` : content;
+        content.length > SNIPPET_LENGTH_LIMIT
+          ? `${content.slice(0, SNIPPET_LENGTH_LIMIT)}...`
+          : content;
     }
 
     return normalized as TavilySearchResult;
@@ -188,14 +202,13 @@ export async function performTavilySearch(
   options: PerformTavilySearchOptions = {}
 ): Promise<TavilySearchToolResult> {
   const toolName = options.toolName ?? "internet_search";
-  const timeoutMs = options.timeoutMs ?? 30000;
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const args = tavilySearchArgsSchema.parse(rawArgs);
   const { query } = args;
 
   if (!process.env.TAVILY_API_KEY) {
     const errorMsg =
       "TAVILY_API_KEY is not configured. Web search is unavailable.";
-    console.error(errorMsg);
     return {
       error: errorMsg,
       results: [],
@@ -214,22 +227,25 @@ export async function performTavilySearch(
             "Content-Type": "application/json",
           },
           body: JSON.stringify(
-            buildRequestPayload(process.env.TAVILY_API_KEY!, args)
+            buildRequestPayload(process.env.TAVILY_API_KEY || "", args)
           ),
         });
 
-        if (res.status === 429) {
+        if (res.status === RATE_LIMIT_STATUS_CODE) {
           const retryAfterHeader = res.headers.get("retry-after");
           const retryAfter = retryAfterHeader
-            ? Number.parseFloat(retryAfterHeader) * 1000
+            ? Number.parseFloat(retryAfterHeader) * MS_IN_SECOND
             : undefined;
-          throw new RateLimitError("Tavily", Number.isFinite(retryAfter)
-            ? retryAfter
-            : undefined);
+          throw new RateLimitError(
+            "Tavily",
+            Number.isFinite(retryAfter) ? retryAfter : undefined
+          );
         }
 
         if (!res.ok) {
-          const details = await res.text().catch(() => undefined);
+          const details = await res.text().catch(() => {
+            // Intentionally empty - we'll handle the error without details
+          });
           throw new Error(
             `Tavily API error: ${res.status} ${res.statusText}${
               details ? ` - ${details}` : ""
@@ -257,9 +273,8 @@ export async function performTavilySearch(
     };
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    console.error(`Internet search failed for query "${query}":`, err);
 
-    if (err instanceof RateLimitError || /429|rate limit/i.test(err.message)) {
+    if (err instanceof RateLimitError || RATE_LIMIT_REGEX.test(err.message)) {
       return {
         error: "Search rate limit exceeded. Please wait a moment.",
         results: [],

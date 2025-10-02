@@ -1,11 +1,11 @@
-import { Message } from "@langchain/langgraph-sdk";
+import type { Message } from "@langchain/langgraph-sdk";
 import { DO_NOT_RENDER_ID_PREFIX } from "./ensure-tool-responses";
 
 // Patterns that identify subagent responses
 const SUBAGENT_RESPONSE_PATTERNS = [
   // Research agent response pattern
   /^RESEARCH FINDINGS:/m,
-  // Critique agent response pattern  
+  // Critique agent response pattern
   /^CRITIQUE OF REPORT:/m,
   // Code assistant subagent patterns
   /^CODE ANALYSIS:/m,
@@ -16,7 +16,7 @@ const SUBAGENT_RESPONSE_PATTERNS = [
 // Subagent names that might appear in message metadata or content
 const SUBAGENT_NAMES = [
   "research-agent",
-  "critique-agent", 
+  "critique-agent",
   "code-analyzer",
   "bug-fixer",
   "code-generator",
@@ -39,7 +39,7 @@ export function isSubagentResponse(message: Message): boolean {
   }
 
   const contentString = getMessageContentString(message.content);
-  
+
   // Check if content matches subagent response patterns
   for (const pattern of SUBAGENT_RESPONSE_PATTERNS) {
     if (pattern.test(contentString)) {
@@ -50,7 +50,11 @@ export function isSubagentResponse(message: Message): boolean {
   // Check if content mentions subagent names in a way that indicates it's a response
   for (const name of SUBAGENT_NAMES) {
     // Look for patterns like "research-agent response:" or similar
-    if (new RegExp(`^${name.replace('-', '[ -]')}[:\\s].*`, 'im').test(contentString)) {
+    if (
+      new RegExp(`^${name.replace("-", "[ -]")}[:\\s].*`, "im").test(
+        contentString
+      )
+    ) {
       return true;
     }
   }
@@ -89,5 +93,5 @@ function getMessageContentString(content: Message["content"]): string {
  * @returns Filtered messages with subagent responses removed
  */
 export function filterSubagentResponses(messages: Message[]): Message[] {
-  return messages.filter(message => !isSubagentResponse(message));
+  return messages.filter((message) => !isSubagentResponse(message));
 }

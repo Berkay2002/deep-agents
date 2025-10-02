@@ -1,9 +1,9 @@
 // Deep Research Agent subagents configuration
-import type { SubAgent } from "../../deep-agent/index.js";
+import type { SubAgent } from "../../deep-agent/types.js";
 import {
-  RESEARCH_SUB_AGENT_PROMPT,
   CRITIQUE_SUB_AGENT_PROMPT,
   PLANNER_SUB_AGENT_PROMPT,
+  RESEARCH_SUB_AGENT_PROMPT,
 } from "./prompts.js";
 
 export const researchSubAgent: SubAgent = {
@@ -20,10 +20,12 @@ export const critiqueSubAgent: SubAgent = {
     "Used to critique the final report. Give this agent some information about how you want it to critique the report. This agent can ONLY read files and search for verification - it cannot edit or write files. CRITICAL: DO NOT echo its response to the user. DO NOT treat its response as a formatted report. ONLY use it as source material for your final_report.md.",
   prompt: CRITIQUE_SUB_AGENT_PROMPT,
   tools: ["tavily_search", "exa_search"],
-  // Note: The prompt explicitly restricts to read-only operations
+  /**
+   * Note: The prompt explicitly restricts to read-only operations
+   */
 };
 
-export const plannerSubAgent: SubAgent = {  
+export const plannerSubAgent: SubAgent = {
   name: "planner-agent",
   description:
     "Used to create comprehensive research plans and todo lists for complex research topics. This agent specializes in pre-research planning, topic analysis, scope estimation, and plan optimization. Use this agent when you need to break down complex research topics into structured plans. The planner-agent returns structured research plans with todo lists that can be used to guide the research process. DO NOT echo its response to the user. ONLY use its response as source material for organizing your research approach.",
@@ -31,4 +33,8 @@ export const plannerSubAgent: SubAgent = {
   tools: ["topic_analysis", "scope_estimation", "plan_optimization"],
 };
 
-export const researchSubAgents: SubAgent[] = [critiqueSubAgent, researchSubAgent, plannerSubAgent];
+export const researchSubAgents: SubAgent[] = [
+  critiqueSubAgent,
+  researchSubAgent,
+  plannerSubAgent,
+];

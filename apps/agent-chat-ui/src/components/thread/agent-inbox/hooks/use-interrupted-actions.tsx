@@ -1,18 +1,21 @@
-import { HumanResponseWithEdits, SubmitType } from "../types";
-import {
-  KeyboardEvent,
-  Dispatch,
-  SetStateAction,
-  MutableRefObject,
-  useState,
-  useRef,
-  useEffect,
-} from "react";
-import { createDefaultHumanResponse } from "../utils";
-import { toast } from "sonner";
-import { HumanInterrupt, HumanResponse } from "@langchain/langgraph/prebuilt";
+import type {
+  HumanInterrupt,
+  HumanResponse,
+} from "@langchain/langgraph/prebuilt";
 import { END } from "@langchain/langgraph/web";
+import {
+  type Dispatch,
+  type KeyboardEvent,
+  type MutableRefObject,
+  type SetStateAction,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { toast } from "sonner";
 import { useStreamContext } from "@/providers/Stream";
+import type { HumanResponseWithEdits, SubmitType } from "../types";
+import { createDefaultHumanResponse } from "../utils";
 
 interface UseInterruptedActionsInput {
   interrupt: HumanInterrupt;
@@ -21,13 +24,13 @@ interface UseInterruptedActionsInput {
 interface UseInterruptedActionsValue {
   // Actions
   handleSubmit: (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent> | KeyboardEvent,
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent> | KeyboardEvent
   ) => Promise<void>;
   handleIgnore: (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => Promise<void>;
   handleResolve: (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => Promise<void>;
 
   // State values
@@ -55,7 +58,7 @@ export default function useInterruptedActions({
 }: UseInterruptedActionsInput): UseInterruptedActionsValue {
   const thread = useStreamContext();
   const [humanResponse, setHumanResponse] = useState<HumanResponseWithEdits[]>(
-    [],
+    []
   );
   const [loading, setLoading] = useState(false);
   const [streaming, setStreaming] = useState(false);
@@ -88,7 +91,7 @@ export default function useInterruptedActions({
           command: {
             resume: response,
           },
-        },
+        }
       );
       return true;
     } catch (e: any) {
@@ -98,7 +101,7 @@ export default function useInterruptedActions({
   };
 
   const handleSubmit = async (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent> | KeyboardEvent,
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent> | KeyboardEvent
   ) => {
     e.preventDefault();
     if (!humanResponse) {
@@ -128,12 +131,11 @@ export default function useInterruptedActions({
                   type: "accept",
                   args: r.args,
                 };
-              } else {
-                return {
-                  type: "edit",
-                  args: r.args,
-                };
               }
+              return {
+                type: "edit",
+                args: r.args,
+              };
             }
 
             if (r.type === "response" && !r.args) {
@@ -144,11 +146,11 @@ export default function useInterruptedActions({
               type: r.type,
               args: r.args,
             };
-          },
+          }
         );
 
         const input = humanResponseInput.find(
-          (r) => r.type === selectedSubmitType,
+          (r) => r.type === selectedSubmitType
         );
         if (!input) {
           toast.error("Error", {
@@ -220,7 +222,7 @@ export default function useInterruptedActions({
   };
 
   const handleIgnore = async (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
     e.preventDefault();
 
@@ -245,7 +247,7 @@ export default function useInterruptedActions({
   };
 
   const handleResolve = async (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
     e.preventDefault();
 
@@ -259,7 +261,7 @@ export default function useInterruptedActions({
           command: {
             goto: END,
           },
-        },
+        }
       );
 
       toast("Success", {
@@ -281,7 +283,7 @@ export default function useInterruptedActions({
 
   const supportsMultipleMethods =
     humanResponse.filter(
-      (r) => r.type === "edit" || r.type === "accept" || r.type === "response",
+      (r) => r.type === "edit" || r.type === "accept" || r.type === "response"
     ).length > 1;
 
   return {

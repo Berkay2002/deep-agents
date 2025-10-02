@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import type React from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 interface GithubSettingsContextType {
   githubEnabled: boolean;
@@ -9,12 +10,18 @@ interface GithubSettingsContextType {
   setGithubPat: (pat: string | null) => void;
 }
 
-const GithubSettingsContext = createContext<GithubSettingsContextType | undefined>(undefined);
+const GithubSettingsContext = createContext<
+  GithubSettingsContextType | undefined
+>(undefined);
 
 const STORAGE_KEY_ENABLED = "github-mcp-enabled";
 const STORAGE_KEY_PAT = "github-mcp-pat";
 
-export function GithubSettingsProvider({ children }: { children: React.ReactNode }) {
+export function GithubSettingsProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [githubEnabled, setGithubEnabledState] = useState<boolean>(false);
   const [githubPat, setGithubPatState] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -82,7 +89,9 @@ export function GithubSettingsProvider({ children }: { children: React.ReactNode
 export function useGithubSettings() {
   const context = useContext(GithubSettingsContext);
   if (context === undefined) {
-    throw new Error("useGithubSettings must be used within a GithubSettingsProvider");
+    throw new Error(
+      "useGithubSettings must be used within a GithubSettingsProvider"
+    );
   }
   return context;
 }

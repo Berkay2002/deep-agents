@@ -14,17 +14,19 @@
     "dev": "turbo dev",
     "dev:agent": "turbo dev --filter=deep-agents-app",
     "dev:ui": "turbo dev --filter=@repo/agent-chat-ui",
-    "lint": "turbo lint",
-    "format": "turbo format",
+    "lint": "ultracite check",
+    "format": "ultracite fix",
     "typecheck": "turbo typecheck"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.2.4",
     "@types/node": "^24.6.0",
     "concurrently": "^9.2.1",
     "eslint": "^9.36.0",
     "prettier": "^3.6.2",
     "turbo": "^2.4.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "ultracite": "5.4.5"
   },
   "dependencies": {
     "@anthropic-ai/claude-code": "^2.0.1",

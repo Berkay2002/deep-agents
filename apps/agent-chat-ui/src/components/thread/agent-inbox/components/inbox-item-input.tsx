@@ -1,20 +1,23 @@
-import { HumanResponseWithEdits, SubmitType } from "../types";
-import { Textarea } from "@/components/ui/textarea";
-import React from "react";
-import { haveArgsChanged, prettifyText } from "../utils";
-import { Button } from "@/components/ui/button";
+import type {
+  ActionRequest,
+  HumanInterrupt,
+} from "@langchain/langgraph/prebuilt";
 import { Undo2 } from "lucide-react";
-import { MarkdownText } from "../../markdown-text";
-import { ActionRequest, HumanInterrupt } from "@langchain/langgraph/prebuilt";
+import React from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { MarkdownText } from "../../markdown-text";
+import type { HumanResponseWithEdits, SubmitType } from "../types";
+import { haveArgsChanged, prettifyText } from "../utils";
 
 function ResetButton({ handleReset }: { handleReset: () => void }) {
   return (
     <Button
+      className="flex items-center justify-center gap-2 text-gray-500 hover:text-red-500"
       onClick={handleReset}
       variant="ghost"
-      className="flex items-center justify-center gap-2 text-gray-500 hover:text-red-500"
     >
       <Undo2 className="h-4 w-4" />
       <span>Reset</span>
@@ -34,14 +37,11 @@ function ArgsRenderer({ args }: { args: Record<string, any> }) {
         }
 
         return (
-          <div
-            key={`args-${k}`}
-            className="flex flex-col items-start gap-1"
-          >
-            <p className="text-sm leading-[18px] text-wrap text-gray-600">
+          <div className="flex flex-col items-start gap-1" key={`args-${k}`}>
+            <p className="text-wrap text-gray-600 text-sm leading-[18px]">
               {prettifyText(k)}:
             </p>
-            <span className="w-full max-w-full rounded-xl bg-zinc-100 p-3 text-[13px] leading-[18px] text-black">
+            <span className="w-full max-w-full rounded-xl bg-zinc-100 p-3 text-[13px] text-black leading-[18px]">
               <MarkdownText>{value}</MarkdownText>
             </span>
           </div>
@@ -73,7 +73,7 @@ interface InboxItemInputProps {
   setHasEdited: React.Dispatch<React.SetStateAction<boolean>>;
 
   handleSubmit: (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent> | React.KeyboardEvent,
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent> | React.KeyboardEvent
   ) => Promise<void>;
 }
 
@@ -91,7 +91,7 @@ function ResponseComponent({
   interruptValue: HumanInterrupt;
   onResponseChange: (change: string, response: HumanResponseWithEdits) => void;
   handleSubmit: (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent> | React.KeyboardEvent,
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent> | React.KeyboardEvent
   ) => Promise<void>;
 }) {
   const res = humanResponse.find((r) => r.type === "response");
@@ -109,7 +109,7 @@ function ResponseComponent({
   return (
     <div className="flex w-full flex-col items-start gap-4 rounded-xl border-[1px] border-gray-300 p-6">
       <div className="flex w-full items-center justify-between">
-        <p className="text-base font-semibold text-black">
+        <p className="font-semibold text-base text-black">
           Respond to assistant
         </p>
         <ResetButton
@@ -124,23 +124,19 @@ function ResponseComponent({
       )}
 
       <div className="flex w-full flex-col items-start gap-[6px]">
-        <p className="min-w-fit text-sm font-medium">Response</p>
+        <p className="min-w-fit font-medium text-sm">Response</p>
         <Textarea
           disabled={streaming}
-          value={res.args}
           onChange={(e) => onResponseChange(e.target.value, res)}
           onKeyDown={handleKeyDown}
-          rows={4}
           placeholder="Your response here..."
+          rows={4}
+          value={res.args}
         />
       </div>
 
       <div className="flex w-full items-center justify-end gap-2">
-        <Button
-          variant="brand"
-          disabled={streaming}
-          onClick={handleSubmit}
-        >
+        <Button disabled={streaming} onClick={handleSubmit} variant="brand">
           Send Response
         </Button>
       </div>
@@ -157,7 +153,7 @@ function AcceptComponent({
   streaming: boolean;
   actionRequestArgs: Record<string, any>;
   handleSubmit: (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent> | React.KeyboardEvent,
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent> | React.KeyboardEvent
   ) => Promise<void>;
 }) {
   return (
@@ -166,10 +162,10 @@ function AcceptComponent({
         <ArgsRenderer args={actionRequestArgs} />
       )}
       <Button
-        variant="brand"
+        className="w-full"
         disabled={streaming}
         onClick={handleSubmit}
-        className="w-full"
+        variant="brand"
       >
         Accept
       </Button>
@@ -192,10 +188,10 @@ function EditAndOrAcceptComponent({
   onEditChange: (
     text: string | string[],
     response: HumanResponseWithEdits,
-    key: string | string[],
+    key: string | string[]
   ) => void;
   handleSubmit: (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent> | React.KeyboardEvent,
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent> | React.KeyboardEvent
   ) => Promise<void>;
 }) {
   const defaultRows = React.useRef<Record<string, number>>({});
@@ -210,8 +206,8 @@ function EditAndOrAcceptComponent({
       return (
         <AcceptComponent
           actionRequestArgs={interruptValue.action_request.args}
-          streaming={streaming}
           handleSubmit={handleSubmit}
+          streaming={streaming}
         />
       );
     }
@@ -260,7 +256,7 @@ function EditAndOrAcceptComponent({
   return (
     <div className="flex w-full flex-col items-start gap-4 rounded-lg border-[1px] border-gray-300 p-6">
       <div className="flex w-full items-center justify-between">
-        <p className="text-base font-semibold text-black">{header}</p>
+        <p className="font-semibold text-base text-black">{header}</p>
         <ResetButton handleReset={handleReset} />
       </div>
 
@@ -274,9 +270,9 @@ function EditAndOrAcceptComponent({
           defaultRows.current[k as keyof typeof defaultRows.current] ===
           undefined
         ) {
-          defaultRows.current[k as keyof typeof defaultRows.current] = !v.length
-            ? 3
-            : Math.max(v.length / 30, 7);
+          defaultRows.current[k as keyof typeof defaultRows.current] = v.length
+            ? Math.max(v.length / 30, 7)
+            : 3;
         }
         const numRows =
           defaultRows.current[k as keyof typeof defaultRows.current] || 8;
@@ -287,14 +283,14 @@ function EditAndOrAcceptComponent({
             key={`allow-edit-args--${k}-${idx}`}
           >
             <div className="flex w-full flex-col items-start gap-[6px]">
-              <p className="min-w-fit text-sm font-medium">{prettifyText(k)}</p>
+              <p className="min-w-fit font-medium text-sm">{prettifyText(k)}</p>
               <Textarea
-                disabled={streaming}
                 className="h-full"
-                value={value}
+                disabled={streaming}
                 onChange={(e) => onEditChange(e.target.value, editResponse, k)}
                 onKeyDown={handleKeyDown}
                 rows={numRows}
+                value={value}
               />
             </div>
           </div>
@@ -302,11 +298,7 @@ function EditAndOrAcceptComponent({
       })}
 
       <div className="flex w-full items-center justify-end gap-2">
-        <Button
-          variant="brand"
-          disabled={streaming}
-          onClick={handleSubmit}
-        >
+        <Button disabled={streaming} onClick={handleSubmit} variant="brand">
           {buttonText}
         </Button>
       </div>
@@ -342,7 +334,7 @@ export function InboxItemInput({
   const onEditChange = (
     change: string | string[],
     response: HumanResponseWithEdits,
-    key: string | string[],
+    key: string | string[]
   ) => {
     if (
       (Array.isArray(change) && !Array.isArray(key)) ||
@@ -376,16 +368,16 @@ export function InboxItemInput({
       valuesChanged = haveValuesChanged;
     }
 
-    if (!valuesChanged) {
+    if (valuesChanged) {
+      setSelectedSubmitType("edit");
+      setHasEdited(true);
+    } else {
       setHasEdited(false);
       if (acceptAllowed) {
         setSelectedSubmitType("accept");
       } else if (hasAddedResponse) {
         setSelectedSubmitType("response");
       }
-    } else {
-      setSelectedSubmitType("edit");
-      setHasEdited(true);
     }
 
     setHumanResponse((prev) => {
@@ -393,7 +385,7 @@ export function InboxItemInput({
         console.error(
           "Mismatched response type",
           !!response.args,
-          typeof response.args,
+          typeof response.args
         );
         return prev;
       }
@@ -419,7 +411,7 @@ export function InboxItemInput({
           (p) =>
             p.type === response.type &&
             typeof p.args === "object" &&
-            p.args?.action === (response.args as ActionRequest).action,
+            p.args?.action === (response.args as ActionRequest).action
         )
       ) {
         return prev.map((p) => {
@@ -440,17 +432,19 @@ export function InboxItemInput({
           }
           return p;
         });
-      } else {
-        throw new Error("No matching response found");
       }
+      throw new Error("No matching response found");
     });
   };
 
   const onResponseChange = (
     change: string,
-    response: HumanResponseWithEdits,
+    response: HumanResponseWithEdits
   ) => {
-    if (!change) {
+    if (change) {
+      setSelectedSubmitType("response");
+      setHasAddedResponse(true);
+    } else {
       setHasAddedResponse(false);
       if (hasEdited) {
         // The user has deleted their response, so we should set the submit type to
@@ -459,9 +453,6 @@ export function InboxItemInput({
       } else if (acceptAllowed) {
         setSelectedSubmitType("accept");
       }
-    } else {
-      setSelectedSubmitType("response");
-      setHasAddedResponse(true);
     }
 
     setHumanResponse((prev) => {
@@ -484,9 +475,8 @@ export function InboxItemInput({
           }
           return p;
         });
-      } else {
-        throw new Error("No human response found for string response");
       }
+      throw new Error("No human response found for string response");
     });
   };
 
@@ -498,31 +488,31 @@ export function InboxItemInput({
 
       <div className="flex w-full flex-col items-start gap-2">
         <EditAndOrAccept
+          handleSubmit={handleSubmit}
           humanResponse={humanResponse}
-          streaming={streaming}
           initialValues={initialValues}
           interruptValue={interruptValue}
           onEditChange={onEditChange}
-          handleSubmit={handleSubmit}
+          streaming={streaming}
         />
         {supportsMultipleMethods ? (
           <div className="mx-auto mt-3 flex items-center gap-3">
             <Separator className="w-[full]" />
-            <p className="text-sm text-gray-500">Or</p>
+            <p className="text-gray-500 text-sm">Or</p>
             <Separator className="w-full" />
           </div>
         ) : null}
         <Response
+          handleSubmit={handleSubmit}
           humanResponse={humanResponse}
-          streaming={streaming}
-          showArgsInResponse={showArgsInResponse}
           interruptValue={interruptValue}
           onResponseChange={onResponseChange}
-          handleSubmit={handleSubmit}
+          showArgsInResponse={showArgsInResponse}
+          streaming={streaming}
         />
-        {streaming && <p className="text-sm text-gray-600">Running...</p>}
+        {streaming && <p className="text-gray-600 text-sm">Running...</p>}
         {streamFinished && (
-          <p className="text-base font-medium text-green-600">
+          <p className="font-medium text-base text-green-600">
             Successfully finished Graph invocation.
           </p>
         )}

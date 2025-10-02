@@ -1,34 +1,38 @@
 "use client";
 
+import type { Message } from "@langchain/langgraph-sdk";
+import { formatDistanceToNow } from "date-fns";
 import { ReactNode } from "react";
-import { Message } from "@langchain/langgraph-sdk";
 import {
-  groupResearchAgentMessages,
-  type ResearchAgentGroup
-} from "@/lib/research-agent-grouper";
-import {
+  type CritiqueAgentGroup,
   groupCritiqueAgentMessages,
-  type CritiqueAgentGroup
 } from "@/lib/critique-agent-grouper";
 import {
   groupPlannerAgentMessages,
-  type PlannerAgentGroup
+  type PlannerAgentGroup,
 } from "@/lib/planner-agent-grouper";
-import { TimelineContainer, createTimelineActivity, extractFileNameFromArgs, getActivityTypeFromTool } from "./timeline-container";
-import { ResearchAgentContainer } from "./messages/research-agent-container";
+import {
+  groupResearchAgentMessages,
+  type ResearchAgentGroup,
+} from "@/lib/research-agent-grouper";
 import { CritiqueAgentContainer } from "./messages/critique-agent-container";
-import { PlannerAgentContainer } from "./messages/planner-agent-container";
-import { TopicAnalysisResult } from "./messages/topic-analysis-result";
-import { ScopeEstimationResult } from "./messages/scope-estimation-result";
-import { PlanOptimizationResult } from "./messages/plan-optimization-result";
-import { TodoList } from "./todo-list";
-import { FileUpdateNotification } from "./messages/file-update-notification";
-import { WriteFileDiff } from "./messages/write-file-diff";
-import { ToolCalls } from "./messages/tool-calls";
-import { ToolResult } from "./messages/tool-calls";
-import { TavilySearchResults } from "./messages/tavily-search-results";
 import { ExaSearchResults } from "./messages/exa-search-results";
-import { formatDistanceToNow } from "date-fns";
+import { FileUpdateNotification } from "./messages/file-update-notification";
+import { PlanOptimizationResult } from "./messages/plan-optimization-result";
+import { PlannerAgentContainer } from "./messages/planner-agent-container";
+import { ResearchAgentContainer } from "./messages/research-agent-container";
+import { ScopeEstimationResult } from "./messages/scope-estimation-result";
+import { TavilySearchResults } from "./messages/tavily-search-results";
+import { ToolCalls, ToolResult } from "./messages/tool-calls";
+import { TopicAnalysisResult } from "./messages/topic-analysis-result";
+import { WriteFileDiff } from "./messages/write-file-diff";
+import {
+  createTimelineActivity,
+  extractFileNameFromArgs,
+  getActivityTypeFromTool,
+  TimelineContainer,
+} from "./timeline-container";
+import { TodoList } from "./todo-list";
 
 interface TimelineAdapterProps {
   messages: Message[];
@@ -36,7 +40,11 @@ interface TimelineAdapterProps {
   isLast?: boolean;
 }
 
-export function TimelineAdapter({ messages, className, isLast = false }: TimelineAdapterProps) {
+export function TimelineAdapter({
+  messages,
+  className,
+  isLast = false,
+}: TimelineAdapterProps) {
   // Group research, critique, and planner agent messages
   const researchGroups = groupResearchAgentMessages(messages);
   const critiqueGroups = groupCritiqueAgentMessages(messages);
@@ -70,7 +78,7 @@ export function TimelineAdapter({ messages, className, isLast = false }: Timelin
     );
 
     // Mark all research-related messages as processed
-    researchGroups.forEach(group => {
+    researchGroups.forEach((group) => {
       for (let i = group.startIndex; i <= group.endIndex; i++) {
         processedIndices.add(i);
       }
@@ -97,7 +105,7 @@ export function TimelineAdapter({ messages, className, isLast = false }: Timelin
     );
 
     // Mark all critique-related messages as processed
-    critiqueGroups.forEach(group => {
+    critiqueGroups.forEach((group) => {
       for (let i = group.startIndex; i <= group.endIndex; i++) {
         processedIndices.add(i);
       }
@@ -180,7 +188,7 @@ export function TimelineAdapter({ messages, className, isLast = false }: Timelin
     });
 
     // Mark all planner-related messages as processed
-    plannerGroups.forEach(group => {
+    plannerGroups.forEach((group) => {
       for (let i = group.startIndex; i <= group.endIndex; i++) {
         processedIndices.add(i);
       }
@@ -196,7 +204,7 @@ export function TimelineAdapter({ messages, className, isLast = false }: Timelin
       message.tool_calls.forEach((toolCall, toolIndex) => {
         const args = toolCall.args as any;
         const result = toolCall.id ? resultsMap.get(toolCall.id) : undefined;
-        
+
         // Handle different tool types
         if (toolCall.name === "write_todos" || toolCall.name === "TodoWrite") {
           if (args?.todos && Array.isArray(args.todos)) {
@@ -213,18 +221,20 @@ export function TimelineAdapter({ messages, className, isLast = false }: Timelin
             );
           }
         } else if (
-          ["Write", "Edit", "MultiEdit", "write_file", "edit_file"].includes(toolCall.name || "")
+          ["Write", "Edit", "MultiEdit", "write_file", "edit_file"].includes(
+            toolCall.name || ""
+          )
         ) {
           const fileName = extractFileNameFromArgs(args);
           activities.push(
             createTimelineActivity(
               `file-${index}-${toolIndex}`,
               getActivityTypeFromTool(toolCall.name || "", args),
-              <WriteFileDiff 
-                toolName={toolCall.name || ""} 
-                args={args} 
+              <WriteFileDiff
+                args={args}
                 error={result?.error}
                 success={result?.success}
+                toolName={toolCall.name || ""}
               />,
               {
                 title: `${toolCall.name === "Write" || toolCall.name === "write_file" ? "Created" : "Modified"}: ${fileName}`,
@@ -233,7 +243,7 @@ export function TimelineAdapter({ messages, className, isLast = false }: Timelin
             )
           );
         } else if (
-          toolCall.name === "file_update_notification" || 
+          toolCall.name === "file_update_notification" ||
           toolCall.name === "collaborative_file_update"
         ) {
           const fileName = args?.file_name || args?.fileName || "Unknown file";
@@ -242,17 +252,17 @@ export function TimelineAdapter({ messages, className, isLast = false }: Timelin
               `file-update-${index}-${toolIndex}`,
               "file-update",
               <FileUpdateNotification
-                fileName={fileName}
-                editorName={args?.editor_name}
-                timestamp={args?.timestamp}
-                oldContent={args?.old_content || args.oldContent}
-                newContent={args?.new_content || args.newContent}
+                branch={args?.branch}
                 changeType={args?.change_type || args.changeType || "modified"}
                 collaborators={args?.collaborators || []}
-                branch={args?.branch}
-                isRealTime={args?.is_real_time || args.isRealTime || false}
+                editorName={args?.editor_name}
                 error={result?.error}
+                fileName={fileName}
+                isRealTime={args?.is_real_time || args.isRealTime}
+                newContent={args?.new_content || args.newContent}
+                oldContent={args?.old_content || args.oldContent}
                 success={result?.success}
+                timestamp={args?.timestamp}
               />,
               {
                 title: `File Update: ${fileName}`,
@@ -268,13 +278,13 @@ export function TimelineAdapter({ messages, className, isLast = false }: Timelin
     if (message.type === "tool") {
       // Find the corresponding tool call
       const toolCall = messages
-        .filter(m => m.type === "ai")
-        .flatMap(m => m.tool_calls || [])
-        .find(tc => tc.id === message.tool_call_id);
+        .filter((m) => m.type === "ai")
+        .flatMap((m) => m.tool_calls || [])
+        .find((tc) => tc.id === message.tool_call_id);
 
       if (toolCall) {
         const args = toolCall.args as any;
-        
+
         // Handle Tavily search results
         if (
           toolCall.name === "tavily_search" ||
@@ -282,15 +292,18 @@ export function TimelineAdapter({ messages, className, isLast = false }: Timelin
         ) {
           try {
             const parsedContent = JSON.parse(message.content as string);
-            if (parsedContent?.results && Array.isArray(parsedContent.results)) {
+            if (
+              parsedContent?.results &&
+              Array.isArray(parsedContent.results)
+            ) {
               activities.push(
                 createTimelineActivity(
                   `search-${index}`,
                   "search-result",
                   <TavilySearchResults
                     query={parsedContent.query || ""}
-                    results={parsedContent.results}
                     responseTime={parsedContent.response_time}
+                    results={parsedContent.results}
                   />,
                   {
                     title: `Tavily Search: ${parsedContent.query || "Unknown query"}`,
@@ -308,15 +321,18 @@ export function TimelineAdapter({ messages, className, isLast = false }: Timelin
         if (toolCall.name === "exa_search") {
           try {
             const parsedContent = JSON.parse(message.content as string);
-            if (parsedContent?.results && Array.isArray(parsedContent.results)) {
+            if (
+              parsedContent?.results &&
+              Array.isArray(parsedContent.results)
+            ) {
               activities.push(
                 createTimelineActivity(
                   `search-${index}`,
                   "search-result",
                   <ExaSearchResults
                     query={parsedContent.query || ""}
-                    results={parsedContent.results}
                     responseTime={parsedContent.response_time}
+                    results={parsedContent.results}
                   />,
                   {
                     title: `Exa Search: ${parsedContent.query || "Unknown query"}`,

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Inter } from "next/font/google";
-import React from "react";
-import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { ClerkProvider } from "@clerk/nextjs";
+import { Inter } from "next/font/google";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
+import type React from "react";
 import { GithubSettingsProvider } from "@/providers/GithubSettings";
 
 const inter = Inter({

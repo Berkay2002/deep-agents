@@ -1,7 +1,7 @@
 import {
-  HTMLAttributes,
-  ReactNode,
   createContext,
+  type HTMLAttributes,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
@@ -67,16 +67,11 @@ export function ArtifactContent(props: HTMLAttributes<HTMLDivElement>) {
 
   useLayoutEffect(
     () => setStateRef?.(mounted ? ref.current : null),
-    [setStateRef, mounted],
+    [setStateRef, mounted]
   );
 
   if (!mounted) return null;
-  return (
-    <div
-      {...props}
-      ref={ref}
-    />
-  );
+  return <div {...props} ref={ref} />;
 }
 
 export function ArtifactTitle(props: HTMLAttributes<HTMLDivElement>) {
@@ -87,12 +82,7 @@ export function ArtifactTitle(props: HTMLAttributes<HTMLDivElement>) {
 
   useLayoutEffect(() => setStateRef?.(ref.current), [setStateRef]);
 
-  return (
-    <div
-      {...props}
-      ref={ref}
-    />
-  );
+  return <div {...props} ref={ref} />;
 }
 
 export function ArtifactProvider(props: { children?: ReactNode }) {
@@ -135,21 +125,16 @@ export function useArtifact() {
 
       ctxSetMounted(id);
     },
-    [ctxSetOpen, ctxSetMounted, id],
+    [ctxSetOpen, ctxSetMounted, id]
   );
 
   const ArtifactContent = useCallback(
-    (props: { title?: React.ReactNode; children: React.ReactNode }) => {
-      return (
-        <ArtifactSlot
-          id={id}
-          title={props.title}
-        >
-          {props.children}
-        </ArtifactSlot>
-      );
-    },
-    [id],
+    (props: { title?: React.ReactNode; children: React.ReactNode }) => (
+      <ArtifactSlot id={id} title={props.title}>
+        {props.children}
+      </ArtifactSlot>
+    ),
+    [id]
   );
 
   return [

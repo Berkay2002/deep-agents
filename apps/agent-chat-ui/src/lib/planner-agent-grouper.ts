@@ -1,4 +1,8 @@
-import { Message, AIMessage, ToolMessage } from "@langchain/langgraph-sdk";
+import {
+  AIMessage,
+  type Message,
+  type ToolMessage,
+} from "@langchain/langgraph-sdk";
 
 export interface PlanningToolResult {
   toolName: "topic_analysis" | "scope_estimation" | "plan_optimization";
@@ -65,7 +69,9 @@ function extractFinalPlan(message: ToolMessage): string | null {
  * Groups planner agent related messages together
  * Returns an array of planner agent groups found in the messages
  */
-export function groupPlannerAgentMessages(messages: Message[]): PlannerAgentGroup[] {
+export function groupPlannerAgentMessages(
+  messages: Message[]
+): PlannerAgentGroup[] {
   const groups: PlannerAgentGroup[] = [];
 
   for (let i = 0; i < messages.length; i++) {
@@ -86,9 +92,9 @@ export function groupPlannerAgentMessages(messages: Message[]): PlannerAgentGrou
         const taskToolCallId = plannerTask.id || "";
 
         // Now collect all subsequent messages related to this planner task
-        let topicAnalysis: any = undefined;
-        let scopeEstimation: any = undefined;
-        let planOptimization: any = undefined;
+        let topicAnalysis: any;
+        let scopeEstimation: any;
+        let planOptimization: any;
         let finalPlan: string | undefined;
         let endIndex = i;
 
@@ -98,8 +104,12 @@ export function groupPlannerAgentMessages(messages: Message[]): PlannerAgentGrou
 
         // Debug logging
         if (process.env.NODE_ENV === "development") {
-          console.log(`[Planner Agent] Processing task: ${taskDescription.substring(0, 50)}...`);
-          console.log(`[Planner Agent] Looking for tool_call_id: ${taskToolCallId}`);
+          console.log(
+            `[Planner Agent] Processing task: ${taskDescription.substring(0, 50)}...`
+          );
+          console.log(
+            `[Planner Agent] Looking for tool_call_id: ${taskToolCallId}`
+          );
         }
 
         // Look ahead for planning tool results and final plan
@@ -112,7 +122,10 @@ export function groupPlannerAgentMessages(messages: Message[]): PlannerAgentGrou
 
             // Check for topic_analysis result
             if (toolMsg.name === "topic_analysis") {
-              const result = extractPlanningToolResult(toolMsg.content, "topic_analysis");
+              const result = extractPlanningToolResult(
+                toolMsg.content,
+                "topic_analysis"
+              );
               topicAnalysis = result;
               endIndex = j;
               if (status === "pending") {
@@ -123,7 +136,10 @@ export function groupPlannerAgentMessages(messages: Message[]): PlannerAgentGrou
 
             // Check for scope_estimation result
             if (toolMsg.name === "scope_estimation") {
-              const result = extractPlanningToolResult(toolMsg.content, "scope_estimation");
+              const result = extractPlanningToolResult(
+                toolMsg.content,
+                "scope_estimation"
+              );
               scopeEstimation = result;
               endIndex = j;
               if (status === "pending") {
@@ -134,7 +150,10 @@ export function groupPlannerAgentMessages(messages: Message[]): PlannerAgentGrou
 
             // Check for plan_optimization result
             if (toolMsg.name === "plan_optimization") {
-              const result = extractPlanningToolResult(toolMsg.content, "plan_optimization");
+              const result = extractPlanningToolResult(
+                toolMsg.content,
+                "plan_optimization"
+              );
               planOptimization = result;
               endIndex = j;
               if (status === "pending") {
@@ -144,9 +163,16 @@ export function groupPlannerAgentMessages(messages: Message[]): PlannerAgentGrou
             }
 
             // Debug: log all tool messages to see what we're getting
-            if (process.env.NODE_ENV === "development" && "tool_call_id" in toolMsg) {
-              console.log(`[Planner Agent] Found tool message with tool_call_id: ${toolMsg.tool_call_id}`);
-              console.log(`[Planner Agent] Matches expected? ${toolMsg.tool_call_id === taskToolCallId}`);
+            if (
+              process.env.NODE_ENV === "development" &&
+              "tool_call_id" in toolMsg
+            ) {
+              console.log(
+                `[Planner Agent] Found tool message with tool_call_id: ${toolMsg.tool_call_id}`
+              );
+              console.log(
+                `[Planner Agent] Matches expected? ${toolMsg.tool_call_id === taskToolCallId}`
+              );
             }
 
             // Check for final plan (final response from planner agent)
@@ -159,10 +185,16 @@ export function groupPlannerAgentMessages(messages: Message[]): PlannerAgentGrou
 
               // Debug: log when we find a matching tool result
               if (process.env.NODE_ENV === "development") {
-                console.log(`[Planner Agent] Found result for task ${taskToolCallId.substring(0, 8)}:`, {
-                  hasPlan: !!planResult,
-                  contentLength: typeof toolMsg.content === "string" ? toolMsg.content.length : 0,
-                });
+                console.log(
+                  `[Planner Agent] Found result for task ${taskToolCallId.substring(0, 8)}:`,
+                  {
+                    hasPlan: !!planResult,
+                    contentLength:
+                      typeof toolMsg.content === "string"
+                        ? toolMsg.content.length
+                        : 0,
+                  }
+                );
               }
 
               // If we have final plan (tool result with matching ID), mark as completed
@@ -183,7 +215,8 @@ export function groupPlannerAgentMessages(messages: Message[]): PlannerAgentGrou
             nextMessage.tool_calls.length > 0
           ) {
             // Check if it's a different planner task or unrelated tool call
-            const hasAnotherPlannerTask = nextMessage.tool_calls.some(isPlannerAgentTask);
+            const hasAnotherPlannerTask =
+              nextMessage.tool_calls.some(isPlannerAgentTask);
             if (hasAnotherPlannerTask) {
               // Found the start of a new planner task, stop here
               break;
@@ -192,7 +225,10 @@ export function groupPlannerAgentMessages(messages: Message[]): PlannerAgentGrou
         }
 
         // If we have planning tool results but no final result, agent is still in progress
-        if ((topicAnalysis || scopeEstimation || planOptimization) && !hasToolResult) {
+        if (
+          (topicAnalysis || scopeEstimation || planOptimization) &&
+          !hasToolResult
+        ) {
           status = "in_progress";
         }
 
@@ -201,8 +237,12 @@ export function groupPlannerAgentMessages(messages: Message[]): PlannerAgentGrou
           console.log(`[Planner Agent] Final status for task: ${status}`);
           console.log(`[Planner Agent] Has final plan: ${!!finalPlan}`);
           console.log(`[Planner Agent] Has topic analysis: ${!!topicAnalysis}`);
-          console.log(`[Planner Agent] Has scope estimation: ${!!scopeEstimation}`);
-          console.log(`[Planner Agent] Has plan optimization: ${!!planOptimization}`);
+          console.log(
+            `[Planner Agent] Has scope estimation: ${!!scopeEstimation}`
+          );
+          console.log(
+            `[Planner Agent] Has plan optimization: ${!!planOptimization}`
+          );
           console.log("---");
         }
 
@@ -232,6 +272,7 @@ export function isMessageInPlannerGroup(
   groups: PlannerAgentGroup[]
 ): boolean {
   return groups.some(
-    (group) => messageIndex >= group.startIndex && messageIndex <= group.endIndex
+    (group) =>
+      messageIndex >= group.startIndex && messageIndex <= group.endIndex
   );
 }

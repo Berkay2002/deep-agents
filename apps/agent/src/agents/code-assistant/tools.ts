@@ -1,9 +1,9 @@
 // Code Assistant Agent specific tools
-import { tool, type StructuredTool } from "@langchain/core/tools";
+import { type StructuredTool, tool } from "@langchain/core/tools";
 import {
   performTavilySearch,
-  tavilySearchArgsSchema,
   type TavilySearchArgs,
+  tavilySearchArgsSchema,
 } from "../../utils/tavily.js";
 
 export type LoadedTool = StructuredTool;
@@ -21,8 +21,10 @@ export type LoadedTool = StructuredTool;
 
 // Reuse Tavily search for code-related queries (documentation, examples, etc.)
 export const tavilySearch = tool(
-  async (args: TavilySearchArgs) =>
-    performTavilySearch(args, { toolName: "tavily_search" }),
+  (input: unknown) => {
+    const args = input as TavilySearchArgs;
+    return performTavilySearch(args, { toolName: "tavily_search" });
+  },
   {
     name: "tavily_search",
     description:
@@ -32,6 +34,7 @@ export const tavilySearch = tool(
 );
 
 // TODO: Implement MCP-based code execution tool
+// Note: When uncommented, need to import: import { z } from "zod";
 // const codeExecutionTool = tool(
 //   async ({ code, language, timeout = 30000 }) => {
 //     // Execute code in sandboxed environment via MCP
@@ -50,6 +53,7 @@ export const tavilySearch = tool(
 // );
 
 // TODO: Implement GitHub MCP integration
+// Note: When uncommented, need to import: import { z } from "zod";
 // const githubSearchTool = tool(
 //   async ({ query, language, sort = "best-match" }) => {
 //     // Search GitHub repositories and code via MCP
@@ -67,6 +71,7 @@ export const tavilySearch = tool(
 // );
 
 // TODO: Implement static analysis MCP tools
+// Note: When uncommented, need to import: import { z } from "zod";
 // const staticAnalysisTool = tool(
 //   async ({ code, language, rules = [] }) => {
 //     // Run ESLint, TypeScript compiler, or other static analysis
@@ -84,6 +89,7 @@ export const tavilySearch = tool(
 // );
 
 // TODO: Implement package analysis MCP tool
+// Note: When uncommented, need to import: import { z } from "zod";
 // const packageAnalysisTool = tool(
 //   async ({ packageJson, language = "javascript" }) => {
 //     // Analyze dependencies for security vulnerabilities, updates, etc.
@@ -100,6 +106,7 @@ export const tavilySearch = tool(
 // );
 
 // TODO: Implement test generation MCP tool
+// Note: When uncommented, need to import: import { z } from "zod";
 // const testGeneratorTool = tool(
 //   async ({ code, testFramework = "jest", coverage = true }) => {
 //     // Generate unit tests for given code
@@ -119,57 +126,11 @@ export const tavilySearch = tool(
 /**
  * Load tools specific to code assistance tasks
  */
-export async function loadCodeTools(): Promise<LoadedTool[]> {
+export function loadCodeTools(): LoadedTool[] {
   const tools: LoadedTool[] = [];
 
   if (process.env.TAVILY_API_KEY) {
-    tools.push(tavilySearch as LoadedTool);
-  } else {
-    console.warn(
-      "TAVILY_API_KEY not set. The tavily_search tool will be unavailable."
-    );
+    tools.push(tavilySearch);
   }
-
-  // TODO: Load MCP-based code tools
-  // When implementing MCP integration:
-  // 1. Add MCP client initialization
-  // 2. Register MCP servers for different tool categories
-  // 3. Load available tools from registered MCP servers
-  // 4. Add error handling and fallbacks for MCP tools
-  // 5. Cache tool results for performance
-  
-  // Example MCP integration:
-  // try {
-  //   const mcpCodeTools = await loadMcpCodeTools();
-  //   tools.push(...mcpCodeTools);
-  // } catch (error) {
-  //   console.warn("Failed to load MCP code tools:", error);
-  // }
-
   return tools;
 }
-
-// TODO: Implement MCP code tools loader
-// async function loadMcpCodeTools(): Promise<LoadedTool[]> {
-//   const mcpTools: LoadedTool[] = [];
-//   
-//   // Initialize MCP clients for different services
-//   const mcpClients = {
-//     github: new McpClient('github-mcp-server'),
-//     execution: new McpClient('code-execution-server'),
-//     analysis: new McpClient('static-analysis-server'),
-//     packages: new McpClient('package-analysis-server')
-//   };
-//   
-//   // Register available tools from each MCP server
-//   for (const [service, client] of Object.entries(mcpClients)) {
-//     try {
-//       const availableTools = await client.listTools();
-//       mcpTools.push(...availableTools);
-//     } catch (error) {
-//       console.warn(`Failed to load tools from ${service} MCP server:`, error);
-//     }
-//   }
-//   
-//   return mcpTools;
-// }

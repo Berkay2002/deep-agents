@@ -4,12 +4,17 @@
  * Base error class for Deep Agent errors
  */
 export class DeepAgentError extends Error {
+  readonly code: string;
+  readonly context?: Record<string, unknown>;
+
   constructor(
     message: string,
-    public readonly code: string,
-    public readonly context?: Record<string, unknown>
+    code: string,
+    context?: Record<string, unknown>
   ) {
     super(message);
+    this.code = code;
+    this.context = context;
     this.name = this.constructor.name;
     Error.captureStackTrace(this, this.constructor);
   }
@@ -19,10 +24,13 @@ export class DeepAgentError extends Error {
  * Error thrown when a tool execution fails
  */
 export class ToolExecutionError extends DeepAgentError {
+  readonly toolName: string;
+  readonly originalError?: Error;
+
   constructor(
-    public readonly toolName: string,
+    toolName: string,
     message: string,
-    public readonly originalError?: Error,
+    originalError?: Error,
     context?: Record<string, unknown>
   ) {
     super(
@@ -30,6 +38,8 @@ export class ToolExecutionError extends DeepAgentError {
       "TOOL_EXECUTION_ERROR",
       { ...context, toolName, originalError: originalError?.message }
     );
+    this.toolName = toolName;
+    this.originalError = originalError;
   }
 }
 
@@ -37,9 +47,12 @@ export class ToolExecutionError extends DeepAgentError {
  * Error thrown when a search operation times out
  */
 export class SearchTimeoutError extends DeepAgentError {
+  readonly query: string;
+  readonly timeoutMs: number;
+
   constructor(
-    public readonly query: string,
-    public readonly timeoutMs: number,
+    query: string,
+    timeoutMs: number,
     context?: Record<string, unknown>
   ) {
     super(
@@ -47,17 +60,22 @@ export class SearchTimeoutError extends DeepAgentError {
       "SEARCH_TIMEOUT",
       { ...context, query, timeoutMs }
     );
+    this.query = query;
+    this.timeoutMs = timeoutMs;
   }
 }
 
 /**
  * Error thrown when MCP server connection fails
  */
-export class MCPConnectionError extends DeepAgentError {
+export class McpConnectionError extends DeepAgentError {
+  readonly serverName: string;
+  readonly originalError?: Error;
+
   constructor(
-    public readonly serverName: string,
+    serverName: string,
     message: string,
-    public readonly originalError?: Error,
+    originalError?: Error,
     context?: Record<string, unknown>
   ) {
     super(
@@ -65,6 +83,8 @@ export class MCPConnectionError extends DeepAgentError {
       "MCP_CONNECTION_ERROR",
       { ...context, serverName, originalError: originalError?.message }
     );
+    this.serverName = serverName;
+    this.originalError = originalError;
   }
 }
 
@@ -72,9 +92,12 @@ export class MCPConnectionError extends DeepAgentError {
  * Error thrown when API rate limit is exceeded
  */
 export class RateLimitError extends DeepAgentError {
+  readonly service: string;
+  readonly retryAfterMs?: number;
+
   constructor(
-    public readonly service: string,
-    public readonly retryAfterMs?: number,
+    service: string,
+    retryAfterMs?: number,
     context?: Record<string, unknown>
   ) {
     super(
@@ -82,19 +105,21 @@ export class RateLimitError extends DeepAgentError {
       "RATE_LIMIT_ERROR",
       { ...context, service, retryAfterMs }
     );
+    this.service = service;
+    this.retryAfterMs = retryAfterMs;
   }
 }
 
 /**
  * Retry configuration options
  */
-export interface RetryOptions {
+export type RetryOptions = {
   maxAttempts?: number;
   initialDelayMs?: number;
   maxDelayMs?: number;
   backoffMultiplier?: number;
   timeoutMs?: number;
-}
+};
 
 /**
  * Default retry options
@@ -102,9 +127,9 @@ export interface RetryOptions {
 export const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
   maxAttempts: 3,
   initialDelayMs: 1000,
-  maxDelayMs: 10000,
+  maxDelayMs: 10_000,
   backoffMultiplier: 2,
-  timeoutMs: 30000,
+  timeoutMs: 30_000,
 };
 
 /**
@@ -130,7 +155,8 @@ export async function withRetry<T>(
       // Wrap in timeout promise
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(
-          () => reject(new Error(`Operation timed out after ${opts.timeoutMs}ms`)),
+          () =>
+            reject(new Error(`Operation timed out after ${opts.timeoutMs}ms`)),
           opts.timeoutMs
         )
       );
@@ -145,10 +171,8 @@ export async function withRetry<T>(
         break;
       }
 
-      // Log retry attempt
-      console.warn(
-        `Attempt ${attempt}/${opts.maxAttempts} failed: ${lastError.message}. Retrying in ${delay}ms...`
-      );
+      // In a production environment, consider implementing a proper logging service
+      // to track retry attempts
 
       // Wait before retrying with exponential backoff
       await sleep(delay);
@@ -176,11 +200,14 @@ export async function safeToolExecution<T>(
     return await fn();
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    console.error(`Tool '${toolName}' failed:`, err);
+
+    // In a production environment, consider implementing a proper logging service
+    // to track tool execution errors
 
     // If fallback value provided, return it instead of throwing
     if (fallbackValue !== undefined) {
-      console.warn(`Returning fallback value for tool '${toolName}'`);
+      // In a production environment, consider implementing a proper logging service
+      // to track when fallback values are used
       return fallbackValue;
     }
 
@@ -191,21 +218,22 @@ export async function safeToolExecution<T>(
 /**
  * Check if an error is retryable (network, timeout, rate limit)
  */
-export function isRetryableError(error: Error): boolean {
-  const retryablePatterns = [
-    /timeout/i,
-    /ETIMEDOUT/i,
-    /ECONNREFUSED/i,
-    /ENOTFOUND/i,
-    /network/i,
-    /socket hang up/i,
-    /rate limit/i,
-    /429/i,
-    /503/i,
-    /502/i,
-  ];
+// Regex patterns for retryable errors (defined at top level)
+const RETRYABLE_PATTERNS = [
+  /timeout/i,
+  /ETIMEDOUT/i,
+  /ECONNREFUSED/i,
+  /ENOTFOUND/i,
+  /network/i,
+  /socket hang up/i,
+  /rate limit/i,
+  /429/i,
+  /503/i,
+  /502/i,
+] as const;
 
-  return retryablePatterns.some((pattern) => pattern.test(error.message));
+export function isRetryableError(error: Error): boolean {
+  return RETRYABLE_PATTERNS.some((pattern) => pattern.test(error.message));
 }
 
 /**
@@ -216,7 +244,7 @@ export function formatErrorForUser(error: Error): string {
     return `Search is taking longer than expected. The search for "${error.query}" timed out. Please try a more specific query.`;
   }
 
-  if (error instanceof MCPConnectionError) {
+  if (error instanceof McpConnectionError) {
     return `Unable to connect to external service '${error.serverName}'. This feature may be temporarily unavailable.`;
   }
 

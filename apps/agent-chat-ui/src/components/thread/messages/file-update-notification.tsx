@@ -1,22 +1,22 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { 
-  FileText, 
-  User, 
-  Clock, 
-  ChevronDown, 
-  ChevronUp, 
-  Eye, 
-  EyeOff,
-  Users,
-  GitBranch,
-  CheckCircle,
-  AlertCircle
-} from "lucide-react";
-import { diffLines as diffLinesUtil, Change } from "diff";
 import { formatDistanceToNow } from "date-fns";
+import { type Change, diffLines as diffLinesUtil } from "diff";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  AlertCircle,
+  CheckCircle,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Eye,
+  EyeOff,
+  FileText,
+  GitBranch,
+  User,
+  Users,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 
 // TypeScript interfaces
@@ -130,7 +130,7 @@ export function FileUpdateNotification({
   isRealTime = false,
   error,
   success,
-  className
+  className,
 }: FileUpdateNotificationProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
@@ -138,14 +138,15 @@ export function FileUpdateNotification({
 
   // Format timestamp
   const formattedTime = useMemo(() => {
-    const date = typeof timestamp === "string" ? new Date(timestamp) : timestamp;
+    const date =
+      typeof timestamp === "string" ? new Date(timestamp) : timestamp;
     return formatDistanceToNow(date, { addSuffix: true });
   }, [timestamp]);
 
   // Compute diff if we have content
   const diffData = useMemo(() => {
-    if (!oldContent && !newContent) return null;
-    
+    if (!(oldContent || newContent)) return null;
+
     const diffLines = computeDiffLines(oldContent, newContent);
     const { additions, deletions } = calculateDiffStats(diffLines);
     const totalLines = diffLines.length;
@@ -160,7 +161,7 @@ export function FileUpdateNotification({
       deletions,
       totalLines,
       shouldShowExpand,
-      displayedLines
+      displayedLines,
     };
   }, [oldContent, newContent, isExpanded]);
 
@@ -173,7 +174,7 @@ export function FileUpdateNotification({
         headerBorder: "border-red-200",
         icon: <AlertCircle className="h-4 w-4 text-red-500" />,
         textColor: "text-red-900",
-        subTextColor: "text-red-700"
+        subTextColor: "text-red-700",
       };
     }
 
@@ -184,7 +185,7 @@ export function FileUpdateNotification({
         headerBorder: "border-green-200",
         icon: <CheckCircle className="h-4 w-4 text-green-500" />,
         textColor: "text-green-900",
-        subTextColor: "text-green-700"
+        subTextColor: "text-green-700",
       };
     }
 
@@ -194,77 +195,91 @@ export function FileUpdateNotification({
       headerBorder: "border-blue-200",
       icon: <FileText className="h-4 w-4 text-blue-500" />,
       textColor: "text-blue-900",
-      subTextColor: "text-blue-700"
+      subTextColor: "text-blue-700",
     };
   };
 
   const statusInfo = getStatusInfo();
 
   return (
-    <div className={cn("mx-auto grid max-w-4xl grid-rows-[1fr_auto] gap-3", className)}>
+    <div
+      className={cn(
+        "mx-auto grid max-w-4xl grid-rows-[1fr_auto] gap-3",
+        className
+      )}
+    >
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         className={cn(
           "overflow-hidden rounded-lg border-2 bg-white shadow-sm",
           statusInfo.borderColor,
           isRealTime && "ring-2 ring-blue-100 ring-opacity-50"
         )}
+        initial={{ opacity: 0, y: 10 }}
       >
         {/* Header */}
-        <div className={cn(
-          "border-b px-4 py-3",
-          statusInfo.headerBorder,
-          statusInfo.headerBg
-        )}>
+        <div
+          className={cn(
+            "border-b px-4 py-3",
+            statusInfo.headerBorder,
+            statusInfo.headerBg
+          )}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {statusInfo.icon}
-              
-              <div className="flex-1 min-w-0">
+
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <code className={cn(
-                    "text-sm font-medium truncate",
-                    statusInfo.textColor
-                  )}>
+                  <code
+                    className={cn(
+                      "truncate font-medium text-sm",
+                      statusInfo.textColor
+                    )}
+                  >
                     {fileName}
                   </code>
-                  
+
                   {isRealTime && (
                     <motion.div
-                      initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       className="flex items-center gap-1"
+                      initial={{ scale: 0 }}
                     >
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                      <span className="text-xs text-green-600">Live</span>
+                      <div className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
+                      <span className="text-green-600 text-xs">Live</span>
                     </motion.div>
                   )}
                 </div>
-                
-                <div className="flex items-center gap-3 mt-1">
+
+                <div className="mt-1 flex items-center gap-3">
                   <div className="flex items-center gap-1">
                     <User className="h-3 w-3 text-gray-500" />
-                    <span className="text-xs text-gray-600">{editorName}</span>
+                    <span className="text-gray-600 text-xs">{editorName}</span>
                   </div>
-                  
+
                   <div className="flex items-center gap-1">
                     <Clock className="h-3 w-3 text-gray-500" />
-                    <span className="text-xs text-gray-600">{formattedTime}</span>
+                    <span className="text-gray-600 text-xs">
+                      {formattedTime}
+                    </span>
                   </div>
-                  
+
                   {branch && (
                     <div className="flex items-center gap-1">
                       <GitBranch className="h-3 w-3 text-gray-500" />
-                      <span className="text-xs text-gray-600">{branch}</span>
+                      <span className="text-gray-600 text-xs">{branch}</span>
                     </div>
                   )}
-                  
+
                   {collaborators.length > 0 && (
                     <div className="flex items-center gap-1">
                       <Users className="h-3 w-3 text-gray-500" />
-                      <span className="text-xs text-gray-600">
-                        {collaborators.length} {collaborators.length === 1 ? 'collaborator' : 'collaborators'}
+                      <span className="text-gray-600 text-xs">
+                        {collaborators.length}{" "}
+                        {collaborators.length === 1
+                          ? "collaborator"
+                          : "collaborators"}
                       </span>
                     </div>
                   )}
@@ -274,26 +289,28 @@ export function FileUpdateNotification({
 
             <div className="flex items-center gap-2">
               {diffData && (
-                <div className="flex items-center gap-2 mr-3">
+                <div className="mr-3 flex items-center gap-2">
                   {diffData.additions > 0 && (
-                    <span className="text-sm font-medium text-green-600">
+                    <span className="font-medium text-green-600 text-sm">
                       +{diffData.additions}
                     </span>
                   )}
                   {diffData.deletions > 0 && (
-                    <span className="text-sm font-medium text-red-600">
+                    <span className="font-medium text-red-600 text-sm">
                       -{diffData.deletions}
                     </span>
                   )}
                 </div>
               )}
-              
-              <span className={cn(
-                "text-xs font-medium px-2 py-1 rounded",
-                changeType === "created" && "bg-green-100 text-green-700",
-                changeType === "modified" && "bg-blue-100 text-blue-700",
-                changeType === "deleted" && "bg-red-100 text-red-700"
-              )}>
+
+              <span
+                className={cn(
+                  "rounded px-2 py-1 font-medium text-xs",
+                  changeType === "created" && "bg-green-100 text-green-700",
+                  changeType === "modified" && "bg-blue-100 text-blue-700",
+                  changeType === "deleted" && "bg-red-100 text-red-700"
+                )}
+              >
                 {changeType.charAt(0).toUpperCase() + changeType.slice(1)}
               </span>
             </div>
@@ -301,34 +318,38 @@ export function FileUpdateNotification({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
+        <div className="flex items-center justify-between border-gray-200 border-b bg-gray-50 px-4 py-2">
           <div className="flex items-center gap-2">
             {diffData && (
               <motion.button
-                onClick={() => setShowDiff(!showDiff)}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-colors",
-                  showDiff 
-                    ? "bg-blue-100 text-blue-700" 
-                    : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
+                  "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors",
+                  showDiff
+                    ? "bg-blue-100 text-blue-700"
+                    : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-100"
                 )}
+                onClick={() => setShowDiff(!showDiff)}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                {showDiff ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showDiff ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
                 {showDiff ? "Hide Diff" : "Show Diff"}
               </motion.button>
             )}
-            
+
             {collaborators.length > 0 && (
               <motion.button
-                onClick={() => setShowCollaborators(!showCollaborators)}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 text-sm rounded-md transition-colors",
-                  showCollaborators 
-                    ? "bg-purple-100 text-purple-700" 
-                    : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
+                  "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors",
+                  showCollaborators
+                    ? "bg-purple-100 text-purple-700"
+                    : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-100"
                 )}
+                onClick={() => setShowCollaborators(!showCollaborators)}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -337,15 +358,15 @@ export function FileUpdateNotification({
               </motion.button>
             )}
           </div>
-          
+
           {error && (
-            <span className="text-xs font-medium text-red-700 bg-red-100 px-2 py-1 rounded">
+            <span className="rounded bg-red-100 px-2 py-1 font-medium text-red-700 text-xs">
               Failed
             </span>
           )}
-          
+
           {success && !error && (
-            <span className="text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded">
+            <span className="rounded bg-green-100 px-2 py-1 font-medium text-green-700 text-xs">
               Success
             </span>
           )}
@@ -355,30 +376,40 @@ export function FileUpdateNotification({
         <AnimatePresence>
           {showCollaborators && collaborators.length > 0 && (
             <motion.div
-              initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
+              className="border-gray-200 border-b bg-gray-50"
               exit={{ height: 0, opacity: 0 }}
+              initial={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="border-b border-gray-200 bg-gray-50"
             >
               <div className="px-4 py-3">
-                <h4 className="text-sm font-medium text-gray-900 mb-2">Active Collaborators</h4>
+                <h4 className="mb-2 font-medium text-gray-900 text-sm">
+                  Active Collaborators
+                </h4>
                 <div className="space-y-2">
                   {collaborators.map((collaborator) => (
-                    <div key={collaborator.id} className="flex items-center gap-3">
+                    <div
+                      className="flex items-center gap-3"
+                      key={collaborator.id}
+                    >
                       <div className="relative">
-                        <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-300">
                           <User className="h-4 w-4 text-gray-600" />
                         </div>
                         {collaborator.isActive && (
-                          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+                          <div className="-bottom-0.5 -right-0.5 absolute h-3 w-3 rounded-full border-2 border-white bg-green-500" />
                         )}
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">{collaborator.name}</p>
+                        <p className="font-medium text-gray-900 text-sm">
+                          {collaborator.name}
+                        </p>
                         {collaborator.lastSeen && (
-                          <p className="text-xs text-gray-500">
-                            Last seen {formatDistanceToNow(collaborator.lastSeen, { addSuffix: true })}
+                          <p className="text-gray-500 text-xs">
+                            Last seen{" "}
+                            {formatDistanceToNow(collaborator.lastSeen, {
+                              addSuffix: true,
+                            })}
                           </p>
                         )}
                       </div>
@@ -394,11 +425,11 @@ export function FileUpdateNotification({
         <AnimatePresence>
           {showDiff && diffData && (
             <motion.div
-              initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3 }}
               className="overflow-hidden bg-white"
+              exit={{ height: 0, opacity: 0 }}
+              initial={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3 }}
             >
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[1000px] border-collapse font-mono text-[13px]">
@@ -409,17 +440,17 @@ export function FileUpdateNotification({
 
                       return (
                         <tr
-                          key={index}
                           className={cn("align-baseline", {
                             "bg-[#e6ffed]": isAdded,
                             "bg-[#ffeef0]": isRemoved,
                           })}
+                          key={index}
                         >
                           {/* Left line number */}
                           <td
                             className={cn(
                               "select-none px-[10px] py-0 text-right",
-                              "min-w-[50px] w-[50px] bg-[#f7f7f7]",
+                              "w-[50px] min-w-[50px] bg-[#f7f7f7]",
                               {
                                 "bg-[#cdffd8]": isAdded,
                                 "bg-[#ffdce0]": isRemoved,
@@ -435,7 +466,7 @@ export function FileUpdateNotification({
                           <td
                             className={cn(
                               "select-none px-[10px] py-0 text-right",
-                              "min-w-[50px] w-[50px] bg-[#f7f7f7]",
+                              "w-[50px] min-w-[50px] bg-[#f7f7f7]",
                               {
                                 "bg-[#cdffd8]": isAdded,
                                 "bg-[#ffdce0]": isRemoved,
@@ -450,11 +481,11 @@ export function FileUpdateNotification({
                           {/* Marker (+/-) */}
                           <td
                             className={cn(
-                              "w-[28px] px-[10px] py-0 select-none",
+                              "w-[28px] select-none px-[10px] py-0",
                               {
                                 "bg-[#cdffd8] text-[#24292e]": isAdded,
                                 "bg-[#ffdce0] text-[#24292e]": isRemoved,
-                                "bg-[#f7f7f7]": !isAdded && !isRemoved,
+                                "bg-[#f7f7f7]": !(isAdded || isRemoved),
                               }
                             )}
                           >
@@ -472,18 +503,18 @@ export function FileUpdateNotification({
                           >
                             {isAdded ? (
                               <ins className="no-underline">
-                                <pre className="m-0 px-2 py-0 text-[#24292e] whitespace-pre-wrap break-anywhere leading-[1.6em]">
+                                <pre className="break-anywhere m-0 whitespace-pre-wrap px-2 py-0 text-[#24292e] leading-[1.6em]">
                                   {line.value || " "}
                                 </pre>
                               </ins>
                             ) : isRemoved ? (
                               <del className="no-underline">
-                                <pre className="m-0 px-2 py-0 text-[#24292e] whitespace-pre-wrap break-anywhere leading-[1.6em]">
+                                <pre className="break-anywhere m-0 whitespace-pre-wrap px-2 py-0 text-[#24292e] leading-[1.6em]">
                                   {line.value || " "}
                                 </pre>
                               </del>
                             ) : (
-                              <pre className="m-0 px-2 py-0 text-[#24292e] whitespace-pre-wrap break-anywhere leading-[1.6em]">
+                              <pre className="break-anywhere m-0 whitespace-pre-wrap px-2 py-0 text-[#24292e] leading-[1.6em]">
                                 {line.value || " "}
                               </pre>
                             )}
@@ -498,9 +529,9 @@ export function FileUpdateNotification({
               {/* Expand/Collapse Button */}
               {diffData.shouldShowExpand && (
                 <motion.button
-                  onClick={() => setIsExpanded(!isExpanded)}
-                  className="flex w-full cursor-pointer items-center justify-center border-t border-gray-200 bg-gray-50 py-2 text-gray-500 transition-all duration-200 ease-in-out hover:bg-gray-100 hover:text-gray-600"
+                  className="flex w-full cursor-pointer items-center justify-center border-gray-200 border-t bg-gray-50 py-2 text-gray-500 transition-all duration-200 ease-in-out hover:bg-gray-100 hover:text-gray-600"
                   initial={{ scale: 1 }}
+                  onClick={() => setIsExpanded(!isExpanded)}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -522,14 +553,14 @@ export function FileUpdateNotification({
 
         {/* Error Section */}
         {error && (
-          <div className="border-t-2 border-red-200 bg-red-50 px-4 py-3">
+          <div className="border-red-200 border-t-2 bg-red-50 px-4 py-3">
             <div className="flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-600" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-red-900 mb-1">
+                <p className="mb-1 font-medium text-red-900 text-sm">
                   Update Failed
                 </p>
-                <p className="text-sm text-red-800">
+                <p className="text-red-800 text-sm">
                   {error.length > 150 ? error.slice(0, 150) + "..." : error}
                 </p>
               </div>

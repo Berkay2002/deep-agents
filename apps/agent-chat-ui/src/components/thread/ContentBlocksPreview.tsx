@@ -1,7 +1,7 @@
-import React from "react";
 import type { Base64ContentBlock } from "@langchain/core/messages";
-import { MultimodalPreview } from "./MultimodalPreview";
+import type React from "react";
 import { cn } from "@/lib/utils";
+import { MultimodalPreview } from "./MultimodalPreview";
 
 interface ContentBlocksPreviewProps {
   blocks: Base64ContentBlock[];
@@ -25,10 +25,10 @@ export const ContentBlocksPreview: React.FC<ContentBlocksPreviewProps> = ({
     <div className={cn("flex flex-wrap gap-2 p-3.5 pb-0", className)}>
       {blocks.map((block, idx) => (
         <MultimodalPreview
-          key={idx}
           block={block}
-          removable
+          key={idx}
           onRemove={() => onRemove(idx)}
+          removable
           size={size}
         />
       ))}

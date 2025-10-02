@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useState } from "react";
 
 function isComplexValue(value: any): boolean {
   return Array.isArray(value) || (typeof value === "object" && value !== null);
@@ -23,20 +23,20 @@ function renderInterruptStateItem(value: any): React.ReactNode {
         {JSON.stringify(value, null, 2)}
       </code>
     );
-  } else if (isUrl(value)) {
+  }
+  if (isUrl(value)) {
     return (
       <a
-        href={value}
-        target="_blank"
-        rel="noopener noreferrer"
         className="break-all text-blue-600 underline hover:text-blue-800"
+        href={value}
+        rel="noopener noreferrer"
+        target="_blank"
       >
         {value}
       </a>
     );
-  } else {
-    return String(value);
   }
+  return String(value);
 }
 
 export function GenericInterruptView({
@@ -79,46 +79,42 @@ export function GenericInterruptView({
   const processEntries = () => {
     if (Array.isArray(interrupt)) {
       return isExpanded ? interrupt : interrupt.slice(0, 5);
-    } else {
-      const entries = Object.entries(interrupt);
-      if (!isExpanded && shouldTruncate) {
-        // When collapsed, process each value to potentially truncate it
-        return entries.map(([key, value]) => [key, truncateValue(value)]);
-      }
-      return entries;
     }
+    const entries = Object.entries(interrupt);
+    if (!isExpanded && shouldTruncate) {
+      // When collapsed, process each value to potentially truncate it
+      return entries.map(([key, value]) => [key, truncateValue(value)]);
+    }
+    return entries;
   };
 
   const displayEntries = processEntries();
 
   return (
     <div className="overflow-hidden rounded-lg border border-gray-200">
-      <div className="border-b border-gray-200 bg-gray-50 px-4 py-2">
+      <div className="border-gray-200 border-b bg-gray-50 px-4 py-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-medium text-gray-900">Human Interrupt</h3>
         </div>
       </div>
       <motion.div
+        animate={{ height: "auto" }}
         className="min-w-full bg-gray-100"
         initial={false}
-        animate={{ height: "auto" }}
         transition={{ duration: 0.3 }}
       >
         <div className="p-3">
-          <AnimatePresence
-            mode="wait"
-            initial={false}
-          >
+          <AnimatePresence initial={false} mode="wait">
             <motion.div
-              key={isExpanded ? "expanded" : "collapsed"}
-              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0, y: 20 }}
+              key={isExpanded ? "expanded" : "collapsed"}
               style={{
                 maxHeight: isExpanded ? "none" : "500px",
                 overflow: "auto",
               }}
+              transition={{ duration: 0.2 }}
             >
               <table className="min-w-full divide-y divide-gray-200">
                 <tbody className="divide-y divide-gray-200">
@@ -128,10 +124,10 @@ export function GenericInterruptView({
                       : (item as [string, any]);
                     return (
                       <tr key={argIdx}>
-                        <td className="px-4 py-2 text-sm font-medium whitespace-nowrap text-gray-900">
+                        <td className="whitespace-nowrap px-4 py-2 font-medium text-gray-900 text-sm">
                           {key}
                         </td>
-                        <td className="px-4 py-2 text-sm text-gray-500">
+                        <td className="px-4 py-2 text-gray-500 text-sm">
                           {renderInterruptStateItem(value)}
                         </td>
                       </tr>
@@ -145,9 +141,9 @@ export function GenericInterruptView({
         {(shouldTruncate ||
           (Array.isArray(interrupt) && interrupt.length > 5)) && (
           <motion.button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex w-full cursor-pointer items-center justify-center border-t-[1px] border-gray-200 py-2 text-gray-500 transition-all duration-200 ease-in-out hover:bg-gray-50 hover:text-gray-600"
+            className="flex w-full cursor-pointer items-center justify-center border-gray-200 border-t-[1px] py-2 text-gray-500 transition-all duration-200 ease-in-out hover:bg-gray-50 hover:text-gray-600"
             initial={{ scale: 1 }}
+            onClick={() => setIsExpanded(!isExpanded)}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >

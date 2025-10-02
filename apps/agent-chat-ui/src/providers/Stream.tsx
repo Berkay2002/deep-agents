@@ -1,31 +1,32 @@
-import React, {
-  createContext,
-  useContext,
-  ReactNode,
-  useState,
-  useEffect,
-} from "react";
+import { useUser } from "@clerk/nextjs";
+import type { Message } from "@langchain/langgraph-sdk";
 import { useStream } from "@langchain/langgraph-sdk/react";
-import { type Message } from "@langchain/langgraph-sdk";
 import {
-  uiMessageReducer,
-  isUIMessage,
   isRemoveUIMessage,
-  type UIMessage,
+  isUIMessage,
   type RemoveUIMessage,
+  type UIMessage,
+  uiMessageReducer,
 } from "@langchain/langgraph-sdk/react-ui";
-import { useQueryState } from "nuqs";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { LangGraphLogoSVG } from "@/components/icons/langgraph";
-import { Label } from "@/components/ui/label";
 import { ArrowRight } from "lucide-react";
+import { useQueryState } from "nuqs";
+import type React from "react";
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
+import { toast } from "sonner";
+import { LangGraphLogoSVG } from "@/components/icons/langgraph";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { getApiKey } from "@/lib/api-key";
-import { useThreads } from "./Thread";
-import { toast } from "sonner";
-import { useUser } from "@clerk/nextjs";
 import { useGithubSettings } from "./GithubSettings";
+import { useThreads } from "./Thread";
 
 export type StateType = { messages: Message[]; ui?: UIMessage[] };
 
@@ -50,7 +51,7 @@ async function sleep(ms = 4000) {
 
 async function checkGraphStatus(
   apiUrl: string,
-  apiKey: string | null,
+  apiKey: string | null
 ): Promise<boolean> {
   try {
     const res = await fetch(`${apiUrl}/info`, {
@@ -128,10 +129,11 @@ const StreamSession = ({
             description: () => (
               <p>
                 Please ensure your graph is running at <code>{apiUrl}</code> and
-                your API key is correctly set (if connecting to a deployed graph).
+                your API key is correctly set (if connecting to a deployed
+                graph).
               </p>
             ),
-            duration: 10000,
+            duration: 10_000,
             richColors: true,
             closeButton: true,
           });
@@ -185,14 +187,14 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
   const finalAssistantId = assistantId || envAssistantId;
 
   // Show the form if we: don't have an API URL, or don't have an assistant ID
-  if (!finalApiUrl || !finalAssistantId) {
+  if (!(finalApiUrl && finalAssistantId)) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center p-4">
-        <div className="animate-in fade-in-0 zoom-in-95 bg-background flex max-w-3xl flex-col rounded-lg border shadow-lg">
+        <div className="fade-in-0 zoom-in-95 flex max-w-3xl animate-in flex-col rounded-lg border bg-background shadow-lg">
           <div className="mt-14 flex flex-col gap-2 border-b p-6">
             <div className="flex flex-col items-start gap-2">
               <LangGraphLogoSVG className="h-7" />
-              <h1 className="text-xl font-semibold tracking-tight">
+              <h1 className="font-semibold text-xl tracking-tight">
                 Agent Chat
               </h1>
             </div>
@@ -202,6 +204,7 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
             </p>
           </div>
           <form
+            className="flex flex-col gap-6 bg-muted/50 p-6"
             onSubmit={(e) => {
               e.preventDefault();
 
@@ -217,7 +220,6 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
 
               form.reset();
             }}
-            className="bg-muted/50 flex flex-col gap-6 p-6"
           >
             <div className="flex flex-col gap-2">
               <Label htmlFor="apiUrl">
@@ -228,10 +230,10 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
                 production deployment.
               </p>
               <Input
-                id="apiUrl"
-                name="apiUrl"
                 className="bg-background"
                 defaultValue={apiUrl || DEFAULT_API_URL}
+                id="apiUrl"
+                name="apiUrl"
                 required
               />
             </div>
@@ -246,10 +248,10 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
                 taken.
               </p>
               <Input
-                id="assistantId"
-                name="assistantId"
                 className="bg-background"
                 defaultValue={assistantId || DEFAULT_ASSISTANT_ID}
+                id="assistantId"
+                name="assistantId"
                 required
               />
             </div>
@@ -263,19 +265,16 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
                 server.
               </p>
               <PasswordInput
+                className="bg-background"
+                defaultValue={apiKey ?? ""}
                 id="apiKey"
                 name="apiKey"
-                defaultValue={apiKey ?? ""}
-                className="bg-background"
                 placeholder="lsv2_pt_..."
               />
             </div>
 
             <div className="mt-2 flex justify-end">
-              <Button
-                type="submit"
-                size="lg"
-              >
+              <Button size="lg" type="submit">
                 Continue
                 <ArrowRight className="size-5" />
               </Button>
@@ -287,11 +286,7 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
   }
 
   return (
-    <StreamSession
-      apiKey={apiKey}
-      apiUrl={apiUrl}
-      assistantId={assistantId}
-    >
+    <StreamSession apiKey={apiKey} apiUrl={apiUrl} assistantId={assistantId}>
       {children}
     </StreamSession>
   );

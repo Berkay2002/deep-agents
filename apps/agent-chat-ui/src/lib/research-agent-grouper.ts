@@ -1,4 +1,4 @@
-import { Message, ToolMessage } from "@langchain/langgraph-sdk";
+import type { Message, ToolMessage } from "@langchain/langgraph-sdk";
 
 export interface TavilySearchResultData {
   query: string;
@@ -59,7 +59,9 @@ function isResearchAgentTask(toolCall: any): boolean {
 /**
  * Extracts Tavily search result data from a tool message content
  */
-function extractTavilySearchResults(content: any): TavilySearchResultData | null {
+function extractTavilySearchResults(
+  content: any
+): TavilySearchResultData | null {
   try {
     let parsedContent: any;
 
@@ -113,9 +115,9 @@ function extractExaSearchResults(content: any): ExaSearchResultData | null {
       parsedContent.results[0].url &&
       // Check for Exa-specific fields (not 'content' like Tavily)
       (parsedContent.results[0].text !== undefined ||
-       parsedContent.results[0].summary !== undefined ||
-       parsedContent.results[0].snippet !== undefined ||
-       parsedContent.results[0].highlights !== undefined)
+        parsedContent.results[0].summary !== undefined ||
+        parsedContent.results[0].snippet !== undefined ||
+        parsedContent.results[0].highlights !== undefined)
     ) {
       return {
         query: parsedContent.query || "",
@@ -168,7 +170,9 @@ function extractResearchFindings(message: ToolMessage): string | null {
  * Groups research agent related messages together
  * Returns an array of research agent groups found in the messages
  */
-export function groupResearchAgentMessages(messages: Message[]): ResearchAgentGroup[] {
+export function groupResearchAgentMessages(
+  messages: Message[]
+): ResearchAgentGroup[] {
   const groups: ResearchAgentGroup[] = [];
 
   for (let i = 0; i < messages.length; i++) {
@@ -200,8 +204,12 @@ export function groupResearchAgentMessages(messages: Message[]): ResearchAgentGr
 
         // Debug logging
         if (process.env.NODE_ENV === "development") {
-          console.log(`[Research Agent] Processing task: ${taskDescription.substring(0, 50)}...`);
-          console.log(`[Research Agent] Looking for tool_call_id: ${taskToolCallId}`);
+          console.log(
+            `[Research Agent] Processing task: ${taskDescription.substring(0, 50)}...`
+          );
+          console.log(
+            `[Research Agent] Looking for tool_call_id: ${taskToolCallId}`
+          );
         }
 
         // Look ahead for search results and findings
@@ -212,10 +220,16 @@ export function groupResearchAgentMessages(messages: Message[]): ResearchAgentGr
           if (nextMessage.type === "ai" && !("tool_calls" in nextMessage)) {
             // This is an AI message without tool calls, likely a status update
             const content = Array.isArray(nextMessage.content)
-              ? nextMessage.content.map(c => c.type === "text" ? c.text : "").join("")
+              ? nextMessage.content
+                  .map((c) => (c.type === "text" ? c.text : ""))
+                  .join("")
               : nextMessage.content;
-            
-            if (content && typeof content === "string" && content.trim().length > 0) {
+
+            if (
+              content &&
+              typeof content === "string" &&
+              content.trim().length > 0
+            ) {
               statusUpdates.push(content);
               endIndex = j;
               // If we have status updates, agent is in progress
@@ -240,11 +254,22 @@ export function groupResearchAgentMessages(messages: Message[]): ResearchAgentGr
             }
 
             // Debug: log all tool messages to see what we're getting
-            if (process.env.NODE_ENV === "development" && "tool_call_id" in nextMessage) {
-              console.log(`[Research Agent] Found tool message with tool_call_id: ${nextMessage.tool_call_id}`);
-              console.log(`[Research Agent] Matches expected? ${nextMessage.tool_call_id === taskToolCallId}`);
-              console.log(`[Research Agent] Content type: ${typeof nextMessage.content}`);
-              console.log(`[Research Agent] Content preview: ${typeof nextMessage.content === "string" ? nextMessage.content.substring(0, 100) : "non-string"}`);
+            if (
+              process.env.NODE_ENV === "development" &&
+              "tool_call_id" in nextMessage
+            ) {
+              console.log(
+                `[Research Agent] Found tool message with tool_call_id: ${nextMessage.tool_call_id}`
+              );
+              console.log(
+                `[Research Agent] Matches expected? ${nextMessage.tool_call_id === taskToolCallId}`
+              );
+              console.log(
+                `[Research Agent] Content type: ${typeof nextMessage.content}`
+              );
+              console.log(
+                `[Research Agent] Content preview: ${typeof nextMessage.content === "string" ? nextMessage.content.substring(0, 100) : "non-string"}`
+              );
             }
 
             // Check for research findings (final response from research agent)
@@ -253,14 +278,22 @@ export function groupResearchAgentMessages(messages: Message[]): ResearchAgentGr
               nextMessage.tool_call_id === taskToolCallId
             ) {
               hasToolResult = true;
-              const researchFindings = extractResearchFindings(nextMessage as ToolMessage);
+              const researchFindings = extractResearchFindings(
+                nextMessage as ToolMessage
+              );
 
               // Debug: log when we find a matching tool result
               if (process.env.NODE_ENV === "development") {
-                console.log(`[Research Agent] Found result for task ${taskToolCallId.substring(0, 8)}:`, {
-                  hasFindings: !!researchFindings,
-                  contentLength: typeof nextMessage.content === "string" ? nextMessage.content.length : 0,
-                });
+                console.log(
+                  `[Research Agent] Found result for task ${taskToolCallId.substring(0, 8)}:`,
+                  {
+                    hasFindings: !!researchFindings,
+                    contentLength:
+                      typeof nextMessage.content === "string"
+                        ? nextMessage.content.length
+                        : 0,
+                  }
+                );
               }
 
               // If we have research findings (tool result with matching ID), mark as completed
@@ -281,7 +314,8 @@ export function groupResearchAgentMessages(messages: Message[]): ResearchAgentGr
             nextMessage.tool_calls.length > 0
           ) {
             // Check if it's a different research task or unrelated tool call
-            const hasAnotherResearchTask = nextMessage.tool_calls.some(isResearchAgentTask);
+            const hasAnotherResearchTask =
+              nextMessage.tool_calls.some(isResearchAgentTask);
             if (hasAnotherResearchTask) {
               // Found the start of a new research task, stop here
               break;
@@ -298,7 +332,9 @@ export function groupResearchAgentMessages(messages: Message[]): ResearchAgentGr
         if (process.env.NODE_ENV === "development") {
           console.log(`[Research Agent] Final status for task: ${status}`);
           console.log(`[Research Agent] Has findings: ${!!findings}`);
-          console.log(`[Research Agent] Search results count: ${searchResults.length}`);
+          console.log(
+            `[Research Agent] Search results count: ${searchResults.length}`
+          );
           console.log("---");
         }
 
@@ -327,6 +363,7 @@ export function isMessageInResearchGroup(
   groups: ResearchAgentGroup[]
 ): boolean {
   return groups.some(
-    (group) => messageIndex >= group.startIndex && messageIndex <= group.endIndex
+    (group) =>
+      messageIndex >= group.startIndex && messageIndex <= group.endIndex
   );
 }

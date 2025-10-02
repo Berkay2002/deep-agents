@@ -1,67 +1,72 @@
-import { v4 as uuidv4 } from "uuid";
-import { ReactNode, useEffect, useRef } from "react";
+import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
+import type { Checkpoint, Message } from "@langchain/langgraph-sdk";
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
-import { useStreamContext } from "@/providers/Stream";
-import { useState, FormEvent } from "react";
-import { Button } from "../ui/button";
-import { Checkpoint, Message } from "@langchain/langgraph-sdk";
-import { AssistantMessage, AssistantMessageLoading } from "./messages/ai";
-import { HumanMessage } from "./messages/human";
+import {
+  ArrowDown,
+  LoaderCircle,
+  PanelRightClose,
+  PanelRightOpen,
+  Plus,
+  SquarePen,
+  XIcon,
+} from "lucide-react";
+import { parseAsBoolean, useQueryState } from "nuqs";
+import {
+  type FormEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { toast } from "sonner";
+import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
+import { v4 as uuidv4 } from "uuid";
+import { useFileUpload } from "@/hooks/use-file-upload";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import {
+  type CritiqueAgentGroup,
+  groupCritiqueAgentMessages,
+  isMessageInCritiqueGroup,
+  isToolCallInCritiqueGroup,
+} from "@/lib/critique-agent-grouper";
 import {
   DO_NOT_RENDER_ID_PREFIX,
   ensureToolCallsHaveResponses,
 } from "@/lib/ensure-tool-responses";
-import { filterSubagentResponses } from "@/lib/subagent-filter";
 import {
   groupResearchAgentMessages,
   isMessageInResearchGroup,
   type ResearchAgentGroup,
 } from "@/lib/research-agent-grouper";
-import { ResearchAgentContainer } from "./messages/research-agent-container";
-import {
-  groupCritiqueAgentMessages,
-  isMessageInCritiqueGroup,
-  isToolCallInCritiqueGroup,
-  type CritiqueAgentGroup,
-} from "@/lib/critique-agent-grouper";
-import { CritiqueAgentContainer } from "./messages/critique-agent-container";
+import { filterSubagentResponses } from "@/lib/subagent-filter";
+import { cn } from "@/lib/utils";
+import { useStreamContext } from "@/providers/Stream";
+import { GitHubSVG } from "../icons/github";
 import { LangGraphLogoSVG } from "../icons/langgraph";
-import { TooltipIconButton } from "./tooltip-icon-button";
-import {
-  ArrowDown,
-  LoaderCircle,
-  PanelRightOpen,
-  PanelRightClose,
-  SquarePen,
-  XIcon,
-  Plus,
-} from "lucide-react";
-import { useQueryState, parseAsBoolean } from "nuqs";
-import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
-import ThreadHistory from "./history";
-import { toast } from "sonner";
-import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { GithubConfigDialog } from "../settings/github-config-dialog";
+import { Button } from "../ui/button";
 import { Label } from "../ui/label";
 import { Switch } from "../ui/switch";
-import { GitHubSVG } from "../icons/github";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
-import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
-import { useFileUpload } from "@/hooks/use-file-upload";
-import { ContentBlocksPreview } from "./ContentBlocksPreview";
 import {
-  useArtifactOpen,
   ArtifactContent,
   ArtifactTitle,
   useArtifactContext,
+  useArtifactOpen,
 } from "./artifact";
-import { GithubConfigDialog } from "../settings/github-config-dialog";
+import { ContentBlocksPreview } from "./ContentBlocksPreview";
+import ThreadHistory from "./history";
+import { AssistantMessage, AssistantMessageLoading } from "./messages/ai";
+import { CritiqueAgentContainer } from "./messages/critique-agent-container";
+import { HumanMessage } from "./messages/human";
+import { ResearchAgentContainer } from "./messages/research-agent-container";
 import { TimelineAdapter } from "./timeline-adapter";
+import { TooltipIconButton } from "./tooltip-icon-button";
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -72,14 +77,11 @@ function StickyToBottomContent(props: {
   const context = useStickToBottomContext();
   return (
     <div
+      className={props.className}
       ref={context.scrollRef}
       style={{ width: "100%", height: "100%" }}
-      className={props.className}
     >
-      <div
-        ref={context.contentRef}
-        className={props.contentClassName}
-      >
+      <div className={props.contentClassName} ref={context.contentRef}>
         {props.content}
       </div>
 
@@ -94,9 +96,9 @@ function ScrollToBottom(props: { className?: string }) {
   if (isAtBottom) return null;
   return (
     <Button
-      variant="outline"
       className={props.className}
       onClick={() => scrollToBottom()}
+      variant="outline"
     >
       <ArrowDown className="h-4 w-4" />
       <span>Scroll to bottom</span>
@@ -104,19 +106,16 @@ function ScrollToBottom(props: { className?: string }) {
   );
 }
 
-function MCPServerConfigButton({ onClick }: { onClick: () => void }) {
+function McpServerConfigButton({ onClick }: { onClick: () => void }) {
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
           <button
+            className="flex cursor-pointer items-center justify-center"
             onClick={onClick}
-            className="flex items-center justify-center cursor-pointer"
           >
-            <GitHubSVG
-              width="24"
-              height="24"
-            />
+            <GitHubSVG height="24" width="24" />
           </button>
         </TooltipTrigger>
         <TooltipContent side="left">
@@ -134,11 +133,11 @@ export function Thread() {
   const [threadId, _setThreadId] = useQueryState("threadId");
   const [chatHistoryOpen, setChatHistoryOpen] = useQueryState(
     "chatHistoryOpen",
-    parseAsBoolean.withDefault(false),
+    parseAsBoolean.withDefault(false)
   );
   const [hideToolCalls, setHideToolCalls] = useQueryState(
     "hideToolCalls",
-    parseAsBoolean.withDefault(false),
+    parseAsBoolean.withDefault(false)
   );
   const [input, setInput] = useState("");
   const {
@@ -246,7 +245,7 @@ export function Thread() {
             newHumanMessage,
           ],
         }),
-      },
+      }
     );
 
     setInput("");
@@ -254,7 +253,7 @@ export function Thread() {
   };
 
   const handleRegenerate = (
-    parentCheckpoint: Checkpoint | null | undefined,
+    parentCheckpoint: Checkpoint | null | undefined
   ) => {
     // Do this so the loading state is correct
     prevMessageLength.current = prevMessageLength.current - 1;
@@ -268,32 +267,29 @@ export function Thread() {
   };
 
   const chatStarted = !!threadId || !!messages.length;
-  const hasNoAIOrToolMessages = !messages.find(
-    (m) => m.type === "ai" || m.type === "tool",
+  const hasNoAiOrToolMessages = !messages.find(
+    (m) => m.type === "ai" || m.type === "tool"
   );
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
       <div className="relative hidden lg:flex">
         <motion.div
-          className="absolute z-20 h-full overflow-hidden border-r bg-white"
-          style={{ width: 300 }}
           animate={
             isLargeScreen
               ? { x: chatHistoryOpen ? 0 : -300 }
               : { x: chatHistoryOpen ? 0 : -300 }
           }
+          className="absolute z-20 h-full overflow-hidden border-r bg-white"
           initial={{ x: -300 }}
+          style={{ width: 300 }}
           transition={
             isLargeScreen
               ? { type: "spring", stiffness: 300, damping: 30 }
               : { duration: 0 }
           }
         >
-          <div
-            className="relative h-full"
-            style={{ width: 300 }}
-          >
+          <div className="relative h-full" style={{ width: 300 }}>
             <ThreadHistory />
           </div>
         </motion.div>
@@ -302,15 +298,10 @@ export function Thread() {
       <div
         className={cn(
           "grid w-full grid-cols-[1fr_0fr] transition-all duration-500",
-          artifactOpen && "grid-cols-[3fr_2fr]",
+          artifactOpen && "grid-cols-[3fr_2fr]"
         )}
       >
         <motion.div
-          className={cn(
-            "relative flex min-w-0 flex-1 flex-col overflow-hidden",
-            !chatStarted && "grid-rows-[1fr]",
-          )}
-          layout={isLargeScreen}
           animate={{
             marginLeft: chatHistoryOpen ? (isLargeScreen ? 300 : 0) : 0,
             width: chatHistoryOpen
@@ -319,6 +310,11 @@ export function Thread() {
                 : "100%"
               : "100%",
           }}
+          className={cn(
+            "relative flex min-w-0 flex-1 flex-col overflow-hidden",
+            !chatStarted && "grid-rows-[1fr]"
+          )}
+          layout={isLargeScreen}
           transition={
             isLargeScreen
               ? { type: "spring", stiffness: 300, damping: 30 }
@@ -328,11 +324,11 @@ export function Thread() {
           {!chatStarted && (
             <div className="absolute top-0 left-0 z-10 flex w-full items-center justify-between gap-3 p-2 pl-4">
               <div>
-                {(!chatHistoryOpen || !isLargeScreen) && (
+                {!(chatHistoryOpen && isLargeScreen) && (
                   <Button
                     className="hover:bg-gray-100"
-                    variant="ghost"
                     onClick={() => setChatHistoryOpen((p) => !p)}
+                    variant="ghost"
                   >
                     {chatHistoryOpen ? (
                       <PanelRightOpen className="size-5" />
@@ -343,20 +339,25 @@ export function Thread() {
                 )}
               </div>
               <div className="absolute top-2 right-4 flex items-center">
-                <MCPServerConfigButton onClick={() => setGithubDialogOpen(true)} />
+                <McpServerConfigButton
+                  onClick={() => setGithubDialogOpen(true)}
+                />
               </div>
             </div>
           )}
-          <GithubConfigDialog open={githubDialogOpen} onOpenChange={setGithubDialogOpen} />
+          <GithubConfigDialog
+            onOpenChange={setGithubDialogOpen}
+            open={githubDialogOpen}
+          />
           {chatStarted && (
             <div className="relative z-10 flex items-center justify-between gap-3 p-2">
               <div className="relative flex items-center justify-start gap-2">
                 <div className="absolute left-0 z-10">
-                  {(!chatHistoryOpen || !isLargeScreen) && (
+                  {!(chatHistoryOpen && isLargeScreen) && (
                     <Button
                       className="hover:bg-gray-100"
-                      variant="ghost"
                       onClick={() => setChatHistoryOpen((p) => !p)}
+                      variant="ghost"
                     >
                       {chatHistoryOpen ? (
                         <PanelRightOpen className="size-5" />
@@ -367,22 +368,19 @@ export function Thread() {
                   )}
                 </div>
                 <motion.button
+                  animate={{
+                    marginLeft: chatHistoryOpen ? 0 : 48,
+                  }}
                   className="flex cursor-pointer items-center gap-2"
                   onClick={() => setThreadId(null)}
-                  animate={{
-                    marginLeft: !chatHistoryOpen ? 48 : 0,
-                  }}
                   transition={{
                     type: "spring",
                     stiffness: 300,
                     damping: 30,
                   }}
                 >
-                  <LangGraphLogoSVG
-                    width={32}
-                    height={32}
-                  />
-                  <span className="text-xl font-semibold tracking-tight">
+                  <LangGraphLogoSVG height={32} width={32} />
+                  <span className="font-semibold text-xl tracking-tight">
                     Agent Chat
                   </span>
                 </motion.button>
@@ -390,7 +388,9 @@ export function Thread() {
 
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3">
-                  <MCPServerConfigButton onClick={() => setGithubDialogOpen(true)} />
+                  <McpServerConfigButton
+                    onClick={() => setGithubDialogOpen(true)}
+                  />
                   <SignedOut>
                     <SignInButton mode="modal" />
                   </SignedOut>
@@ -399,28 +399,27 @@ export function Thread() {
                   </SignedIn>
                 </div>
                 <TooltipIconButton
-                  size="lg"
                   className="p-4"
+                  onClick={() => setThreadId(null)}
+                  size="lg"
                   tooltip="New thread"
                   variant="ghost"
-                  onClick={() => setThreadId(null)}
                 >
                   <SquarePen className="size-5" />
                 </TooltipIconButton>
               </div>
 
-              <div className="from-background to-background/0 absolute inset-x-0 top-full h-5 bg-gradient-to-b" />
+              <div className="absolute inset-x-0 top-full h-5 bg-gradient-to-b from-background to-background/0" />
             </div>
           )}
 
           <StickToBottom className="relative flex-1 overflow-hidden">
             <StickyToBottomContent
               className={cn(
-                "absolute inset-0 overflow-y-scroll px-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-track]:bg-transparent",
+                "absolute inset-0 overflow-y-scroll px-4 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5",
                 !chatStarted && "mt-[25vh] flex flex-col items-stretch",
-                chatStarted && "grid grid-rows-[1fr_auto]",
+                chatStarted && "grid grid-rows-[1fr_auto]"
               )}
-              contentClassName="pt-8 pb-16  max-w-3xl mx-auto flex flex-col gap-4 w-full"
               content={
                 <>
                   {(() => {
@@ -433,8 +432,10 @@ export function Thread() {
                       });
 
                     // Group research and critique agent messages
-                    const researchGroups = groupResearchAgentMessages(filteredMessages);
-                    const critiqueGroups = groupCritiqueAgentMessages(filteredMessages);
+                    const researchGroups =
+                      groupResearchAgentMessages(filteredMessages);
+                    const critiqueGroups =
+                      groupCritiqueAgentMessages(filteredMessages);
 
                     // Track which indices have been processed
                     const processedIndices = new Set<number>();
@@ -451,20 +452,29 @@ export function Thread() {
                     // First pass: collect all timeline activities
                     filteredMessages.forEach((message, index) => {
                       // Check if this is the start of a research group
-                      if (researchGroups.length > 0 && index === researchGroups[0].startIndex) {
+                      if (
+                        researchGroups.length > 0 &&
+                        index === researchGroups[0].startIndex
+                      ) {
                         allTimelineActivities.push({
                           key: "research-agents-timeline",
                           messages: filteredMessages.slice(
                             researchGroups[0].startIndex,
-                            researchGroups[researchGroups.length - 1].endIndex + 1
+                            researchGroups[researchGroups.length - 1].endIndex +
+                              1
                           ),
                           startIndex: researchGroups[0].startIndex,
-                          endIndex: researchGroups[researchGroups.length - 1].endIndex
+                          endIndex:
+                            researchGroups[researchGroups.length - 1].endIndex,
                         });
 
                         // Mark all research-related messages as processed
-                        researchGroups.forEach(group => {
-                          for (let i = group.startIndex; i <= group.endIndex; i++) {
+                        researchGroups.forEach((group) => {
+                          for (
+                            let i = group.startIndex;
+                            i <= group.endIndex;
+                            i++
+                          ) {
                             processedIndices.add(i);
                           }
                         });
@@ -472,20 +482,29 @@ export function Thread() {
                       }
 
                       // Check if this is the start of a critique group
-                      if (critiqueGroups.length > 0 && index === critiqueGroups[0].startIndex) {
+                      if (
+                        critiqueGroups.length > 0 &&
+                        index === critiqueGroups[0].startIndex
+                      ) {
                         allTimelineActivities.push({
                           key: "critique-agents-timeline",
                           messages: filteredMessages.slice(
                             critiqueGroups[0].startIndex,
-                            critiqueGroups[critiqueGroups.length - 1].endIndex + 1
+                            critiqueGroups[critiqueGroups.length - 1].endIndex +
+                              1
                           ),
                           startIndex: critiqueGroups[0].startIndex,
-                          endIndex: critiqueGroups[critiqueGroups.length - 1].endIndex
+                          endIndex:
+                            critiqueGroups[critiqueGroups.length - 1].endIndex,
                         });
 
                         // Mark all critique-related messages as processed
-                        critiqueGroups.forEach(group => {
-                          for (let i = group.startIndex; i <= group.endIndex; i++) {
+                        critiqueGroups.forEach((group) => {
+                          for (
+                            let i = group.startIndex;
+                            i <= group.endIndex;
+                            i++
+                          ) {
                             processedIndices.add(i);
                           }
                         });
@@ -498,12 +517,22 @@ export function Thread() {
                       }
 
                       // Process AI messages with tool calls
-                      if (message.type === "ai" && message.tool_calls && message.tool_calls.length > 0) {
+                      if (
+                        message.type === "ai" &&
+                        message.tool_calls &&
+                        message.tool_calls.length > 0
+                      ) {
                         // Find the end of this AI message's tool activities
                         let endIndex = index;
-                        for (let i = index + 1; i < filteredMessages.length; i++) {
-                          if (filteredMessages[i].type === "human" ||
-                              filteredMessages[i].type === "ai") {
+                        for (
+                          let i = index + 1;
+                          i < filteredMessages.length;
+                          i++
+                        ) {
+                          if (
+                            filteredMessages[i].type === "human" ||
+                            filteredMessages[i].type === "ai"
+                          ) {
                             break;
                           }
                           endIndex = i;
@@ -513,7 +542,7 @@ export function Thread() {
                           key: `timeline-${index}`,
                           messages: filteredMessages.slice(index, endIndex + 1),
                           startIndex: index,
-                          endIndex: endIndex
+                          endIndex,
                         });
 
                         // Mark these messages as processed
@@ -528,19 +557,27 @@ export function Thread() {
                     let timelineActivityIndex = 0;
                     filteredMessages.forEach((message, index) => {
                       // Check if this is the start of a timeline activity
-                      if (timelineActivityIndex < allTimelineActivities.length &&
-                          index === allTimelineActivities[timelineActivityIndex].startIndex) {
+                      if (
+                        timelineActivityIndex < allTimelineActivities.length &&
+                        index ===
+                          allTimelineActivities[timelineActivityIndex]
+                            .startIndex
+                      ) {
                         // Render the timeline activity
-                        const activity = allTimelineActivities[timelineActivityIndex];
+                        const activity =
+                          allTimelineActivities[timelineActivityIndex];
                         result.push(
                           <TimelineAdapter
+                            isLast={
+                              timelineActivityIndex ===
+                              allTimelineActivities.length - 1
+                            }
                             key={activity.key}
                             messages={activity.messages}
-                            isLast={timelineActivityIndex === allTimelineActivities.length - 1}
                           />
                         );
                         timelineActivityIndex++;
-                        
+
                         // Skip to the end of this activity
                         index = activity.endIndex;
                         return;
@@ -557,16 +594,16 @@ export function Thread() {
                       result.push(
                         message.type === "human" ? (
                           <HumanMessage
+                            isLoading={isLoading}
                             key={stableKey}
                             message={message}
-                            isLoading={isLoading}
                           />
                         ) : (
                           <AssistantMessage
+                            handleRegenerate={handleRegenerate}
+                            isLoading={isLoading}
                             key={stableKey}
                             message={message}
-                            isLoading={isLoading}
-                            handleRegenerate={handleRegenerate}
                           />
                         )
                       );
@@ -576,12 +613,12 @@ export function Thread() {
                   })()}
                   {/* Special rendering case where there are no AI/tool messages, but there is an interrupt.
                     We need to render it outside of the messages list, since there are no messages to render */}
-                  {hasNoAIOrToolMessages && !!stream.interrupt && (
+                  {hasNoAiOrToolMessages && !!stream.interrupt && (
                     <AssistantMessage
+                      handleRegenerate={handleRegenerate}
+                      isLoading={isLoading}
                       key="interrupt-msg"
                       message={undefined}
-                      isLoading={isLoading}
-                      handleRegenerate={handleRegenerate}
                     />
                   )}
                   {isLoading && !firstTokenReceived && (
@@ -589,40 +626,40 @@ export function Thread() {
                   )}
                 </>
               }
+              contentClassName="pt-8 pb-16  max-w-3xl mx-auto flex flex-col gap-4 w-full"
               footer={
                 <div className="sticky bottom-0 flex flex-col items-center gap-8 bg-white">
                   {!chatStarted && (
                     <div className="flex items-center gap-3">
                       <LangGraphLogoSVG className="h-8 flex-shrink-0" />
-                      <h1 className="text-2xl font-semibold tracking-tight">
+                      <h1 className="font-semibold text-2xl tracking-tight">
                         Agent Chat
                       </h1>
                     </div>
                   )}
 
-                  <ScrollToBottom className="animate-in fade-in-0 zoom-in-95 absolute bottom-full left-1/2 mb-4 -translate-x-1/2" />
+                  <ScrollToBottom className="fade-in-0 zoom-in-95 -translate-x-1/2 absolute bottom-full left-1/2 mb-4 animate-in" />
 
                   <div
-                    ref={dropRef}
                     className={cn(
-                      "bg-muted relative z-10 mx-auto mb-8 w-full max-w-3xl rounded-2xl shadow-xs transition-all",
+                      "relative z-10 mx-auto mb-8 w-full max-w-3xl rounded-2xl bg-muted shadow-xs transition-all",
                       dragOver
-                        ? "border-primary border-2 border-dotted"
-                        : "border border-solid",
+                        ? "border-2 border-primary border-dotted"
+                        : "border border-solid"
                     )}
+                    ref={dropRef}
                   >
                     <form
-                      onSubmit={handleSubmit}
                       className="mx-auto grid max-w-3xl grid-rows-[1fr_auto] gap-2"
+                      onSubmit={handleSubmit}
                     >
                       <ContentBlocksPreview
                         blocks={contentBlocks}
                         onRemove={removeBlock}
                       />
                       <textarea
-                        value={input}
+                        className="field-sizing-content resize-none border-none bg-transparent p-3.5 pb-0 shadow-none outline-none ring-0 focus:outline-none focus:ring-0"
                         onChange={(e) => setInput(e.target.value)}
-                        onPaste={handlePaste}
                         onKeyDown={(e) => {
                           if (
                             e.key === "Enter" &&
@@ -636,60 +673,61 @@ export function Thread() {
                             form?.requestSubmit();
                           }
                         }}
+                        onPaste={handlePaste}
                         placeholder="Type your message..."
-                        className="field-sizing-content resize-none border-none bg-transparent p-3.5 pb-0 shadow-none ring-0 outline-none focus:ring-0 focus:outline-none"
+                        value={input}
                       />
 
                       <div className="flex items-center gap-6 p-2 pt-4">
                         <div>
                           <div className="flex items-center space-x-2">
                             <Switch
-                              id="render-tool-calls"
                               checked={hideToolCalls ?? false}
+                              id="render-tool-calls"
                               onCheckedChange={setHideToolCalls}
                             />
                             <Label
+                              className="text-gray-600 text-sm"
                               htmlFor="render-tool-calls"
-                              className="text-sm text-gray-600"
                             >
                               Hide Tool Calls
                             </Label>
                           </div>
                         </div>
                         <Label
-                          htmlFor="file-input"
                           className="flex cursor-pointer items-center gap-2"
+                          htmlFor="file-input"
                         >
                           <Plus className="size-5 text-gray-600" />
-                          <span className="text-sm text-gray-600">
+                          <span className="text-gray-600 text-sm">
                             Upload PDF or Image
                           </span>
                         </Label>
                         <input
-                          id="file-input"
-                          type="file"
-                          onChange={handleFileUpload}
-                          multiple
                           accept="image/jpeg,image/png,image/gif,image/webp,application/pdf"
                           className="hidden"
+                          id="file-input"
+                          multiple
+                          onChange={handleFileUpload}
+                          type="file"
                         />
                         {stream.isLoading ? (
                           <Button
+                            className="ml-auto"
                             key="stop"
                             onClick={() => stream.stop()}
-                            className="ml-auto"
                           >
                             <LoaderCircle className="h-4 w-4 animate-spin" />
                             Cancel
                           </Button>
                         ) : (
                           <Button
-                            type="submit"
                             className="ml-auto shadow-md transition-all"
                             disabled={
                               isLoading ||
                               (!input.trim() && contentBlocks.length === 0)
                             }
+                            type="submit"
                           >
                             Send
                           </Button>
@@ -705,11 +743,8 @@ export function Thread() {
         <div className="relative flex flex-col border-l">
           <div className="absolute inset-0 flex min-w-[30vw] flex-col">
             <div className="grid grid-cols-[1fr_auto] border-b p-4">
-              <ArtifactTitle className="truncate overflow-hidden" />
-              <button
-                onClick={closeArtifact}
-                className="cursor-pointer"
-              >
+              <ArtifactTitle className="overflow-hidden truncate" />
+              <button className="cursor-pointer" onClick={closeArtifact}>
                 <XIcon className="size-5" />
               </button>
             </div>

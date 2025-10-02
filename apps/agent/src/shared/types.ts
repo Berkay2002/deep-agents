@@ -1,59 +1,59 @@
 // Shared types for all agents
 import type { BaseMessage } from "@langchain/core/messages";
-import type { SubAgent } from "../deep-agent/index.js";
+import type { SubAgent } from "../deep-agent/types.js";
 
-// Agent configuration interface
-export interface AgentConfig {
+// Agent configuration type
+export type AgentConfig = {
   name: string;
   description: string;
   capabilities: string[];
   model?: string;
   temperature?: number;
-}
+};
 
 // Base state for all agents
-export interface BaseAgentState {
+export type BaseAgentState = {
   messages: BaseMessage[];
-  files?: Record<string, string>;
-  context?: Record<string, any>;
-}
+  files?: Record<string, unknown>;
+  context?: Record<string, unknown>;
+};
 
 // DeepAgent-specific types (importing from deepagents creates circular dependency)
-// We'll use 'any' for the graph type to avoid issues
-export interface AgentFactory {
-  create(config?: Partial<AgentConfig>): Promise<any>;
+// We'll use 'unknown' for the graph type to avoid issues
+export type AgentFactory = {
+  create(config?: Partial<AgentConfig>): Promise<unknown>;
   getConfig(): AgentConfig;
-}
+};
 
 // Agent type enum
 export type AgentType = "deep-research" | "code-assistant" | "general-chat";
 
-// Agent file interface
-export interface AgentFile {
+// Agent file type
+export type AgentFile = {
   name: string;
   data: string | ArrayBuffer | Uint8Array;
   mimeType?: string;
-}
+};
 
 // Agent run input
-export interface AgentRunInput {
+export type AgentRunInput = {
   messages: BaseMessage[];
   files?: AgentFile[];
   preferredAgent?: AgentType;
-}
+};
 
 // DeepAgent configuration
-export interface DeepAgentConfig {
-  tools: any[];
+export type DeepAgentConfig = {
+  tools: unknown[];
   instructions: string;
   subagents?: SubAgent[];
-  model?: any;
-}
+  model?: unknown;
+};
 
 // Agent selection result
-export interface AgentSelectionResult {
-  agent: any;
+export type AgentSelectionResult = {
+  agent: unknown;
   type: AgentType;
   confidence: number;
   reasoning: string;
-}
+};
