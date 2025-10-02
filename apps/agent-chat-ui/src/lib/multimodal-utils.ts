@@ -1,4 +1,4 @@
-import type { Base64ContentBlock } from "@langchain/core/messages";
+import type { Base64ContentBlock } from "@/types";
 import { toast } from "sonner";
 
 // Returns a Promise of a typed multimodal block for images or PDFs
@@ -26,7 +26,11 @@ export async function fileToContentBlock(
     return {
       type: "image",
       sourceType: "base64",
+      // biome-ignore lint: Include for compatibility with LangChain
+      source_type: "base64",
       mimeType: file.type,
+      // biome-ignore lint: Include for compatibility with LangChain
+      mime_type: file.type,
       data,
       metadata: { name: file.name },
     };
@@ -36,7 +40,11 @@ export async function fileToContentBlock(
   return {
     type: "file",
     sourceType: "base64",
+    // biome-ignore lint: Include for compatibility with LangChain
+    source_type: "base64",
     mimeType: "application/pdf",
+    // biome-ignore lint: Include for compatibility with LangChain
+    mime_type: "application/pdf",
     data,
     metadata: { filename: file.name },
   };

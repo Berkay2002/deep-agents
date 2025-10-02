@@ -1,4 +1,4 @@
-import type { Base64ContentBlock } from "@langchain/core/messages";
+import type { Base64ContentBlock } from "@/types";
 import type React from "react";
 import { cn } from "@/lib/utils";
 import { MultimodalPreview } from "./MultimodalPreview";

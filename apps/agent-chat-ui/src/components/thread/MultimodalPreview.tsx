@@ -1,4 +1,4 @@
-import type { Base64ContentBlock } from "@langchain/core/messages";
+import type { Base64ContentBlock } from "@/types";
 import { File, X } from "lucide-react";
 import Image from "next/image";
 import type React from "react";
@@ -41,7 +41,7 @@ export const MultimodalPreview: React.FC<MultimodalPreviewProps> = ({
   // Image block
   if (
     block.type === "image" &&
-    block.source_type === "base64" &&
+    block.sourceType === "base64" &&
     typeof block.mime_type === "string" &&
     block.mime_type.startsWith("image/")
   ) {
@@ -85,7 +85,7 @@ export const MultimodalPreview: React.FC<MultimodalPreviewProps> = ({
   // PDF block
   if (
     block.type === "file" &&
-    block.source_type === "base64" &&
+    block.sourceType === "base64" &&
     block.mime_type === "application/pdf"
   ) {
     const filename =

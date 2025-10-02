@@ -1,4 +1,4 @@
-import type { Base64ContentBlock } from "@langchain/core/messages";
+import type { Base64ContentBlock } from "@/types";
 import {
   type ChangeEvent,
   useCallback,

@@ -442,23 +442,27 @@ export function Thread() {
     const context =
       Object.keys(artifactContext).length > 0 ? artifactContext : undefined;
 
-    stream.submit(
-      { messages: [...toolMessages, newHumanMessage], context },
-      {
-        streamMode: ["values"],
-        streamSubgraphs: true,
-        streamResumable: true,
-        optimisticValues: (prev) => ({
-          ...prev,
-          context,
-          messages: [
-            ...(prev.messages ?? []),
-            ...toolMessages,
-            newHumanMessage,
-          ],
-        }),
-      }
-    );
+    const submitData: { messages: Message[]; context?: typeof artifactContext } = {
+      messages: [...toolMessages, newHumanMessage],
+    };
+    if (context) {
+      submitData.context = context;
+    }
+
+    stream.submit(submitData, {
+      streamMode: ["values"],
+      streamSubgraphs: true,
+      streamResumable: true,
+      optimisticValues: (prev) => ({
+        ...prev,
+        context,
+        messages: [
+          ...(prev.messages ?? []),
+          ...toolMessages,
+          newHumanMessage,
+        ],
+      }),
+    });
 
     setInput("");
     setContentBlocks([]);
