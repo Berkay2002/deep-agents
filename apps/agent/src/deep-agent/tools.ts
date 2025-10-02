@@ -14,7 +14,7 @@ import {
   WRITE_TODOS_DESCRIPTION,
   EDIT_DESCRIPTION,
   TOOL_DESCRIPTION,
-} from "./pnrompts.js";
+} from "./prompts.js";
 import { DeepAgentStateType } from "./types.js";
 
 /**
