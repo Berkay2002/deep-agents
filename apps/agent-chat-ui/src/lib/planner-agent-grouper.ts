@@ -19,6 +19,14 @@ export type PlanningToolResult = {
   toolCallId: string;
 };
 
+export type FileOperationData = {
+  toolCallId: string;
+  toolName: string;
+  args: Record<string, unknown>;
+  result?: string;
+  error?: string;
+};
+
 export type PlannerAgentStatus = "pending" | "in_progress" | "completed";
 
 export type PlannerAgentGroup = {
@@ -27,6 +35,7 @@ export type PlannerAgentGroup = {
   topicAnalysis?: Record<string, unknown>;
   scopeEstimation?: Record<string, unknown>;
   planOptimization?: Record<string, unknown>;
+  fileOperations: FileOperationData[];
   finalPlan?: string;
   status: PlannerAgentStatus;
   startIndex: number;
@@ -42,6 +51,13 @@ function isPlannerAgentTask(toolCall: ToolCall): boolean {
   }
   const args = toolCall.args as PlannerAgentTaskArgs;
   return args?.subagentType === "planner-agent" && !!args?.description;
+}
+
+/**
+ * Checks if a tool name is a file operation
+ */
+function isFileOperationTool(toolName: string): boolean {
+  return ["Read", "Write", "Edit", "MultiEdit", "ls", "read_file", "write_file", "edit_file"].includes(toolName);
 }
 
 /**
@@ -116,6 +132,7 @@ export function groupPlannerAgentMessages(
         let scopeEstimation: Record<string, unknown> | undefined;
         let planOptimization: Record<string, unknown> | undefined;
         let finalPlan: string | undefined;
+        const fileOperations: FileOperationData[] = [];
         let endIndex = i;
 
         // Determine initial status
@@ -181,6 +198,31 @@ export function groupPlannerAgentMessages(
                 status = "in_progress";
               }
               continue;
+            }
+
+            // Check for file operation results
+            if (toolMsg.name && isFileOperationTool(toolMsg.name)) {
+              // Find the corresponding tool call from earlier messages
+              const toolCall = messages
+                .slice(0, j)
+                .filter((m) => m.type === "ai")
+                .flatMap((m) => m.tool_calls || [])
+                .find((tc) => tc.id === toolMsg.tool_call_id);
+
+              if (toolCall) {
+                fileOperations.push({
+                  toolCallId: toolMsg.tool_call_id || "",
+                  toolName: toolMsg.name,
+                  args: toolCall.args as Record<string, unknown>,
+                  result: typeof toolMsg.content === "string" ? toolMsg.content : undefined,
+                });
+                endIndex = Math.max(endIndex, j);
+                // File operations indicate progress
+                if (status === "pending") {
+                  status = "in_progress";
+                }
+                continue;
+              }
             }
 
             // Debug: log all tool messages to see what we're getting
@@ -250,6 +292,7 @@ export function groupPlannerAgentMessages(
           topicAnalysis,
           scopeEstimation,
           planOptimization,
+          fileOperations,
           finalPlan,
           status,
           startIndex: i,
@@ -272,5 +315,17 @@ export function isMessageInPlannerGroup(
   return groups.some(
     (group) =>
       messageIndex >= group.startIndex && messageIndex <= group.endIndex
+  );
+}
+
+/**
+ * Checks if a tool call ID is part of a planner agent group's file operations
+ */
+export function isToolCallInPlannerGroup(
+  toolCallId: string,
+  groups: PlannerAgentGroup[]
+): boolean {
+  return groups.some((group) =>
+    group.fileOperations.some((op) => op.toolCallId === toolCallId)
   );
 }

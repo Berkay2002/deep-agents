@@ -367,6 +367,7 @@ export function TimelineAdapter({
     const agents = researchGroups.map((group) => ({
       taskDescription: group.taskDescription,
       searchResults: group.searchResults,
+      fileOperations: group.fileOperations,
       findings: group.findings,
       status: group.status,
     }));
@@ -393,6 +394,7 @@ export function TimelineAdapter({
       taskDescription: group.taskDescription,
       critique: group.critique,
       fileReads: group.fileReads,
+      fileOperations: group.fileOperations,
     }));
 
     activities.push(
@@ -417,6 +419,7 @@ export function TimelineAdapter({
       topicAnalysis: group.topicAnalysis,
       scopeEstimation: group.scopeEstimation,
       planOptimization: group.planOptimization,
+      fileOperations: group.fileOperations,
       finalPlan: group.finalPlan,
       status: group.status,
     }));

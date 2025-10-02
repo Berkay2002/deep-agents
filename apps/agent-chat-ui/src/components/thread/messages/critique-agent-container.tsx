@@ -6,9 +6,14 @@ import {
   ChevronDown,
   ChevronUp,
   FileCheck,
+  Folder,
   MessageSquare,
 } from "lucide-react";
 import { useState } from "react";
+import type { FileOperationData } from "@/lib/critique-agent-grouper";
+import { LsResult } from "./ls-result";
+import { ReadFileDisplay } from "./read-file-display";
+import { WriteFileDiff } from "./write-file-diff";
 
 type FileRead = {
   filePath: string;
@@ -20,6 +25,7 @@ type CritiqueAgent = {
   taskDescription: string;
   critique?: string;
   fileReads: FileRead[];
+  fileOperations?: FileOperationData[];
 };
 
 type CritiqueAgentContainerProps = {
@@ -155,6 +161,69 @@ export function CritiqueAgentContainer({
                 </div>
               </div>
             )}
+
+            {/* File Operations Section */}
+            {currentAgent.fileOperations &&
+              currentAgent.fileOperations.length > 0 && (
+                <div className="border-gray-100 border-b p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Folder className="h-3.5 w-3.5 text-purple-600" />
+                    <h4 className="font-medium text-gray-700 text-sm">
+                      File Operations ({currentAgent.fileOperations.length})
+                    </h4>
+                  </div>
+                  <div className="space-y-3">
+                    {currentAgent.fileOperations.map((operation, idx) => {
+                      // Render ls results
+                      if (operation.toolName === "ls") {
+                        const files = operation.result
+                          ? JSON.parse(operation.result)
+                          : [];
+                        return (
+                          <LsResult
+                            files={Array.isArray(files) ? files : []}
+                            key={`ls-${idx}-${operation.toolCallId}`}
+                          />
+                        );
+                      }
+
+                      // Render Read operations
+                      if (
+                        operation.toolName === "Read" ||
+                        operation.toolName === "read_file"
+                      ) {
+                        return (
+                          <ReadFileDisplay
+                            args={operation.args}
+                            content={operation.result || ""}
+                            key={`read-${idx}-${operation.toolCallId}`}
+                            toolName={operation.toolName}
+                          />
+                        );
+                      }
+
+                      // Render Write/Edit operations
+                      if (
+                        ["Write", "Edit", "MultiEdit", "write_file", "edit_file"].includes(
+                          operation.toolName
+                        )
+                      ) {
+                        return (
+                          <WriteFileDiff
+                            args={operation.args}
+                            error={operation.error}
+                            key={`write-${idx}-${operation.toolCallId}`}
+                            success={!operation.error}
+                            toolName={operation.toolName}
+                          />
+                        );
+                      }
+
+                      return null;
+                    })}
+                  </div>
+                </div>
+              )}
 
             {/* Critique Section */}
             {currentAgent.critique && (

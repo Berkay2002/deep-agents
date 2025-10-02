@@ -1171,9 +1171,9 @@ Use read_file to access critique: read_file({ filePath: "${filePath}" })`,
         )
         .describe("Array of structured findings"),
       metadata: z
-        .record(z.string(), z.unknown())
+        .any()
         .optional()
-        .describe("Optional additional context"),
+        .describe("Optional additional context (key-value object)"),
     }),
   }
 );

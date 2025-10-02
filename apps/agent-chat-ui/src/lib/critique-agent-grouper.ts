@@ -22,11 +22,93 @@ export type FileRead = {
   toolCallId: string;
 };
 
+export type FileOperationData = {
+  toolCallId: string;
+  toolName: string;
+  args: Record<string, unknown>;
+  result?: string;
+  error?: string;
+};
+
+export type FactCheckResult = {
+  claim: string;
+  context: string;
+  verified: boolean;
+  sources: Array<{
+    title: string;
+    url: string;
+    snippet: string;
+  }>;
+  synthesizedAnswer: string | null;
+  confidence: "high" | "medium" | "low";
+  notes: string;
+  timestamp: string;
+};
+
+export type StructureEvaluationResult = {
+  reportPath: string;
+  sectionCount: number;
+  mainSections: number;
+  headingHierarchy: Array<{
+    level: number;
+    title: string;
+    line: number;
+  }>;
+  paragraphCount: number;
+  wordCount: number;
+  paragraphsPerSection: Record<string, number>;
+  issues: Array<{
+    issue: string;
+    severity: string;
+    location: string;
+  }>;
+  recommendations: string[];
+  score: number;
+  timestamp: string;
+};
+
+export type CompletenessAnalysisResult = {
+  reportPath: string;
+  questionPath: string;
+  coverageScore: number;
+  coveredAreas: string[];
+  missingAreas: string[];
+  recommendations: string[];
+  questionAlignment: string;
+  expectedAreaCount: number;
+  coveredAreaCount: number;
+  timestamp: string;
+};
+
+export type SaveCritiqueResult = {
+  category: string;
+  findings: Array<{
+    issue: string;
+    severity: string;
+    suggestion: string;
+    location: string;
+  }>;
+  totalIssues: number;
+  severityBreakdown: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+  metadata: Record<string, unknown>;
+  timestamp: string;
+};
+
 export type CritiqueAgentGroup = {
   taskDescription: string;
   taskToolCallId: string;
   critique?: string;
   fileReads: FileRead[];
+  fileOperations: FileOperationData[];
+  factCheckResults: FactCheckResult[];
+  structureEvaluationResults: StructureEvaluationResult[];
+  completenessAnalysisResults: CompletenessAnalysisResult[];
+  saveCritiqueResults: SaveCritiqueResult[];
   startIndex: number;
   endIndex: number;
 };
@@ -40,6 +122,37 @@ function isCritiqueAgentTask(toolCall: ToolCall): boolean {
   }
   const args = toolCall.args as CritiqueAgentTaskArgs;
   return args?.subagentType === "critique-agent" && !!args?.description;
+}
+
+/**
+ * Checks if a tool name is a file operation (Write, Edit, ls)
+ * Note: Read operations are handled separately in fileReads
+ */
+function isWriteEditOrLsOperation(toolName: string): boolean {
+  return ["Write", "Edit", "MultiEdit", "ls", "write_file", "edit_file"].includes(toolName);
+}
+
+/**
+ * Checks if a tool name is a critique tool
+ */
+function isCritiqueTool(toolName: string): boolean {
+  return ["fact_check", "evaluate_structure", "analyze_completeness", "save_critique"].includes(toolName);
+}
+
+/**
+ * Extracts JSON file paths from tool message content
+ */
+function extractJsonFilePaths(content: string): string[] {
+  const filePaths: string[] = [];
+  const regex = /\/research\/critiques\/[^\\s"']+/g;
+  let match: RegExpExecArray | null;
+  
+  // biome-ignore lint: This is the standard way to use regex.exec in a loop
+  while ((match = regex.exec(content)) !== null) {
+    filePaths.push(match[0]);
+  }
+  
+  return filePaths;
 }
 
 /**
@@ -87,6 +200,11 @@ export function groupCritiqueAgentMessages(
         let critique: string | undefined;
         let endIndex = i;
         const fileReads: FileRead[] = [];
+        const fileOperations: FileOperationData[] = [];
+        const factCheckResults: FactCheckResult[] = [];
+        const structureEvaluationResults: StructureEvaluationResult[] = [];
+        const completenessAnalysisResults: CompletenessAnalysisResult[] = [];
+        const saveCritiqueResults: SaveCritiqueResult[] = [];
 
         // Collect all AI message content between task invocation and completion
         const allAiContent: string[] = [];
@@ -95,7 +213,7 @@ export function groupCritiqueAgentMessages(
         for (let j = i + 1; j < messages.length; j++) {
           const nextMessage = messages[j];
 
-          // Check for file read operations
+          // Check for file operations
           if (nextMessage.type === "tool") {
             const toolMsg = nextMessage as ToolMessage;
 
@@ -142,6 +260,61 @@ export function groupCritiqueAgentMessages(
                   }
                 }
               }
+            }
+            // Check for Write/Edit/ls operations
+            else if (toolMsg.name && isWriteEditOrLsOperation(toolMsg.name)) {
+              // Find the corresponding tool call from earlier messages
+              const toolCall = messages
+                .slice(0, j)
+                .filter((m) => m.type === "ai")
+                .flatMap((m) => m.tool_calls || [])
+                .find((tc) => tc.id === toolMsg.tool_call_id);
+
+              if (toolCall) {
+                fileOperations.push({
+                  toolCallId: toolMsg.tool_call_id || "",
+                  toolName: toolMsg.name,
+                  args: toolCall.args as Record<string, unknown>,
+                  result: typeof toolMsg.content === "string" ? toolMsg.content : undefined,
+                });
+                endIndex = j;
+              }
+            }
+            // Check for critique tool results
+            else if (toolMsg.name && isCritiqueTool(toolMsg.name)) {
+              // Try to parse JSON from the tool message content
+              if (typeof toolMsg.content === "string") {
+                try {
+                  // Look for JSON file paths in the content
+                  const jsonFilePaths = extractJsonFilePaths(toolMsg.content);
+                  
+                  for (const filePath of jsonFilePaths) {
+                    // Try to find the file content in fileReads
+                    const fileRead = fileReads.find((fr) => fr.filePath === filePath);
+                    if (fileRead) {
+                      try {
+                        const jsonData = JSON.parse(fileRead.content);
+                        
+                        // Categorize the result based on file path and tool name
+                        if (toolMsg.name === "fact_check" || filePath.includes("/fact_checks/")) {
+                          factCheckResults.push(jsonData as FactCheckResult);
+                        } else if (toolMsg.name === "evaluate_structure" || filePath.includes("structure_evaluation.json")) {
+                          structureEvaluationResults.push(jsonData as StructureEvaluationResult);
+                        } else if (toolMsg.name === "analyze_completeness" || filePath.includes("completeness_analysis.json")) {
+                          completenessAnalysisResults.push(jsonData as CompletenessAnalysisResult);
+                        } else if (toolMsg.name === "save_critique" || filePath.includes("_critique.json")) {
+                          saveCritiqueResults.push(jsonData as SaveCritiqueResult);
+                        }
+                      } catch {
+                        // Ignore JSON parsing errors
+                      }
+                    }
+                  }
+                } catch {
+                  // Ignore content parsing errors
+                }
+              }
+              endIndex = j;
             }
           }
 
@@ -228,6 +401,11 @@ export function groupCritiqueAgentMessages(
           taskToolCallId,
           critique,
           fileReads,
+          fileOperations,
+          factCheckResults,
+          structureEvaluationResults,
+          completenessAnalysisResults,
+          saveCritiqueResults,
           startIndex: i,
           endIndex,
         });
@@ -252,13 +430,14 @@ export function isMessageInCritiqueGroup(
 }
 
 /**
- * Checks if a tool_call_id belongs to a file read operation in a critique agent group
+ * Checks if a tool_call_id belongs to a file operation in a critique agent group
  */
 export function isToolCallInCritiqueGroup(
   toolCallId: string,
   groups: CritiqueAgentGroup[]
 ): boolean {
   return groups.some((group) =>
-    group.fileReads.some((fileRead) => fileRead.toolCallId === toolCallId)
+    group.fileReads.some((fileRead) => fileRead.toolCallId === toolCallId) ||
+    group.fileOperations.some((op) => op.toolCallId === toolCallId)
   );
 }

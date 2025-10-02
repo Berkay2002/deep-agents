@@ -61,7 +61,7 @@ Stores analysis results in \`/research/plans/{sanitized_topic}_analysis.json\` w
 - \`complexity\`: Difficulty level (low/medium/high)
 - \`researchAreas\`: Key areas that need investigation
 - \`suggestedSources\`: Recommended source types for this topic
-- \`estimatedTimeframe\`: Projected research duration
+- \`estimatedComplexity\`: Research complexity assessment (impacts task breakdown)
 - \`timestamp\`: When analysis was performed
 
 **Usage Pattern:**
@@ -82,22 +82,22 @@ The analysis file persists across agent turns and is accessible to all agents in
 /**
  * Detailed description for scope_estimation tool
  */
-export const SCOPE_ESTIMATION_DESCRIPTION = `Estimate the scope, timeframe, milestones, and resource requirements for a research project.
+export const SCOPE_ESTIMATION_DESCRIPTION = `Decompose research into structured tasks, milestones, and resource requirements.
 
 **When to Use:**
 - After completing \`topic_analysis\`
 - When you need to break down research into actionable tasks
-- To estimate time and resource requirements
+- To identify required tools and resources for research execution
 
 **Input:**
 Requires topic analysis data. Read from \`/research/plans/{topic}_analysis.json\` first or provide as input.
 
 **Output:**
 Stores estimation results in \`/research/plans/{sanitized_topic}_scope.json\` with:
-- \`estimatedTotalHours\`: Total projected research time
-- \`researchTasks\`: Array of tasks with priorities and time estimates
+- \`researchTasks\`: Array of tasks with priorities and dependencies
 - \`suggestedMilestones\`: Milestone definitions for tracking progress
-- \`resourceRequirements\`: Tools, expertise, and resources needed
+- \`resourceRequirements\`: Tools, search APIs, and capabilities needed
+- \`taskCount\`: Total number of research tasks
 - \`timestamp\`: When estimation was performed
 
 **Usage Pattern:**

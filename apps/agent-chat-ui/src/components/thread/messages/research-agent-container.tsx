@@ -7,13 +7,17 @@ import {
   ChevronUp,
   Clock,
   FileText,
+  Folder,
   Loader2,
   Search,
 } from "lucide-react";
 import { useState } from "react";
-import type { SearchResultData } from "@/lib/research-agent-grouper";
+import type { FileOperationData, SearchResultData } from "@/lib/research-agent-grouper";
 import { ExaSearchResults } from "./exa-search-results";
+import { LsResult } from "./ls-result";
+import { ReadFileDisplay } from "./read-file-display";
 import { TavilySearchResults } from "./tavily-search-results";
+import { WriteFileDiff } from "./write-file-diff";
 
 const KEY_PREFIX_LENGTH = 20;
 
@@ -22,6 +26,7 @@ type ResearchAgentStatus = "pending" | "in_progress" | "completed";
 type ResearchAgent = {
   taskDescription: string;
   searchResults: SearchResultData[];
+  fileOperations?: FileOperationData[];
   findings?: string;
   status: ResearchAgentStatus;
   statusUpdates?: string[];
@@ -269,6 +274,49 @@ export function ResearchAgentContainer({
                           results={searchData.results}
                         />
                       )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* File Operations Section */}
+            {currentAgent.fileOperations && currentAgent.fileOperations.length > 0 && (
+              <div className="border-gray-100 border-b p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <Folder className="h-3.5 w-3.5 text-gray-500">
+                    <title>File Operations</title>
+                  </Folder>
+                  <h4 className="font-medium text-gray-700 text-sm">
+                    File Operations ({currentAgent.fileOperations.length}{" "}
+                    {currentAgent.fileOperations.length === 1
+                      ? "operation"
+                      : "operations"}
+                    )
+                  </h4>
+                </div>
+                <div className="space-y-4">
+                  {currentAgent.fileOperations.map((fileOp, idx) => (
+                    <div
+                      className="pl-4"
+                      key={`file-op-${fileOp.toolCallId}-${idx}`}
+                    >
+                      {fileOp.toolName === "ls" && fileOp.result ? (
+                        <LsResult files={JSON.parse(fileOp.result)} />
+                      ) : (fileOp.toolName === "Read" || fileOp.toolName === "read_file") && fileOp.result ? (
+                        <ReadFileDisplay
+                          args={fileOp.args}
+                          content={fileOp.result}
+                          toolName={fileOp.toolName}
+                        />
+                      ) : (fileOp.toolName === "Write" || fileOp.toolName === "Edit" || fileOp.toolName === "write_file" || fileOp.toolName === "edit_file") ? (
+                        <WriteFileDiff
+                          args={fileOp.args}
+                          error={fileOp.error}
+                          success={!fileOp.error}
+                          toolName={fileOp.toolName}
+                        />
+                      ) : null}
                     </div>
                   ))}
                 </div>

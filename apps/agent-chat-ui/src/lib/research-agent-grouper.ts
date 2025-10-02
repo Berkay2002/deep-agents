@@ -72,10 +72,19 @@ export type SearchResultData = TavilySearchResultData | ExaSearchResultData;
 
 export type ResearchAgentStatus = "pending" | "in_progress" | "completed";
 
+export type FileOperationData = {
+  toolCallId: string;
+  toolName: string;
+  args: Record<string, unknown>;
+  result?: string;
+  error?: string;
+};
+
 export type ResearchAgentGroup = {
   taskDescription: string;
   taskToolCallId: string;
   searchResults: SearchResultData[];
+  fileOperations: FileOperationData[];
   findings?: string;
   status: ResearchAgentStatus;
   startIndex: number;
@@ -92,6 +101,13 @@ function isResearchAgentTask(toolCall: ToolCall): boolean {
   }
   const args = toolCall.args as ResearchAgentTaskArgs;
   return args?.subagentType === "research-agent" && !!args?.description;
+}
+
+/**
+ * Checks if a tool name is a file operation
+ */
+function isFileOperationTool(toolName: string): boolean {
+  return ["Read", "Write", "Edit", "MultiEdit", "ls", "read_file", "write_file", "edit_file"].includes(toolName);
 }
 
 /**
@@ -254,6 +270,7 @@ export function groupResearchAgentMessages(
 
         // Now collect all subsequent messages related to this research task
         const searchResults: SearchResultData[] = [];
+        const fileOperations: FileOperationData[] = [];
         let findings: string | undefined;
         let endIndex = i;
         const statusUpdates: string[] = [];
@@ -295,7 +312,7 @@ export function groupResearchAgentMessages(
             }
           }
 
-          // Check for search results
+          // Check for tool results
           if (nextMessage.type === "tool") {
             const searchData = extractSearchResults(nextMessage.content);
             if (searchData) {
@@ -306,6 +323,31 @@ export function groupResearchAgentMessages(
                 status = "in_progress";
               }
               continue;
+            }
+
+            // Check for file operation results
+            if (nextMessage.name && isFileOperationTool(nextMessage.name)) {
+              // Find the corresponding tool call from earlier messages
+              const toolCall = messages
+                .slice(0, j)
+                .filter((m) => m.type === "ai")
+                .flatMap((m) => m.tool_calls || [])
+                .find((tc) => tc.id === nextMessage.tool_call_id);
+
+              if (toolCall) {
+                fileOperations.push({
+                  toolCallId: nextMessage.tool_call_id || "",
+                  toolName: nextMessage.name,
+                  args: toolCall.args as Record<string, unknown>,
+                  result: typeof nextMessage.content === "string" ? nextMessage.content : undefined,
+                });
+                endIndex = j;
+                // File operations indicate progress
+                if (status === "pending") {
+                  status = "in_progress";
+                }
+                continue;
+              }
             }
 
             // Debug: log all tool messages to see what we're getting
@@ -372,6 +414,7 @@ export function groupResearchAgentMessages(
           taskDescription,
           taskToolCallId,
           searchResults,
+          fileOperations,
           findings,
           status,
           startIndex: i,
@@ -395,5 +438,17 @@ export function isMessageInResearchGroup(
   return groups.some(
     (group) =>
       messageIndex >= group.startIndex && messageIndex <= group.endIndex
+  );
+}
+
+/**
+ * Checks if a tool call ID is part of a research agent group's file operations
+ */
+export function isToolCallInResearchGroup(
+  toolCallId: string,
+  groups: ResearchAgentGroup[]
+): boolean {
+  return groups.some((group) =>
+    group.fileOperations.some((op) => op.toolCallId === toolCallId)
   );
 }

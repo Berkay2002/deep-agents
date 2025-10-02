@@ -75,6 +75,7 @@ import ThreadHistory from "./history";
 import { AssistantMessage, AssistantMessageLoading } from "./messages/ai";
 import { CritiqueAgentContainer } from "./messages/critique-agent-container";
 import { HumanMessage } from "./messages/human";
+import { PlannerAgentContainer } from "./messages/planner-agent-container";
 import { ResearchAgentContainer } from "./messages/research-agent-container";
 import { TimelineAdapter } from "./timeline-adapter";
 import { TooltipIconButton } from "./tooltip-icon-button";
