@@ -1,4 +1,4 @@
-# Deep Agents Runtime
+# Deep Agent Runtime
 
 The `apps/agent` workspace packages the LangGraph runtime that powers Deep Agents. It exposes a Gemini-backed research agent, orchestrates specialist subagents, and wires in shared tooling so deployments can answer long-form prompts with optional file context.
 
