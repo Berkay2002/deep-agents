@@ -2,6 +2,7 @@
  * Main exports for Deep Agents
  */
 
+// biome-ignore lint/performance/noBarrelFile: <Not fixable>
 export { createDeepAgent } from "./agent.js";
 export { createInterruptHook } from "./interrupt.js";
 export {
