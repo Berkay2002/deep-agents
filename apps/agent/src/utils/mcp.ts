@@ -3,11 +3,9 @@
 
 import type { StructuredTool } from "@langchain/core/tools";
 import type { MultiServerMCPClient } from "@langchain/mcp-adapters";
-import {
-  createMultiMcpClient,
-  loadMcpServerFromEnv,
-  type McpServerOptions,
-} from "../mcp/index.js";
+import { createMultiMcpClient } from "../mcp/client.js";
+import { loadMcpServerFromEnv } from "../mcp/config.js";
+import type { McpServerOptions } from "../mcp/types.js";
 import { McpConnectionError, withRetry } from "./errors.js";
 
 export type McpServerName = string;
