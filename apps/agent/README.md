@@ -1,54 +1,67 @@
 # Deep Agent Runtime
 
-The `apps/agent` workspace hosts the LangGraph runtime that powers Deep Agents. It stitches together Google Gemini models, shared tools, and specialized subagents so the system can reason over user prompts and optional file attachments.
+The `apps/agent` workspace packages the LangGraph runtime that powers Deep Agents. It exposes a Gemini-backed research agent, orchestrates specialist subagents, and wires in shared tooling so deployments can answer long-form prompts with optional file context.
 
-## Project Layout
+## Key capabilities
 
-- `src/agent.ts` – Entry point that creates the Deep Agent graph, configures the Gemini model, and exposes the LangGraph server export.
-- `src/utils/tools.ts` – Loads the default LangChain tools (Tavily, file helpers, etc.) and configures optional MCP servers.
-- `src/utils/nodes.ts` – Defines subagent nodes and default research instructions consumed by the graph.
-- `src/utils/state.ts` – Shapes the run input and file data that flow through the agent.
-- `langgraph.json` – Declares the build output and `.env` file consumed by the LangGraph CLI.
+- **Deep research workflow** – `src/main.ts` lazily boots the `deepResearchAgent` export for LangGraph, falling back to a minimal agent if advanced tooling fails to load, and normalises uploaded files so the graph can accept attachments from the web UI or SDK clients.
+- **Composable agent core** – `src/deep-agent/agent.ts` builds a ReAct-style LangGraph with shared middleware, task decomposition, and interrupt hooks so that additional agents can reuse the same foundation.
+- **Specialist subagents** – `src/agents/deep-research` declares planner, researcher, and critique subagents that run through the task tool, enabling multi-step plans with automatic tool selection.
+- **Tool orchestration** – `src/utils` provides adapters for Tavily, Exa, and MCP servers. The MCP integration automatically discovers Sequential Thinking, DeepWiki, optional GitHub Copilot, and environment-provided servers with retries and caching.
+- **Configurable prompts and safety** – Default instructions live in `src/agents/deep-research/prompts.ts`, but you can replace them through environment variables without editing source.
+
+## Directory guide
+
+| Path | Purpose |
+| --- | --- |
+| `src/main.ts` | Entry point exported to LangGraph (`deepAgentGraph`) and file normalisation helpers. |
+| `src/agents/` | Factories, prompts, and subagent definitions. Add new agent families here. |
+| `src/deep-agent/` | Shared agent construction layer (state schema, middleware, interrupt hooks, task tool). |
+| `src/utils/` | Tool clients and error helpers for Tavily, Exa, MCP, and runtime context. |
+| `src/shared/` | Cross-cutting model helpers and TypeScript types for run inputs. |
+| `langgraph.json` | Configuration consumed by `langgraphjs` for dev/build commands. |
 
 ## Prerequisites
 
 - Node.js 20+
-- npm 10+
+- npm 10+ (install dependencies from the monorepo root)
 - Access to the Google Generative AI API (Gemini)
 
-## Environment Variables
+## Environment configuration
 
-Create a `.env` file by copying `.env.example` and filling in the relevant keys:
+Copy the template and populate the required values:
 
 ```bash
-cp .env.example .env
+cp apps/agent/.env.example apps/agent/.env
 ```
 
-Key settings include:
+Key variables:
 
-- `GOOGLE_API_KEY` or `GOOGLE_GENAI_API_KEY` – Required to authenticate with Gemini.
-- `GOOGLE_GENAI_MODEL` – Optional override for the default `gemini-2.5-flash` model.
-- `TAVILY_API_KEY` – Optional key to enable Tavily search integration.
-- `DEEP_AGENT_INSTRUCTIONS` – Custom top-level instructions if you want to replace the bundled research prompt.
-- `LANGGRAPH_SERVER_TOKEN` – Token used when deploying to LangGraph Cloud.
+- `GOOGLE_API_KEY` or `GOOGLE_GENAI_API_KEY` – Required Gemini credentials.
+- `GOOGLE_GENAI_MODEL` – Optional override (defaults to `gemini-2.5-flash`).
+- `TAVILY_API_KEY` – Enables the Tavily search tool.
+- `GITHUB_PAT` – Grants access to the optional GitHub Copilot MCP server (repo + read:org scopes).
+- `DEEP_AGENT_INSTRUCTIONS` – Override the bundled research instructions without code changes.
+- `LANGGRAPH_AUTH_*` – Shared secret, issuer, and audience for LangGraph auth (must align with the proxy app).
 
-Refer to the inline comments in `.env.example` for additional MCP server guidance.
+Sequential Thinking and DeepWiki MCP servers are enabled automatically; additional servers can be defined with the `MCP_*` environment helpers consumed by `src/mcp`.
 
-## Development Workflow
+## Development workflow
 
-Install dependencies from the monorepo root (`npm install`) and then use the following commands within this workspace:
+From the repository root after `npm install`:
 
-- `npm run dev --workspace apps/agent` – Start the LangGraph development server with hot reload.
-- `npm run typecheck --workspace apps/agent` – Run TypeScript type checking without emitting output.
-- `npm run build --workspace apps/agent` – Compile TypeScript to `dist/` for production or LangGraph packaging.
-- `npm run build:server --workspace apps/agent` – Generate LangGraph server artifacts using the CLI.
+- `npm run dev --workspace apps/agent` – Run the LangGraph development server with live reload.
+- `npm run typecheck --workspace apps/agent` – Verify TypeScript types without emitting files.
+- `npm run build --workspace apps/agent` – Compile to `dist/` for publishing or deployment packaging.
+- `npm run build:server --workspace apps/agent` – Produce the LangGraph server bundle defined in `langgraph.json`.
 
-The CLI commands rely on `langgraph.json` to locate the compiled graph export (`deepAgentGraph`) and environment file.
+Use `npm run lint --workspace apps/agent` and `npm run format --workspace apps/agent` for quality checks before committing.
 
-## Customization Tips
+## Extending the runtime
 
-- Update `src/utils/tools.ts` to add or remove LangChain tools and MCP servers.
-- Adjust `src/utils/nodes.ts` to register additional subagents or tweak routing logic.
-- Override the default agent instructions via the `DEEP_AGENT_INSTRUCTIONS` environment variable when deploying specialized behaviors.
+1. **Add tools** – Register new LangChain tools or MCP servers in `src/utils` and include them in the relevant agent factory.
+2. **Create subagents** – Define additional `SubAgent` entries under `src/deep-agent` or `src/agents/<name>/nodes.ts`, then reference them when calling `createDeepAgent`.
+3. **Custom instructions** – Supply `DEEP_AGENT_INSTRUCTIONS` in `.env` or edit the prompt modules for deeper changes.
+4. **Expose new agents** – Implement a factory in `src/agents/<agent>/agent.ts` and export it from `src/agents/index.ts`; the router in `src/main.ts` is designed to select between them once re-enabled.
 
-After making changes, rebuild or restart the dev server to ensure the graph reflects the latest configuration.
+After modifying agent logic or tooling, restart the dev server or rebuild to ensure LangGraph picks up the changes.
