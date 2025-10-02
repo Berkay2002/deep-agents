@@ -322,13 +322,26 @@ const MARKDOWN_H3_PREFIX = "### ";
 const MARKDOWN_H4_PREFIX = "#### ";
 const MARKDOWN_H5_PREFIX = "##### ";
 const MARKDOWN_H6_PREFIX = "###### ";
-const _MIN_INTRODUCTION_PARAGRAPHS = 2;
 const MIN_SECTION_PARAGRAPHS = 3;
-const _MAX_PARAGRAPH_LENGTH = 1000;
-const _MIN_PARAGRAPH_LENGTH = 50;
 const MIN_SECTIONS_FOR_REPORT = 3;
 const HIGH_COVERAGE_THRESHOLD = 80;
 const MEDIUM_COVERAGE_THRESHOLD = 60;
+const STRUCTURE_ISSUE_PENALTY = 5;
+const MISSING_SECTION_PENALTY = 10;
+const MIN_WORD_LENGTH = 3;
+const HIGH_VERIFICATION_THRESHOLD = 0.7;
+const MEDIUM_VERIFICATION_THRESHOLD = 0.5;
+const SNIPPET_LENGTH = 200;
+const MAX_SEARCH_RESULTS = 5;
+const PERCENTAGE_MULTIPLIER = 100;
+const DEFAULT_COVERAGE_SCORE = 100;
+
+// Regex patterns at top level
+const WORD_SPLIT_REGEX = /\s+/;
+const SANITIZE_REGEX = /[^a-z0-9]+/g;
+const TRIM_UNDERSCORES_REGEX = /^_+|_+$/g;
+const QUESTION_SPLIT_REGEX = /[.!?]/;
+const EXCLUDED_WORDS = ["what", "how", "why", "when"];
 
 /**
  * Helper function to sanitize claim for filesystem paths
@@ -336,8 +349,8 @@ const MEDIUM_COVERAGE_THRESHOLD = 60;
 function sanitizeClaimForPath(claim: string): string {
   return claim
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
+    .replace(SANITIZE_REGEX, "_")
+    .replace(TRIM_UNDERSCORES_REGEX, "")
     .substring(0, MAX_CLAIM_LENGTH);
 }
 
@@ -347,9 +360,75 @@ function sanitizeClaimForPath(claim: string): string {
 function sanitizeCategoryForPath(category: string): string {
   return category
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
+    .replace(SANITIZE_REGEX, "_")
+    .replace(TRIM_UNDERSCORES_REGEX, "")
     .substring(0, MAX_FILENAME_LENGTH);
+}
+
+/**
+ * Helper function to detect heading level and extract title
+ */
+function detectHeading(line: string): { level: number; title: string } | null {
+  const trimmedLine = line.trim();
+
+  if (trimmedLine.startsWith(MARKDOWN_H6_PREFIX)) {
+    return {
+      level: 6,
+      title: trimmedLine.slice(MARKDOWN_H6_PREFIX.length).trim(),
+    };
+  }
+  if (trimmedLine.startsWith(MARKDOWN_H5_PREFIX)) {
+    return {
+      level: 5,
+      title: trimmedLine.slice(MARKDOWN_H5_PREFIX.length).trim(),
+    };
+  }
+  if (trimmedLine.startsWith(MARKDOWN_H4_PREFIX)) {
+    return {
+      level: 4,
+      title: trimmedLine.slice(MARKDOWN_H4_PREFIX.length).trim(),
+    };
+  }
+  if (trimmedLine.startsWith(MARKDOWN_H3_PREFIX)) {
+    return {
+      level: 3,
+      title: trimmedLine.slice(MARKDOWN_H3_PREFIX.length).trim(),
+    };
+  }
+  if (trimmedLine.startsWith(MARKDOWN_H2_PREFIX)) {
+    return {
+      level: 2,
+      title: trimmedLine.slice(MARKDOWN_H2_PREFIX.length).trim(),
+    };
+  }
+  if (trimmedLine.startsWith(MARKDOWN_H1_PREFIX)) {
+    return {
+      level: 1,
+      title: trimmedLine.slice(MARKDOWN_H1_PREFIX.length).trim(),
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Helper function to check if a line is a paragraph
+ */
+function isParagraph(line: string): boolean {
+  const trimmedLine = line.trim();
+  return (
+    trimmedLine.length > 0 &&
+    !trimmedLine.startsWith("#") &&
+    !trimmedLine.startsWith("-") &&
+    !trimmedLine.startsWith("*")
+  );
+}
+
+/**
+ * Helper function to count words in a line
+ */
+function countWordsInLine(line: string): number {
+  return line.split(WORD_SPLIT_REGEX).filter((w) => w.length > 0).length;
 }
 
 /**
@@ -374,52 +453,27 @@ function parseMarkdownStructure(content: string): {
     const trimmedLine = line.trim();
 
     // Detect headings
-    if (trimmedLine.startsWith(MARKDOWN_H6_PREFIX)) {
-      const title = trimmedLine.slice(MARKDOWN_H6_PREFIX.length).trim();
-      sections.push({ level: 6, title, lineNumber: i + 1 });
-      currentSection = title;
+    const heading = detectHeading(line);
+    if (heading) {
+      sections.push({
+        level: heading.level,
+        title: heading.title,
+        lineNumber: i + 1,
+      });
+      currentSection = heading.title;
       paragraphsPerSection[currentSection] = 0;
-    } else if (trimmedLine.startsWith(MARKDOWN_H5_PREFIX)) {
-      const title = trimmedLine.slice(MARKDOWN_H5_PREFIX.length).trim();
-      sections.push({ level: 5, title, lineNumber: i + 1 });
-      currentSection = title;
-      paragraphsPerSection[currentSection] = 0;
-    } else if (trimmedLine.startsWith(MARKDOWN_H4_PREFIX)) {
-      const title = trimmedLine.slice(MARKDOWN_H4_PREFIX.length).trim();
-      sections.push({ level: 4, title, lineNumber: i + 1 });
-      currentSection = title;
-      paragraphsPerSection[currentSection] = 0;
-    } else if (trimmedLine.startsWith(MARKDOWN_H3_PREFIX)) {
-      const title = trimmedLine.slice(MARKDOWN_H3_PREFIX.length).trim();
-      sections.push({ level: 3, title, lineNumber: i + 1 });
-      currentSection = title;
-      paragraphsPerSection[currentSection] = 0;
-    } else if (trimmedLine.startsWith(MARKDOWN_H2_PREFIX)) {
-      const title = trimmedLine.slice(MARKDOWN_H2_PREFIX.length).trim();
-      sections.push({ level: 2, title, lineNumber: i + 1 });
-      currentSection = title;
-      paragraphsPerSection[currentSection] = 0;
-    } else if (trimmedLine.startsWith(MARKDOWN_H1_PREFIX)) {
-      const title = trimmedLine.slice(MARKDOWN_H1_PREFIX.length).trim();
-      sections.push({ level: 1, title, lineNumber: i + 1 });
-      currentSection = title;
-      paragraphsPerSection[currentSection] = 0;
+      continue;
     }
 
     // Count paragraphs (non-empty lines that aren't headings or list items)
-    if (
-      trimmedLine.length > 0 &&
-      !trimmedLine.startsWith("#") &&
-      !trimmedLine.startsWith("-") &&
-      !trimmedLine.startsWith("*")
-    ) {
+    if (isParagraph(line)) {
       paragraphCount++;
       paragraphsPerSection[currentSection] =
         (paragraphsPerSection[currentSection] || 0) + 1;
     }
 
     // Count words
-    wordCount += trimmedLine.split(/\s+/).filter((w) => w.length > 0).length;
+    wordCount += countWordsInLine(trimmedLine);
   }
 
   return {
@@ -460,7 +514,7 @@ function evaluateStructureQuality(
         severity: "medium",
         location: `Line ${current.lineNumber} (${current.title})`,
       });
-      score -= 5;
+      score -= STRUCTURE_ISSUE_PENALTY;
     }
   }
 
@@ -479,7 +533,7 @@ function evaluateStructureQuality(
     recommendations.push(
       "Add an introduction section to provide context and overview"
     );
-    score -= 10;
+    score -= MISSING_SECTION_PENALTY;
   }
 
   // Check for missing conclusion
@@ -497,7 +551,7 @@ function evaluateStructureQuality(
     recommendations.push(
       "Add a conclusion section to summarize findings and insights"
     );
-    score -= 10;
+    score -= MISSING_SECTION_PENALTY;
   }
 
   // Check for very short sections
@@ -509,7 +563,7 @@ function evaluateStructureQuality(
         location: section,
       });
       recommendations.push(`Expand "${section}" section with more detail`);
-      score -= 5;
+      score -= STRUCTURE_ISSUE_PENALTY;
     }
   }
 
@@ -524,7 +578,7 @@ function evaluateStructureQuality(
     recommendations.push(
       "Break down content into more main sections for better organization"
     );
-    score -= 10;
+    score -= MISSING_SECTION_PENALTY;
   }
 
   return {
@@ -552,8 +606,8 @@ function calculateCompletenessScore(
 
   // Extract key terms from question
   const questionTerms = questionLower
-    .split(/\s+/)
-    .filter((w) => w.length > 3 && !["what", "how", "why", "when"].includes(w));
+    .split(WORD_SPLIT_REGEX)
+    .filter((w) => w.length > MIN_WORD_LENGTH && !EXCLUDED_WORDS.includes(w));
 
   // Check coverage of question terms
   const coveredTerms = questionTerms.filter((term) =>
@@ -561,8 +615,8 @@ function calculateCompletenessScore(
   );
   const termCoverageScore =
     questionTerms.length > 0
-      ? (coveredTerms.length / questionTerms.length) * 100
-      : 100;
+      ? (coveredTerms.length / questionTerms.length) * PERCENTAGE_MULTIPLIER
+      : DEFAULT_COVERAGE_SCORE;
 
   // Check coverage of expected areas
   const coveredAreas: string[] = [];
@@ -578,8 +632,8 @@ function calculateCompletenessScore(
 
   const areaCoverageScore =
     expectedAreas.length > 0
-      ? (coveredAreas.length / expectedAreas.length) * 100
-      : 100;
+      ? (coveredAreas.length / expectedAreas.length) * PERCENTAGE_MULTIPLIER
+      : DEFAULT_COVERAGE_SCORE;
 
   // Average the scores
   const score = Math.round((termCoverageScore + areaCoverageScore) / 2);
@@ -602,6 +656,85 @@ function calculateCompletenessScore(
 }
 
 /**
+ * Helper function to analyze verification results
+ */
+function analyzeVerificationResults(
+  searchResult: {
+    results: Record<string, unknown>[];
+    answer?: string | null;
+    error?: string;
+  },
+  claim: string
+): {
+  verified: boolean;
+  confidence: "high" | "medium" | "low";
+  notes: string;
+} {
+  const hasResults = searchResult.results.length > 0;
+  const hasAnswer = !!searchResult.answer && !searchResult.error;
+
+  if (hasAnswer && hasResults) {
+    // Check if answer supports the claim
+    const answerLower = searchResult.answer?.toLowerCase() || "";
+    const claimLower = claim.toLowerCase();
+    const claimTerms = claimLower
+      .split(WORD_SPLIT_REGEX)
+      .filter((w) => w.length > MIN_WORD_LENGTH);
+    const matchingTerms = claimTerms.filter((term) =>
+      answerLower.includes(term)
+    );
+
+    if (
+      matchingTerms.length >=
+      claimTerms.length * HIGH_VERIFICATION_THRESHOLD
+    ) {
+      return {
+        verified: true,
+        confidence: "high",
+        notes:
+          "Multiple sources confirm this claim with consistent information.",
+      };
+    }
+
+    if (
+      matchingTerms.length >=
+      claimTerms.length * MEDIUM_VERIFICATION_THRESHOLD
+    ) {
+      return {
+        verified: true,
+        confidence: "medium",
+        notes:
+          "Some sources support this claim but with minor variations or incomplete information.",
+      };
+    }
+
+    return {
+      verified: false,
+      confidence: "low",
+      notes:
+        "Unable to find strong verification for this claim. May need manual review.",
+    };
+  }
+
+  if (hasResults) {
+    return {
+      verified: true,
+      confidence: "medium",
+      notes:
+        "Found related sources but no synthesized answer. Manual verification recommended.",
+    };
+  }
+
+  return {
+    verified: false,
+    confidence: "low",
+    notes: searchResult.error
+      ? `Search error: ${searchResult.error}`
+      : "No authoritative sources found to verify this claim.",
+  };
+}
+
+/**
  * Fact check tool - verifies claims against authoritative sources
  */
 export const factCheck = tool(
@@ -613,7 +746,7 @@ export const factCheck = tool(
     // Perform search to verify claim
     const searchArgs: TavilySearchArgs = {
       query: claim,
-      maxResults: 5,
+      maxResults: MAX_SEARCH_RESULTS,
       includeAnswer: true,
       searchDepth: "advanced",
     };
@@ -623,50 +756,10 @@ export const factCheck = tool(
     });
 
     // Analyze results for verification
-    const hasResults = searchResult.results.length > 0;
-    const hasAnswer = !!searchResult.answer && !searchResult.error;
-
-    let verified = false;
-    let confidence: "high" | "medium" | "low" = "low";
-    let notes = "";
-
-    if (hasAnswer && hasResults) {
-      // Check if answer supports the claim
-      const answerLower = searchResult.answer?.toLowerCase() || "";
-      const claimLower = claim.toLowerCase();
-      const claimTerms = claimLower.split(/\s+/).filter((w) => w.length > 3);
-      const matchingTerms = claimTerms.filter((term) =>
-        answerLower.includes(term)
-      );
-
-      if (matchingTerms.length >= claimTerms.length * 0.7) {
-        verified = true;
-        confidence = "high";
-        notes =
-          "Multiple sources confirm this claim with consistent information.";
-      } else if (matchingTerms.length >= claimTerms.length * 0.5) {
-        verified = true;
-        confidence = "medium";
-        notes =
-          "Some sources support this claim but with minor variations or incomplete information.";
-      } else {
-        verified = false;
-        confidence = "low";
-        notes =
-          "Unable to find strong verification for this claim. May need manual review.";
-      }
-    } else if (hasResults) {
-      verified = true;
-      confidence = "medium";
-      notes =
-        "Found related sources but no synthesized answer. Manual verification recommended.";
-    } else {
-      verified = false;
-      confidence = "low";
-      notes = searchResult.error
-        ? `Search error: ${searchResult.error}`
-        : "No authoritative sources found to verify this claim.";
-    }
+    const { verified, confidence, notes } = analyzeVerificationResults(
+      searchResult,
+      claim
+    );
 
     // Store results in mock filesystem
     const sanitizedClaim = sanitizeClaimForPath(claim);
@@ -677,9 +770,9 @@ export const factCheck = tool(
       context: context || "",
       verified,
       sources: searchResult.results.map((r) => ({
-        title: r.title,
+        title: r.title || "Untitled",
         url: r.url,
-        snippet: r.content?.substring(0, 200),
+        snippet: r.content?.substring(0, SNIPPET_LENGTH) || "",
       })),
       synthesizedAnswer: searchResult.answer || null,
       confidence,
@@ -707,7 +800,7 @@ ${notes}`;
         messages: [
           new ToolMessage({
             content: messageContent,
-            // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
+            // biome-ignore lint: tool_call_id is required by ToolMessage interface
             tool_call_id: config.toolCall?.id as string,
           }),
         ],
@@ -745,7 +838,7 @@ export const evaluateStructure = tool(
           messages: [
             new ToolMessage({
               content: `Error: Report not found at ${reportPath}. Use read_file first to ensure the report exists.`,
-              // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
+              // biome-ignore lint: tool_call_id is required by ToolMessage interface
               tool_call_id: config.toolCall?.id as string,
             }),
           ],
@@ -802,7 +895,7 @@ Use read_file to access full evaluation: read_file({ filePath: "${filePath}" })`
         messages: [
           new ToolMessage({
             content: messageContent,
-            // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
+            // biome-ignore lint: tool_call_id is required by ToolMessage interface
             tool_call_id: config.toolCall?.id as string,
           }),
         ],
@@ -844,7 +937,7 @@ export const analyzeCompleteness = tool(
           messages: [
             new ToolMessage({
               content: `Error: Report not found at ${reportPath}`,
-              // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
+              // biome-ignore lint: tool_call_id is required by ToolMessage interface
               tool_call_id: config.toolCall?.id as string,
             }),
           ],
@@ -859,7 +952,7 @@ export const analyzeCompleteness = tool(
           messages: [
             new ToolMessage({
               content: `Error: Question not found at ${questionPath}`,
-              // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
+              // biome-ignore lint: tool_call_id is required by ToolMessage interface
               tool_call_id: config.toolCall?.id as string,
             }),
           ],
@@ -877,7 +970,11 @@ export const analyzeCompleteness = tool(
     if (topicAnalysisFiles.length > 0) {
       try {
         const analysisPath = topicAnalysisFiles[0];
-        const analysisData = JSON.parse(files[analysisPath] || "{}");
+        if (!analysisPath) {
+          throw new Error("No analysis path found");
+        }
+        const fileContent = files[analysisPath] || "{}";
+        const analysisData = JSON.parse(fileContent);
         expectedAreas = analysisData.researchAreas || [];
       } catch {
         // Ignore parsing errors
@@ -887,7 +984,7 @@ export const analyzeCompleteness = tool(
     // If no planning artifacts, extract from question
     if (expectedAreas.length === 0) {
       expectedAreas = question
-        .split(/[.!?]/)
+        .split(QUESTION_SPLIT_REGEX)
         .filter((s) => s.trim().length > 0)
         .map((s) => s.trim());
     }
@@ -933,7 +1030,7 @@ ${missingAreas.length > 0 ? `\nMissing areas:\n${missingAreas.map((a) => `- ${a}
         messages: [
           new ToolMessage({
             content: messageContent,
-            // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
+            // biome-ignore lint: tool_call_id is required by ToolMessage interface
             tool_call_id: config.toolCall?.id as string,
           }),
         ],
@@ -1041,7 +1138,7 @@ Severity Breakdown:
 - Low: ${severityBreakdown.low}
 
 Use read_file to access critique: read_file({ filePath: "${filePath}" })`,
-            // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
+            // biome-ignore lint: tool_call_id is required by ToolMessage interface
             tool_call_id: config.toolCall?.id as string,
           }),
         ],

@@ -1,9 +1,21 @@
 import type { Message, ToolMessage } from "@langchain/langgraph-sdk";
 
+// Define types for tool calls and their arguments
+type ToolCall = {
+  id?: string;
+  name: string;
+  args: Record<string, unknown>;
+};
+
+type PlannerAgentTaskArgs = {
+  subagentType: string;
+  description: string;
+};
+
 export type PlanningToolResult = {
   toolName: "topic_analysis" | "scope_estimation" | "plan_optimization";
-  args: any;
-  result: any; // Parsed JSON result
+  args: Record<string, unknown>;
+  result: Record<string, unknown>; // Parsed JSON result
   toolCallId: string;
 };
 
@@ -12,9 +24,9 @@ export type PlannerAgentStatus = "pending" | "in_progress" | "completed";
 export type PlannerAgentGroup = {
   taskDescription: string;
   taskToolCallId: string;
-  topicAnalysis?: any;
-  scopeEstimation?: any;
-  planOptimization?: any;
+  topicAnalysis?: Record<string, unknown>;
+  scopeEstimation?: Record<string, unknown>;
+  planOptimization?: Record<string, unknown>;
   finalPlan?: string;
   status: PlannerAgentStatus;
   startIndex: number;
@@ -24,25 +36,30 @@ export type PlannerAgentGroup = {
 /**
  * Checks if a tool call is a planner agent task invocation
  */
-function isPlannerAgentTask(toolCall: any): boolean {
+function isPlannerAgentTask(toolCall: ToolCall): boolean {
   if (!toolCall || toolCall.name !== "task") {
     return false;
   }
-  const args = toolCall.args as Record<string, any>;
-  return args?.subagent_type === "planner-agent" && !!args?.description;
+  const args = toolCall.args as PlannerAgentTaskArgs;
+  return args?.subagentType === "planner-agent" && !!args?.description;
 }
 
 /**
  * Extracts planning tool result from a tool message content
  */
-function extractPlanningToolResult(content: any, _toolName: string): any {
+function extractPlanningToolResult(
+  content: unknown,
+  _toolName: string
+): unknown {
   try {
-    let parsedContent: any;
+    let parsedContent: Record<string, unknown>;
 
     if (typeof content === "string") {
-      parsedContent = JSON.parse(content);
+      parsedContent = JSON.parse(content) as Record<string, unknown>;
+    } else if (typeof content === "object" && content !== null) {
+      parsedContent = content as Record<string, unknown>;
     } else {
-      parsedContent = content;
+      return content;
     }
 
     // Return the parsed result
@@ -69,6 +86,8 @@ function extractFinalPlan(message: ToolMessage): string | null {
  * Groups planner agent related messages together
  * Returns an array of planner agent groups found in the messages
  */
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: <It's fine>
 export function groupPlannerAgentMessages(
   messages: Message[]
 ): PlannerAgentGroup[] {
@@ -88,13 +107,14 @@ export function groupPlannerAgentMessages(
 
       // Process each planner task separately
       for (const plannerTask of plannerTasks) {
-        const taskDescription = (plannerTask.args as any).description || "";
+        const taskDescription =
+          (plannerTask.args as PlannerAgentTaskArgs).description || "";
         const taskToolCallId = plannerTask.id || "";
 
         // Now collect all subsequent messages related to this planner task
-        let topicAnalysis: any;
-        let scopeEstimation: any;
-        let planOptimization: any;
+        let topicAnalysis: Record<string, unknown> | undefined;
+        let scopeEstimation: Record<string, unknown> | undefined;
+        let planOptimization: Record<string, unknown> | undefined;
         let finalPlan: string | undefined;
         let endIndex = i;
 
@@ -104,6 +124,7 @@ export function groupPlannerAgentMessages(
 
         // Debug logging
         if (process.env.NODE_ENV === "development") {
+          // Development debug information
         }
 
         // Look ahead for planning tool results and final plan
@@ -120,7 +141,9 @@ export function groupPlannerAgentMessages(
                 toolMsg.content,
                 "topic_analysis"
               );
-              topicAnalysis = result;
+              if (typeof result === "object" && result !== null) {
+                topicAnalysis = result as Record<string, unknown>;
+              }
               endIndex = Math.max(endIndex, j); // Ensure we capture the latest index
               if (status === "pending") {
                 status = "in_progress";
@@ -134,7 +157,9 @@ export function groupPlannerAgentMessages(
                 toolMsg.content,
                 "scope_estimation"
               );
-              scopeEstimation = result;
+              if (typeof result === "object" && result !== null) {
+                scopeEstimation = result as Record<string, unknown>;
+              }
               endIndex = Math.max(endIndex, j); // Ensure we capture the latest index
               if (status === "pending") {
                 status = "in_progress";
@@ -148,7 +173,9 @@ export function groupPlannerAgentMessages(
                 toolMsg.content,
                 "plan_optimization"
               );
-              planOptimization = result;
+              if (typeof result === "object" && result !== null) {
+                planOptimization = result as Record<string, unknown>;
+              }
               endIndex = Math.max(endIndex, j); // Ensure we capture the latest index
               if (status === "pending") {
                 status = "in_progress";
@@ -161,6 +188,7 @@ export function groupPlannerAgentMessages(
               process.env.NODE_ENV === "development" &&
               "tool_call_id" in toolMsg
             ) {
+              // Development debug information
             }
 
             // Check for final plan (final response from planner agent)
@@ -173,6 +201,7 @@ export function groupPlannerAgentMessages(
 
               // Debug: log when we find a matching tool result
               if (process.env.NODE_ENV === "development") {
+                // Development debug information
               }
 
               // If we have final plan (tool result with matching ID), mark as completed
@@ -212,6 +241,7 @@ export function groupPlannerAgentMessages(
 
         // Debug: log final status
         if (process.env.NODE_ENV === "development") {
+          // Development debug information
         }
 
         groups.push({

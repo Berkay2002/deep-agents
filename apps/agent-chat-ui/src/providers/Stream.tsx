@@ -4,7 +4,6 @@ import { useStream } from "@langchain/langgraph-sdk/react";
 import {
   isRemoveUIMessage,
   isUIMessage,
-  type RemoveUIMessage,
   type UIMessage,
   uiMessageReducer,
 } from "@langchain/langgraph-sdk/react-ui";
@@ -35,17 +34,7 @@ const TOAST_DURATION = 10_000;
 
 export type StateType = { messages: Message[]; ui?: UIMessage[] };
 
-const useTypedStream = useStream<
-  StateType,
-  {
-    UpdateType: {
-      messages?: Message[] | Message | string;
-      ui?: (UIMessage | RemoveUIMessage)[] | UIMessage | RemoveUIMessage;
-      context?: Record<string, unknown>;
-    };
-    CustomEventType: UIMessage | RemoveUIMessage;
-  }
->;
+const useTypedStream = useStream<StateType>;
 
 type StreamContextType = ReturnType<typeof useTypedStream>;
 const StreamContext = createContext<StreamContextType | undefined>(undefined);
@@ -68,7 +57,7 @@ async function checkGraphStatus(
     });
 
     return res.ok;
-  } catch (_e) {
+  } catch {
     return false;
   }
 }
@@ -114,7 +103,13 @@ const StreamSession = ({
       setThreadId(id);
       // Refetch threads list when thread ID changes.
       // Wait for some seconds before fetching so we're able to get the new thread that was created.
-      sleep().then(() => getThreads().then(setThreads).catch(console.error));
+      sleep().then(() =>
+        getThreads()
+          .then(setThreads)
+          .catch(() => {
+            // Handle error silently
+          })
+      );
     },
   });
 
@@ -134,7 +129,7 @@ const StreamSession = ({
       checkGraphStatus(apiUrl, apiKey).then((ok) => {
         if (!ok) {
           toast.error("Failed to connect to LangGraph server", {
-            description: () => (
+            description: (
               <p>
                 Please ensure your graph is running at <code>{apiUrl}</code> and
                 your API key is correctly set (if connecting to a deployed
@@ -167,35 +162,34 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   // Get environment variables
-  const envApiUrl: string | undefined = process.env.NEXT_PUBLIC_API_URL;
-  const envAssistantId: string | undefined =
-    process.env.NEXT_PUBLIC_ASSISTANT_ID;
+  const envApiUrl = process.env.NEXT_PUBLIC_API_URL;
+  const envAssistantId = process.env.NEXT_PUBLIC_ASSISTANT_ID;
 
   // Use URL params with env var fallbacks
   const [apiUrl, setApiUrl] = useQueryState("apiUrl", {
-    defaultValue: envApiUrl || "",
+    defaultValue: envApiUrl ?? "",
   });
   const [assistantId, setAssistantId] = useQueryState("assistantId", {
-    defaultValue: envAssistantId || "",
+    defaultValue: envAssistantId ?? "",
   });
 
   // For API key, use localStorage with env var fallback
-  const [apiKey, _setApiKey] = useState(() => {
+  const [apiKey, setApiKeyState] = useState(() => {
     const storedKey = getApiKey();
-    return storedKey || "";
+    return storedKey ?? "";
   });
 
   const setApiKey = (key: string) => {
     window.localStorage.setItem("lg:chat:apiKey", key);
-    _setApiKey(key);
+    setApiKeyState(key);
   };
 
   // Determine final values to use, prioritizing URL params then env vars
-  const finalApiUrl = apiUrl || envApiUrl;
-  const finalAssistantId = assistantId || envAssistantId;
+  const finalApiUrl = apiUrl ?? envApiUrl;
+  const finalAssistantId = assistantId ?? envAssistantId;
 
   // Show the form if we: don't have an API URL, or don't have an assistant ID
-  if (!(finalApiUrl && finalAssistantId)) {
+  if (!finalApiUrl) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center p-4">
         <div className="fade-in-0 zoom-in-95 flex max-w-3xl animate-in flex-col rounded-lg border bg-background shadow-lg">
@@ -239,7 +233,7 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
               </p>
               <Input
                 className="bg-background"
-                defaultValue={apiUrl || DEFAULT_API_URL}
+                defaultValue={apiUrl ?? DEFAULT_API_URL}
                 id="apiUrl"
                 name="apiUrl"
                 required
@@ -257,7 +251,105 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
               </p>
               <Input
                 className="bg-background"
-                defaultValue={assistantId || DEFAULT_ASSISTANT_ID}
+                defaultValue={assistantId ?? DEFAULT_ASSISTANT_ID}
+                id="assistantId"
+                name="assistantId"
+                required
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="apiKey">LangSmith API Key</Label>
+              <p className="text-muted-foreground text-sm">
+                This is <strong>NOT</strong> required if using a local LangGraph
+                server. This value is stored in your browser's local storage and
+                is only used to authenticate requests sent to your LangGraph
+                server.
+              </p>
+              <PasswordInput
+                className="bg-background"
+                defaultValue={apiKey ?? ""}
+                id="apiKey"
+                name="apiKey"
+                placeholder="lsv2_pt_..."
+              />
+            </div>
+
+            <div className="mt-2 flex justify-end">
+              <Button size="lg" type="submit">
+                Continue
+                <ArrowRight className="size-5" />
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  if (!finalAssistantId) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center p-4">
+        <div className="fade-in-0 zoom-in-95 flex max-w-3xl animate-in flex-col rounded-lg border bg-background shadow-lg">
+          <div className="mt-14 flex flex-col gap-2 border-b p-6">
+            <div className="flex flex-col items-start gap-2">
+              <LanggraphLogoSvg className="h-7" />
+              <h1 className="font-semibold text-xl tracking-tight">
+                Agent Chat
+              </h1>
+            </div>
+            <p className="text-muted-foreground">
+              Welcome to Agent Chat! Before you get started, you need to enter
+              the URL of the deployment and the assistant / graph ID.
+            </p>
+          </div>
+          <form
+            className="flex flex-col gap-6 bg-muted/50 p-6"
+            onSubmit={(e) => {
+              e.preventDefault();
+
+              const form = e.target as HTMLFormElement;
+              const formData = new FormData(form);
+              const formApiUrl = formData.get("apiUrl") as string;
+              const formAssistantId = formData.get("assistantId") as string;
+              const formApiKey = formData.get("apiKey") as string;
+
+              setApiUrl(formApiUrl);
+              setApiKey(formApiKey);
+              setAssistantId(formAssistantId);
+
+              form.reset();
+            }}
+          >
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="apiUrl">
+                Deployment URL<span className="text-rose-500">*</span>
+              </Label>
+              <p className="text-muted-foreground text-sm">
+                This is the URL of your LangGraph deployment. Can be a local, or
+                production deployment.
+              </p>
+              <Input
+                className="bg-background"
+                defaultValue={apiUrl ?? DEFAULT_API_URL}
+                id="apiUrl"
+                name="apiUrl"
+                required
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="assistantId">
+                Assistant / Graph ID<span className="text-rose-500">*</span>
+              </Label>
+              <p className="text-muted-foreground text-sm">
+                This is the ID of the graph (can be the graph name), or
+                assistant to fetch threads from, and invoke when actions are
+                taken.
+              </p>
+              <Input
+                className="bg-background"
+                defaultValue={assistantId ?? DEFAULT_ASSISTANT_ID}
                 id="assistantId"
                 name="assistantId"
                 required

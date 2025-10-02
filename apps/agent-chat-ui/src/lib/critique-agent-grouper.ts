@@ -1,5 +1,21 @@
 import type { Message, ToolMessage } from "@langchain/langgraph-sdk";
 
+// Define types for tool calls and their arguments
+type ToolCall = {
+  id?: string;
+  name: string;
+  args: Record<string, unknown>;
+};
+
+type CritiqueAgentTaskArgs = {
+  subagentType: string;
+  description: string;
+};
+
+// Define constants for magic numbers
+const MIN_CONTENT_LENGTH = 100;
+const MIN_CRITIQUE_LENGTH = 200;
+
 export type FileRead = {
   filePath: string;
   content: string;
@@ -18,12 +34,12 @@ export type CritiqueAgentGroup = {
 /**
  * Checks if a tool call is a critique agent task invocation
  */
-function isCritiqueAgentTask(toolCall: any): boolean {
+function isCritiqueAgentTask(toolCall: ToolCall): boolean {
   if (!toolCall || toolCall.name !== "task") {
     return false;
   }
-  const args = toolCall.args as Record<string, any>;
-  return args?.subagent_type === "critique-agent" && !!args?.description;
+  const args = toolCall.args as CritiqueAgentTaskArgs;
+  return args?.subagentType === "critique-agent" && !!args?.description;
 }
 
 /**
@@ -42,6 +58,8 @@ function extractCritique(message: ToolMessage): string | null {
  * Groups critique agent related messages together
  * Returns an array of critique agent groups found in the messages
  */
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: <It's fine>
 export function groupCritiqueAgentMessages(
   messages: Message[]
 ): CritiqueAgentGroup[] {
@@ -61,7 +79,8 @@ export function groupCritiqueAgentMessages(
 
       // Process each critique task separately
       for (const critiqueTask of critiqueTasks) {
-        const taskDescription = (critiqueTask.args as any).description || "";
+        const taskDescription =
+          (critiqueTask.args as CritiqueAgentTaskArgs).description || "";
         const taskToolCallId = critiqueTask.id || "";
 
         // Now collect all subsequent messages related to this critique task
@@ -96,13 +115,18 @@ export function groupCritiqueAgentMessages(
                   prevMsg.tool_calls
                 ) {
                   const matchingToolCall = prevMsg.tool_calls.find(
-                    (tc: any) => tc.id === toolMsg.tool_call_id
+                    (tc: ToolCall) => tc.id === toolMsg.tool_call_id
                   );
 
                   if (matchingToolCall) {
-                    const args = matchingToolCall.args as any;
+                    const args = matchingToolCall.args as Record<
+                      string,
+                      unknown
+                    >;
                     const filePath =
-                      args.file_path || args.filePath || "unknown";
+                      (args.file_path as string) ||
+                      (args.filePath as string) ||
+                      "unknown";
 
                     fileReads.push({
                       filePath,
@@ -129,14 +153,16 @@ export function groupCritiqueAgentMessages(
               textContent = nextMessage.content;
             } else if (Array.isArray(nextMessage.content)) {
               textContent = nextMessage.content
-                .filter((c: any) => c.type === "text")
-                .map((c: any) => c.text)
+                .filter(
+                  (c): c is { type: "text"; text: string } => c.type === "text"
+                )
+                .map((c) => c.text)
                 .join("\n");
             }
 
             // Only collect substantial content (not just acknowledgments)
             if (
-              textContent.length > 100 &&
+              textContent.length > MIN_CONTENT_LENGTH &&
               !textContent.startsWith("I have completed")
             ) {
               allAiContent.push(textContent);
@@ -155,7 +181,10 @@ export function groupCritiqueAgentMessages(
             );
             if (critiqueResponse) {
               // If tool response is short, prefer collected AI content
-              if (critiqueResponse.length < 200 && allAiContent.length > 0) {
+              if (
+                critiqueResponse.length < MIN_CRITIQUE_LENGTH &&
+                allAiContent.length > 0
+              ) {
                 critique = allAiContent.join("\n\n");
               } else {
                 critique = critiqueResponse;

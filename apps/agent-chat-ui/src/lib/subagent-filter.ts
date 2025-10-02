@@ -22,6 +22,11 @@ const SUBAGENT_NAMES = [
   "code-generator",
 ];
 
+// Regex patterns for performance optimization
+const RESEARCH_FINDINGS_REGEX = /RESEARCH FINDINGS:[\s\S]*Key Information:\n•/;
+const CRITIQUE_REPORT_REGEX =
+  /CRITIQUE OF REPORT:[\s\S]*Overall Assessment:\n•/;
+
 /**
  * Checks if a message is a subagent response that should be hidden from the UI
  * @param message The message to check
@@ -35,7 +40,7 @@ export function isSubagentResponse(message: Message): boolean {
 
   // Don't filter planner-agent tool messages - they're displayed in the UI
   if (message.type === "tool") {
-    const toolMessage = message as any;
+    const toolMessage = message as Message & { name: string };
     if (
       toolMessage.name === "topic_analysis" ||
       toolMessage.name === "scope_estimation" ||
@@ -73,12 +78,12 @@ export function isSubagentResponse(message: Message): boolean {
 
   // Check for specific structured formats that subagents use
   // Research agent format
-  if (/RESEARCH FINDINGS:[\s\S]*Key Information:\n•/.test(contentString)) {
+  if (RESEARCH_FINDINGS_REGEX.test(contentString)) {
     return true;
   }
 
   // Critique agent format
-  if (/CRITIQUE OF REPORT:[\s\S]*Overall Assessment:\n•/.test(contentString)) {
+  if (CRITIQUE_REPORT_REGEX.test(contentString)) {
     return true;
   }
 

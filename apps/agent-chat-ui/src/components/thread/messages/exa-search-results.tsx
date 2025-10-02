@@ -47,6 +47,7 @@ function extractDomain(url: string): string {
   }
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: <It's fine>
 function ExaSearchResultCard({ result }: { result: ExaSearchResult }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const domain = extractDomain(result.url);
