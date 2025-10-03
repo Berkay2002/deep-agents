@@ -34,8 +34,10 @@ export const critiqueSubAgent: SubAgent = {
     "evaluate_structure", // Structure analysis
     "analyze_completeness", // Completeness assessment
     "save_critique", // Save structured critique
-    "read_file", // Read report, question, cached analyses
-    "ls", // List available files
+    "ls", // List mock filesystem
+    "read_file", // Read cached searches/findings
+    "write_file", // Write custom artifacts
+    "edit_file", // Edit existing artifacts
   ],
   /**
    * Note: The agent now has access to specialized critique tools that perform
@@ -49,6 +51,7 @@ export const plannerSubAgent: SubAgent = {
     "Used to create comprehensive research plans and todo lists for complex research topics. This agent specializes in pre-research planning, topic analysis, scope estimation, and plan optimization. Use this agent when you need to break down complex research topics into structured plans. The planner-agent returns structured research plans with todo lists that can be used to guide the research process. DO NOT echo its response to the user. ONLY use its response as source material for organizing your research approach.",
   prompt: PLANNER_SUB_AGENT_PROMPT,
   tools: [
+    "compose_plan",
     "topic_analysis",
     "scope_estimation",
     "plan_optimization",

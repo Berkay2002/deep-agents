@@ -16,16 +16,16 @@ export function ThreadView({ interrupt }: ThreadViewProps) {
   const showSidePanel = showDescription || showState;
 
   const handleShowSidePanel = (
-    showState: boolean,
-    showDescription: boolean
+    nextShowState: boolean,
+    nextShowDescription: boolean
   ) => {
-    if (showState && showDescription) {
+    if (nextShowState && nextShowDescription) {
       return;
     }
-    if (showState) {
+    if (nextShowState) {
       setShowDescription(false);
       setShowState(true);
-    } else if (showDescription) {
+    } else if (nextShowDescription) {
       setShowState(false);
       setShowDescription(true);
     } else {

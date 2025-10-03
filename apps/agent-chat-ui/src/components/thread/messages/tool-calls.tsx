@@ -5,12 +5,20 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 
 import { TodoList } from "../todo-list";
+import { AnalyzeCompletenessResult } from "./analyze-completeness-result";
+import { ComposePlanResult } from "./compose-plan-result";
+import { ErrorResult } from "./error-result";
+import { EvaluateStructureResult } from "./evaluate-structure-result";
 import { ExaSearchResults } from "./exa-search-results";
+import { FactCheckResult } from "./fact-check-result";
 import { FileUpdateNotification } from "./file-update-notification";
 import { LsResult } from "./ls-result";
 import { PlanOptimizationResult } from "./plan-optimization-result";
 import { ReadFileDisplay } from "./read-file-display";
+import { SaveCritiqueResult } from "./save-critique-result";
+import { SaveResearchFindingsResult } from "./save-research-findings-result";
 import { ScopeEstimationResult } from "./scope-estimation-result";
+import { SubagentTaskResult } from "./subagent-result";
 import { TavilySearchResults } from "./tavily-search-results";
 import { TopicAnalysisResult } from "./topic-analysis-result";
 import { WriteFileDiff } from "./write-file-diff";
@@ -227,24 +235,8 @@ function renderToolCall(
     return renderFileUpdateNotification(tc, idx, result);
   }
 
-  // Check if this is a read_file tool call - don't show it here, it will be shown in ToolResult
-  if (isReadFileTool(tc.name)) {
-    return null; // Will be displayed by ReadFileDisplay in ToolResult
-  }
-
-  // Check if this is a subagent task - don't show it here, it will be shown in respective containers
-  if (
-    isSubagentTask(tc.name, args, "research-agent") ||
-    isSubagentTask(tc.name, args, "critique-agent") ||
-    isSubagentTask(tc.name, args, "planner-agent")
-  ) {
-    return null; // Will be displayed by respective agent containers
-  }
-
-  // Check if this is an exa_search tool call - don't show it here, it will be shown in ToolResult with ExaSearchResults
-  if (tc.name === "exa_search") {
-    return null; // Will be displayed by ExaSearchResults in ToolResult
-  }
+  // TEMPORARY: Show all tool calls without filtering to verify hypothesis
+  // Previously filtered: read_file, subagent tasks, exa_search
 
   // Default tool call display
   return renderDefaultToolCall(tc, idx);
@@ -267,34 +259,28 @@ export function ToolCalls({
       []
   );
 
+  // Pre-filter to get only non-null rendered tool calls
+  // This prevents empty cards from appearing when renderToolCall returns null
+  // (e.g., for read_file, subagent tasks that are rendered elsewhere)
+  const renderedCalls = toolCalls
+    .map((tc, idx) => {
+      const result = tc.id ? resultsMap.get(tc.id) : undefined;
+      const element = renderToolCall(tc, idx, result);
+      return { element, key: `${tc.name}-${tc.id}-${idx}` };
+    })
+    .filter((item) => item.element !== null);
+
+  // Return null if no tool calls render anything (prevents empty container divs)
+  if (renderedCalls.length === 0) {
+    return null;
+  }
+
   return (
     <div className="mx-auto grid max-w-3xl grid-rows-[1fr_auto] gap-2">
-      {toolCalls.map((tc, idx) => {
-        const result = tc.id ? resultsMap.get(tc.id) : undefined;
-        return renderToolCall(tc, idx, result);
-      })}
+      {renderedCalls.map(({ element, key }) => (
+        <div key={key}>{element}</div>
+      ))}
     </div>
-  );
-}
-
-function isToolError(content: string): boolean {
-  return (
-    content.toLowerCase().includes("error:") ||
-    content.toLowerCase().includes("failed") ||
-    content.toLowerCase().includes("string not found") ||
-    content.toLowerCase().includes("permission denied") ||
-    content.toLowerCase().includes("timeout") ||
-    content.toLowerCase().includes("timed out")
-  );
-}
-
-function isFileOperation(name: string | undefined): boolean {
-  return (
-    name === "write_file" ||
-    name === "edit_file" ||
-    name === "Write" ||
-    name === "Edit" ||
-    name === "MultiEdit"
   );
 }
 
@@ -327,6 +313,11 @@ function renderSpecializedToolResult(
   message: ToolMessage,
   parsedContent: unknown
 ): React.ReactElement | null {
+  // Check if this is a write_todos tool result - hide it since the TodoList is shown in the tool call
+  if (message.name === "write_todos" || message.name === "TodoWrite") {
+    return null; // TodoList is already rendered from the tool call, no need to show the result
+  }
+
   // Check if this is an ls tool result
   if (message.name === "ls") {
     // ls returns an array of file paths
@@ -387,6 +378,188 @@ function renderSpecializedToolResult(
             estimatedImprovement?: string;
           }
         }
+      />
+    );
+  }
+
+  // Check if this is a compose_plan tool result
+  if (message.name === "compose_plan") {
+    return (
+      <ComposePlanResult
+        result={
+          parsedContent as {
+            event: "compose_plan_completed";
+            topic: string;
+            metadataPath: string;
+            paths: {
+              analysis: string;
+              scope: string;
+              plan: string;
+              optimized: string;
+              metadata: string;
+            };
+            summary: {
+              topicType: string;
+              complexity: string;
+              estimatedTimeframe: string;
+              taskCount: number;
+              milestoneCount: number;
+            };
+            artifacts: {
+              analysisPath: string;
+              scopePath: string;
+              planPath: string;
+            };
+            timestamp: string;
+          }
+        }
+      />
+    );
+  }
+
+  // Check if this is a save_research_findings tool result
+  if (message.name === "save_research_findings") {
+    return (
+      <SaveResearchFindingsResult
+        result={
+          parsedContent as {
+            topic: string;
+            findings: Array<{
+              fact: string;
+              source: string;
+              category: string;
+            }>;
+            sources: string[];
+            categories: string[];
+            totalFindings: number;
+            metadata?: Record<string, unknown>;
+            timestamp: string;
+          }
+        }
+      />
+    );
+  }
+
+  // Check if this is a fact_check tool result
+  if (message.name === "fact_check") {
+    return (
+      <FactCheckResult
+        result={
+          parsedContent as {
+            claim: string;
+            context?: string;
+            verified: boolean;
+            sources: Array<{
+              title: string;
+              url: string;
+              snippet: string;
+            }>;
+            synthesizedAnswer?: string | null;
+            confidence: "high" | "medium" | "low";
+            notes: string;
+            timestamp: string;
+          }
+        }
+      />
+    );
+  }
+
+  // Check if this is an evaluate_structure tool result
+  if (message.name === "evaluate_structure") {
+    return (
+      <EvaluateStructureResult
+        result={
+          parsedContent as {
+            reportPath: string;
+            sectionCount: number;
+            mainSections: number;
+            headingHierarchy: Array<{
+              level: number;
+              title: string;
+              line: number;
+            }>;
+            paragraphCount: number;
+            wordCount: number;
+            paragraphsPerSection: Record<string, number>;
+            issues: Array<{
+              issue: string;
+              severity: string;
+              location: string;
+            }>;
+            recommendations: string[];
+            score: number;
+            timestamp: string;
+          }
+        }
+      />
+    );
+  }
+
+  // Check if this is an analyze_completeness tool result
+  if (message.name === "analyze_completeness") {
+    return (
+      <AnalyzeCompletenessResult
+        result={
+          parsedContent as {
+            reportPath: string;
+            questionPath: string;
+            coverageScore: number;
+            coveredAreas: string[];
+            missingAreas: string[];
+            recommendations: string[];
+            questionAlignment: string;
+            expectedAreaCount: number;
+            coveredAreaCount: number;
+            timestamp: string;
+          }
+        }
+      />
+    );
+  }
+
+  // Check if this is a save_critique tool result
+  if (message.name === "save_critique") {
+    return (
+      <SaveCritiqueResult
+        result={
+          parsedContent as {
+            category: string;
+            findings: Array<{
+              issue: string;
+              severity: "critical" | "high" | "medium" | "low";
+              suggestion: string;
+              location: string;
+            }>;
+            totalIssues: number;
+            severityBreakdown: {
+              critical: number;
+              high: number;
+              medium: number;
+              low: number;
+            };
+            metadata?: Record<string, unknown>;
+            timestamp: string;
+          }
+        }
+      />
+    );
+  }
+
+  // Check if this is a task tool result (subagent delegation)
+  if (message.name === "task") {
+    // Extract subagent type from parsed content
+    const taskResult = parsedContent as {
+      subagentType?: string;
+      content?: string;
+      result?: string;
+    };
+    const subagentType = taskResult.subagentType || "generic-agent";
+    const content = taskResult.content || taskResult.result || (typeof parsedContent === "string" ? parsedContent : "");
+
+    return (
+      <SubagentTaskResult
+        content={content}
+        subagentType={subagentType}
       />
     );
   }
@@ -518,6 +691,14 @@ function renderJsonTable(
     items = Object.entries(parsedContent as Record<string, unknown>);
   }
 
+  if (items.length === 0) {
+    return (
+      <div className="px-4 py-3 text-muted-foreground text-sm">
+        No structured values were returned for this tool call.
+      </div>
+    );
+  }
+
   return (
     <table className="min-w-full divide-y divide-gray-200">
       <tbody className="divide-y divide-gray-200">
@@ -573,6 +754,7 @@ function DefaultContentRenderer({
   const contentStr = isJsonContent
     ? JSON.stringify(parsedContent, null, 2)
     : String(message.content);
+  const hasContent = contentStr.trim().length > 0;
   const contentLines = contentStr.split("\n");
   const maxLines = 4;
   const maxChars = 500;
@@ -628,8 +810,12 @@ function DefaultContentRenderer({
               >
                 {isJsonContent ? (
                   renderJsonTable(parsedContent, isExpanded, maxArrayItems)
-                ) : (
+                ) : hasContent ? (
                   <code className="block text-sm">{displayedContent}</code>
+                ) : (
+                  <p className="text-muted-foreground text-sm">
+                    This tool call finished without returning text output.
+                  </p>
                 )}
               </motion.div>
             </AnimatePresence>
@@ -698,24 +884,20 @@ export function ToolResult({
     return renderReadFileResult(message, toolCall);
   }
 
-  // Check if this is a file operation - hide all file operation results (shown in WriteFileDiff)
-  if (message.name && isFileOperation(message.name)) {
-    return null; // Will be displayed by WriteFileDiff
-  }
+  // Check for errors in tool results
+  const contentStr = typeof message.content === "string" ? message.content : "";
+  const isError =
+    message.status === "error" ||
+    contentStr.toLowerCase().includes("error:") ||
+    contentStr.toLowerCase().startsWith("error ");
 
-  // Check if this is an error result
-  if (typeof message.content === "string" && isToolError(message.content)) {
-    return null; // Filter out tool errors - don't display them as they're internal mistakes
-  }
-
-  // Check if this is a subagent task result - hide it since respective containers handle it
-  if (
-    toolCall?.name === "task" &&
-    (toolCall?.args?.subagent_type === "research-agent" ||
-      toolCall?.args?.subagent_type === "critique-agent" ||
-      toolCall?.args?.subagent_type === "planner-agent")
-  ) {
-    return null; // Will be displayed by respective agent containers
+  if (isError && message.name) {
+    return (
+      <ErrorResult
+        toolName={message.name}
+        errorMessage={contentStr}
+      />
+    );
   }
 
   // Check for specialized tool results
@@ -730,12 +912,15 @@ export function ToolResult({
     return searchResult;
   }
 
-  // Default content display
-  return (
-    <DefaultContentRenderer
-      isJsonContent={isJsonContent}
-      message={message}
-      parsedContent={parsedContent}
-    />
-  );
+  // Default content display - COMMENTED OUT to force custom components for all tools
+  // return (
+  //   <DefaultContentRenderer
+  //     isJsonContent={isJsonContent}
+  //     message={message}
+  //     parsedContent={parsedContent}
+  //   />
+  // );
+
+  // Return null if no custom renderer found - this forces all tools to have custom UI
+  return null;
 }

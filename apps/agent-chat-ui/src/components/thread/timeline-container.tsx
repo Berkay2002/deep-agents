@@ -21,12 +21,14 @@ type TimelineContainerProps = {
   activities: TimelineActivity[];
   className?: string;
   isLast?: boolean;
+  onActivitySelect?: (activityId: string) => void;
 };
 
 export function TimelineContainer({
   activities,
   className,
   isLast = false,
+  onActivitySelect,
 }: TimelineContainerProps) {
   if (activities.length === 0) {
     return null;
@@ -55,6 +57,11 @@ export function TimelineContainer({
             <TimelineItem
               isLast={isLast && index === activities.length - 1}
               isMini={activity.isMini}
+              onSelect={
+                onActivitySelect
+                  ? () => onActivitySelect(activity.id)
+                  : undefined
+              }
               status={activity.status}
               timestamp={activity.timestamp}
               title={activity.title}

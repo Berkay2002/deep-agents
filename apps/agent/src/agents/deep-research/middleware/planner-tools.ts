@@ -7,12 +7,25 @@
  * - Comprehensive system prompts and tool descriptions
  * - Automatic state propagation to parent agents
  */
+/** biome-ignore-all lint/suspicious/noConsole: <Need console logs for debugging> */
+/** biome-ignore-all lint/style/noUnusedTemplateLiteral: <Need template literals for multi-line strings> */
+/** biome-ignore-all lint/correctness/noUnusedImports: <Its fine> */
+/** biome-ignore-all lint/complexity/noExcessiveCognitiveComplexity: <It's okay to have some complexity here> */
 
+// biome-ignore assist/source/organizeImports: <It's okay to keep imports as is for clarity>
 import { ToolMessage } from "@langchain/core/messages";
 import { type ToolRunnableConfig, tool } from "@langchain/core/tools";
 import { Command, getCurrentTaskInput } from "@langchain/langgraph";
 import { z } from "zod";
 import type { DeepAgentStateType } from "../../../deep-agent-experimental/types.js";
+import { plannerPaths } from "./planner-paths.js";
+import type { PlannerPaths } from "./planner-paths.js";
+import {
+  buildInitialPlan,
+  type InitialPlanDocument,
+  type ScopeDocument,
+  type TopicAnalysisDocument,
+} from "./plan-writer.js";
 
 /**
  * System prompt for planner tools - similar to TODO_SYSTEM_PROMPT and FS_SYSTEM_PROMPT
@@ -168,19 +181,78 @@ const COMPLEX_WORD_COUNT = 10;
 const HIGH_COMPLEXITY_THRESHOLD = 3;
 const LOW_COMPLEXITY_THRESHOLD = 1;
 const DEFAULT_HOURS_FALLBACK = 3;
-const MAX_FILENAME_LENGTH = 50;
 
-/**
- * Helper function to sanitize topic for filesystem paths
- */
-function sanitizeTopicForPath(topic: string): string {
-  return topic
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .substring(0, MAX_FILENAME_LENGTH); // Limit length for reasonable filenames
+type FileStore = Record<string, string>;
+
+type PlannerArtifactMetadata = {
+  analysis?: {
+    path: string;
+    timestamp: string;
+  };
+  scope?: {
+    path: string;
+    timestamp: string;
+    taskCount: number;
+    milestoneCount: number;
+  };
+  plan?: {
+    path: string;
+    timestamp: string;
+    taskCount: number;
+    milestoneCount: number;
+  };
+  optimized?: {
+    path: string;
+    timestamp: string;
+    identifiedGaps: number;
+    suggestions: number;
+    estimatedImprovement: string;
+  };
+};
+
+type PlannerMetadata = {
+  topic: string;
+  context?: string;
+  originalSlug: string;
+  truncated: boolean;
+  warnings: string[];
+  paths: PlannerPaths;
+  timestamps: {
+    analysis?: string;
+    scope?: string;
+    plan?: string;
+    optimized?: string;
+  };
+  artifacts: PlannerArtifactMetadata;
+};
+
+function uniqueWarnings(...lists: Array<string[] | undefined>): string[] {
+  const merged = lists.flatMap((list) => list ?? []);
+  return Array.from(new Set(merged));
 }
 
+function getPlannerMetadata(
+  files: FileStore,
+  paths: PlannerPaths
+): PlannerMetadata | null {
+  const raw = files[paths.metadata];
+  if (typeof raw !== "string") {
+    return null;
+  }
+  try {
+    return JSON.parse(raw) as PlannerMetadata;
+  } catch {
+    return null;
+  }
+}
+
+function writePlannerMetadata(
+  files: FileStore,
+  paths: PlannerPaths,
+  metadata: PlannerMetadata
+) {
+  files[paths.metadata] = JSON.stringify(metadata, null, 2);
+}
 /**
  * Helper function to estimate research areas based on topic type
  */
@@ -283,122 +355,301 @@ function getEstimatedTimeframe(complexity: string, topicType: string): string {
   return `${timeHours} hours`;
 }
 
+const TOPIC_TYPE_KEYWORDS: Record<string, string[]> = {
+  technical: [
+    "api",
+    "code",
+    "programming",
+    "software",
+    "technology",
+    "framework",
+    "library",
+    "algorithm",
+  ],
+  academic: [
+    "research",
+    "study",
+    "analysis",
+    "theory",
+    "methodology",
+    "academic",
+    "scholarly",
+  ],
+  business: [
+    "business",
+    "market",
+    "industry",
+    "company",
+    "strategy",
+    "revenue",
+    "profit",
+  ],
+  creative: ["design", "art", "creative", "aesthetic", "style", "visual"],
+};
+
+const HIGH_PRIORITY_AREA_MAP: Record<string, string[]> = {
+  technical: ["technical documentation", "implementation examples"],
+  academic: ["literature review", "methodology analysis"],
+  business: ["market analysis", "competitive landscape"],
+  creative: ["design principles", "current trends"],
+  general: ["background research", "overview"],
+};
+
+const BASE_SCOPE_TIMEFRAMES: Record<string, Record<string, number>> = {
+  low: { technical: 2, academic: 3, business: 2, creative: 2, general: 2 },
+  medium: {
+    technical: 4,
+    academic: 6,
+    business: 4,
+    creative: 3,
+    general: 3,
+  },
+  high: {
+    technical: 8,
+    academic: 10,
+    business: 6,
+    creative: 5,
+    general: 5,
+  },
+};
+
+function determineAreaPriority(
+  area: string,
+  topicType: string
+): "high" | "medium" | "low" {
+  return HIGH_PRIORITY_AREA_MAP[topicType]?.includes(area) ? "high" : "medium";
+}
+
+function detectTopicType(topicLower: string): string {
+  const {
+    technical = [],
+    academic = [],
+    business = [],
+    creative = [],
+  } = TOPIC_TYPE_KEYWORDS;
+
+  if (technical.some((keyword) => topicLower.includes(keyword))) {
+    return "technical";
+  }
+  if (academic.some((keyword) => topicLower.includes(keyword))) {
+    return "academic";
+  }
+  if (business.some((keyword) => topicLower.includes(keyword))) {
+    return "business";
+  }
+  if (creative.some((keyword) => topicLower.includes(keyword))) {
+    return "creative";
+  }
+  return "general";
+}
+
+function determineTopicComplexity(topic: string): "low" | "medium" | "high" {
+  const complexityIndicators = [
+    topic.length > LONG_TOPIC_THRESHOLD,
+    topic.includes("compare"),
+    topic.includes("analysis"),
+    topic.includes("comprehensive"),
+    topic.split(" ").length > COMPLEX_WORD_COUNT,
+  ];
+
+  const complexityScore = complexityIndicators.filter(Boolean).length;
+  if (complexityScore >= HIGH_COMPLEXITY_THRESHOLD) {
+    return "high";
+  }
+  if (complexityScore <= LOW_COMPLEXITY_THRESHOLD) {
+    return "low";
+  }
+  return "medium";
+}
+
+function createTopicAnalysisDocument(params: {
+  topic: string;
+  context?: string;
+}): TopicAnalysisDocument {
+  const { topic, context } = params;
+  const topicLower = `${topic.toLowerCase()} ${(context ?? "").toLowerCase()}`;
+  const topicType = detectTopicType(topicLower);
+  const complexity = determineTopicComplexity(topic);
+  return {
+    topic,
+    context: context ?? "",
+    topicType,
+    complexity,
+    researchAreas: estimateResearchAreas(topic, topicType),
+    suggestedSources: getSuggestedSources(topicType),
+    estimatedTimeframe: getEstimatedTimeframe(complexity, topicType),
+    timestamp: new Date().toISOString(),
+  };
+}
+
+function createScopeDocument(params: {
+  topic: string;
+  topicType: string;
+  complexity: string;
+  researchAreas: string[];
+}): ScopeDocument {
+  const { topic, topicType, complexity, researchAreas } = params;
+  const complexityTimeframes =
+    BASE_SCOPE_TIMEFRAMES[complexity] ?? BASE_SCOPE_TIMEFRAMES.medium;
+  const estimatedHours =
+    complexityTimeframes?.[topicType] ??
+    complexityTimeframes?.general ??
+    DEFAULT_HOURS_FALLBACK;
+
+  const taskAreas =
+    researchAreas.length > 0 ? researchAreas : ["General research overview"];
+  const perTaskEstimate = Math.ceil(
+    (estimatedHours ?? 0) / Math.max(taskAreas.length, 1)
+  );
+  const researchTasks = taskAreas.map((area) => ({
+    area,
+    estimatedTime: perTaskEstimate,
+    priority: determineAreaPriority(area, topicType),
+  }));
+
+  const suggestedMilestones = researchTasks.map(
+    (task, index) => `Milestone ${index + 1}: Complete research on ${task.area}`
+  );
+
+  const resourceRequirements = {
+    searchTools:
+      topicType === "technical"
+        ? ["technical docs", "code repositories"]
+        : ["general web search"],
+    timeAllocation: complexity === "high" ? "extended" : "standard",
+    expertiseLevel: topicType === "academic" ? "expert" : "intermediate",
+  };
+
+  return {
+    topic,
+    estimatedTotalHours: estimatedHours ?? 0,
+    researchTasks,
+    suggestedMilestones,
+    resourceRequirements,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+function updatePlannerMetadata(params: {
+  files: FileStore;
+  paths: PlannerPaths;
+  analysis: TopicAnalysisDocument;
+  scope: ScopeDocument;
+  plan: InitialPlanDocument;
+}): void {
+  const { files, paths, analysis, scope, plan } = params;
+  const existingMetadata = getPlannerMetadata(files, paths);
+  const truncationWarnings = paths.truncated
+    ? [`Slug truncated to ${paths.slug} (max ${paths.maxLength} characters)`]
+    : [];
+  const contextValue = existingMetadata?.context ?? analysis.context ?? "";
+
+  const metadata: PlannerMetadata = {
+    topic: analysis.topic,
+    context: contextValue,
+    originalSlug: paths.originalSlug,
+    truncated: paths.truncated,
+    warnings: uniqueWarnings(existingMetadata?.warnings, truncationWarnings),
+    paths,
+    timestamps: {
+      ...existingMetadata?.timestamps,
+      analysis: existingMetadata?.timestamps?.analysis ?? analysis.timestamp,
+      scope: scope.timestamp,
+      plan: plan.metadata.createdAt,
+    },
+    artifacts: {
+      ...existingMetadata?.artifacts,
+      analysis:
+        existingMetadata?.artifacts?.analysis ??
+        ({
+          path: paths.analysis,
+          timestamp: analysis.timestamp,
+        } satisfies PlannerArtifactMetadata["analysis"]),
+      scope: {
+        path: paths.scope,
+        timestamp: scope.timestamp,
+        taskCount: scope.researchTasks.length,
+        milestoneCount: scope.suggestedMilestones.length,
+      },
+      plan: {
+        path: paths.plan,
+        timestamp: plan.metadata.createdAt,
+        taskCount: plan.tasks.length,
+        milestoneCount: plan.milestones.length,
+      },
+    },
+  };
+
+  writePlannerMetadata(files, paths, metadata);
+}
+
 /**
  * Topic analysis tool - analyzes research topic and stores in mock filesystem
  */
 export const topicAnalysis = tool(
   (input: unknown, config: ToolRunnableConfig) => {
     const state = getCurrentTaskInput<DeepAgentStateType>();
-    const files = { ...(state.files || {}) };
+    const files: FileStore = { ...(state.files || {}) };
     const { topic, context } = input as { topic: string; context?: string };
 
-    // Topic classification logic
-    const technicalKeywords = [
-      "api",
-      "code",
-      "programming",
-      "software",
-      "technology",
-      "framework",
-      "library",
-      "algorithm",
-    ];
-    const academicKeywords = [
-      "research",
-      "study",
-      "analysis",
-      "theory",
-      "methodology",
-      "academic",
-      "scholarly",
-    ];
-    const businessKeywords = [
-      "business",
-      "market",
-      "industry",
-      "company",
-      "strategy",
-      "revenue",
-      "profit",
-    ];
-    const creativeKeywords = [
-      "design",
-      "art",
-      "creative",
-      "aesthetic",
-      "style",
-      "visual",
-    ];
+    const analysisResult = createTopicAnalysisDocument({ topic, context });
 
-    const topicLower = `${topic.toLowerCase()} ${(context || "").toLowerCase()}`;
+    const paths = plannerPaths(topic);
+    files[paths.analysis] = JSON.stringify(analysisResult, null, 2);
 
-    let topicType = "general";
-    let complexity = "medium";
+    const existingMetadata = getPlannerMetadata(files, paths);
+    const contextValue =
+      analysisResult.context && analysisResult.context.trim().length > 0
+        ? analysisResult.context
+        : existingMetadata?.context;
+    const truncationWarnings = paths.truncated
+      ? [`Slug truncated to ${paths.slug} (max ${paths.maxLength} characters)`]
+      : [];
 
-    // Determine topic type
-    if (technicalKeywords.some((keyword) => topicLower.includes(keyword))) {
-      topicType = "technical";
-    } else if (
-      academicKeywords.some((keyword) => topicLower.includes(keyword))
-    ) {
-      topicType = "academic";
-    } else if (
-      businessKeywords.some((keyword) => topicLower.includes(keyword))
-    ) {
-      topicType = "business";
-    } else if (
-      creativeKeywords.some((keyword) => topicLower.includes(keyword))
-    ) {
-      topicType = "creative";
-    }
-
-    // Estimate complexity based on various factors
-    const complexityIndicators = [
-      topic.length > LONG_TOPIC_THRESHOLD,
-      topic.includes("compare"),
-      topic.includes("analysis"),
-      topic.includes("comprehensive"),
-      topic.split(" ").length > COMPLEX_WORD_COUNT,
-    ];
-
-    const complexityScore = complexityIndicators.filter(Boolean).length;
-    if (complexityScore >= HIGH_COMPLEXITY_THRESHOLD) {
-      complexity = "high";
-    } else if (complexityScore <= LOW_COMPLEXITY_THRESHOLD) {
-      complexity = "low";
-    }
-
-    // Generate analysis result
-    const analysisResult = {
+    const metadata: PlannerMetadata = {
       topic,
-      context: context || "",
-      topicType,
-      complexity,
-      researchAreas: estimateResearchAreas(topic, topicType),
-      suggestedSources: getSuggestedSources(topicType),
-      estimatedTimeframe: getEstimatedTimeframe(complexity, topicType),
-      timestamp: new Date().toISOString(),
+      context: contextValue,
+      originalSlug: paths.originalSlug,
+      truncated: paths.truncated,
+      warnings: uniqueWarnings(existingMetadata?.warnings, truncationWarnings),
+      paths,
+      timestamps: {
+        ...existingMetadata?.timestamps,
+        analysis: analysisResult.timestamp,
+      },
+      artifacts: {
+        ...existingMetadata?.artifacts,
+        analysis: {
+          path: paths.analysis,
+          timestamp: analysisResult.timestamp,
+        },
+      },
     };
+    writePlannerMetadata(files, paths, metadata);
 
-    // Store in mock filesystem
-    const sanitizedTopic = sanitizeTopicForPath(topic);
-    const filePath = `/research/plans/${sanitizedTopic}_analysis.json`;
-    files[filePath] = JSON.stringify(analysisResult, null, 2);
+    const payload = {
+      event: "topic_analysis_saved" as const,
+      topic,
+      path: paths.analysis,
+      metadataPath: paths.metadata,
+      paths,
+      summary: {
+        topicType: analysisResult.topicType,
+        complexity: analysisResult.complexity,
+        estimatedTimeframe: analysisResult.estimatedTimeframe,
+        researchAreas: analysisResult.researchAreas,
+        suggestedSources: analysisResult.suggestedSources,
+        context: analysisResult.context,
+      },
+      timestamp: analysisResult.timestamp,
+    };
 
     return new Command({
       update: {
         files,
         messages: [
           new ToolMessage({
-            content: `Topic analysis completed and saved to ${filePath}
-
-Analysis Summary:
-- Topic Type: ${topicType}
-- Complexity: ${complexity}
-- Estimated Timeframe: ${getEstimatedTimeframe(complexity, topicType)}
-- Research Areas: ${analysisResult.researchAreas.join(", ")}
-
-Use read_file to access the full analysis: read_file({ filePath: "${filePath}" })`,
+            content: JSON.stringify(payload, null, 2),
             // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
             tool_call_id: config.toolCall?.id as string,
           }),
@@ -425,7 +676,7 @@ Use read_file to access the full analysis: read_file({ filePath: "${filePath}" }
 export const scopeEstimation = tool(
   (input: unknown, config: ToolRunnableConfig) => {
     const state = getCurrentTaskInput<DeepAgentStateType>();
-    const files = { ...(state.files || {}) };
+    const files: FileStore = { ...(state.files || {}) };
     const { topic, topicType, complexity, researchAreas } = input as {
       topic: string;
       topicType: string;
@@ -433,98 +684,98 @@ export const scopeEstimation = tool(
       researchAreas: string[];
     };
 
-    // Estimate research scope based on topic characteristics
-    const baseTimeframes: Record<string, Record<string, number>> = {
-      low: { technical: 2, academic: 3, business: 2, creative: 2, general: 2 },
-      medium: {
-        technical: 4,
-        academic: 6,
-        business: 4,
-        creative: 3,
-        general: 3,
-      },
-      high: {
-        technical: 8,
-        academic: 10,
-        business: 6,
-        creative: 5,
-        general: 5,
-      },
-    };
+    const scopeResult = createScopeDocument({
+      topic,
+      topicType,
+      complexity,
+      researchAreas,
+    });
 
-    const complexityTimeframes =
-      baseTimeframes[complexity] ?? baseTimeframes.medium;
-    const estimatedHours =
-      complexityTimeframes?.[topicType] ??
-      complexityTimeframes?.general ??
-      DEFAULT_HOURS_FALLBACK;
+    const paths = plannerPaths(topic);
+    const analysisContent = files[paths.analysis];
 
-    // Helper function to get priority
-    function getPriority(
-      area: string,
-      type: string
-    ): "high" | "medium" | "low" {
-      const highPriorityAreas: Record<string, string[]> = {
-        technical: ["technical documentation", "implementation examples"],
-        academic: ["literature review", "methodology analysis"],
-        business: ["market analysis", "competitive landscape"],
-        creative: ["design principles", "current trends"],
-        general: ["background research", "overview"],
+    let analysisDocument: TopicAnalysisDocument;
+    if (analysisContent !== undefined) {
+      try {
+        analysisDocument = JSON.parse(analysisContent) as TopicAnalysisDocument;
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Unknown analysis parse error";
+        throw new Error(
+          `Failed to parse topic analysis at ${paths.analysis}: ${message}`
+        );
+      }
+    } else {
+      const timestamp = new Date().toISOString();
+      analysisDocument = {
+        topic,
+        context: "",
+        topicType,
+        complexity,
+        researchAreas,
+        suggestedSources: getSuggestedSources(topicType),
+        estimatedTimeframe: getEstimatedTimeframe(complexity, topicType),
+        timestamp,
       };
-
-      return highPriorityAreas[type]?.includes(area) ? "high" : "medium";
+      files[paths.analysis] = JSON.stringify(analysisDocument, null, 2);
     }
 
-    // Generate research tasks
-    const researchTasks = researchAreas.map((area) => ({
-      area,
-      estimatedTime: Math.ceil((estimatedHours ?? 0) / researchAreas.length),
-      priority: getPriority(area, topicType),
-    }));
+    files[paths.scope] = JSON.stringify(scopeResult, null, 2);
 
-    // Generate milestones
-    const suggestedMilestones = researchTasks.map(
-      (task, index) =>
-        `Milestone ${index + 1}: Complete research on ${task.area}`
-    );
+    const initialPlan = buildInitialPlan({
+      paths,
+      analysis: analysisDocument,
+      scope: scopeResult,
+    });
+    files[paths.plan] = JSON.stringify(initialPlan, null, 2);
 
-    // Determine resource requirements
-    const resourceRequirements = {
-      searchTools:
-        topicType === "technical"
-          ? ["technical docs", "code repositories"]
-          : ["general web search"],
-      timeAllocation: complexity === "high" ? "extended" : "standard",
-      expertiseLevel: topicType === "academic" ? "expert" : "intermediate",
-    };
+    updatePlannerMetadata({
+      files,
+      paths,
+      analysis: analysisDocument,
+      scope: scopeResult,
+      plan: initialPlan,
+    });
 
-    const scopeResult = {
+    const scopePayload = {
+      event: "scope_estimation_saved" as const,
       topic,
-      estimatedTotalHours: estimatedHours ?? 0,
-      researchTasks,
-      suggestedMilestones,
-      resourceRequirements,
-      timestamp: new Date().toISOString(),
+      path: paths.scope,
+      metadataPath: paths.metadata,
+      paths,
+      summary: {
+        estimatedTotalHours: scopeResult.estimatedTotalHours,
+        taskCount: scopeResult.researchTasks.length,
+        milestoneCount: scopeResult.suggestedMilestones.length,
+      },
+      timestamp: scopeResult.timestamp,
     };
 
-    // Store in mock filesystem
-    const sanitizedTopic = sanitizeTopicForPath(topic);
-    const filePath = `/research/plans/${sanitizedTopic}_scope.json`;
-    files[filePath] = JSON.stringify(scopeResult, null, 2);
+    const planPayload = {
+      event: "initial_plan_written" as const,
+      topic,
+      path: paths.plan,
+      metadataPath: paths.metadata,
+      paths,
+      taskCount: initialPlan.tasks.length,
+      milestoneCount: initialPlan.milestones.length,
+      workflow: initialPlan.workflow,
+      metadata: initialPlan.metadata,
+    };
 
     return new Command({
       update: {
         files,
         messages: [
           new ToolMessage({
-            content: `Scope estimation completed and saved to ${filePath}
-
-Scope Summary:
-- Estimated Total Hours: ${estimatedHours ?? 0}
-- Research Tasks: ${researchTasks.length} tasks
-- Milestones: ${suggestedMilestones.length}
-
-Use read_file to access the full scope: read_file({ filePath: "${filePath}" })`,
+            content: JSON.stringify(scopePayload, null, 2),
+            // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
+            tool_call_id: config.toolCall?.id as string,
+          }),
+          new ToolMessage({
+            content: JSON.stringify(planPayload, null, 2),
             // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
             tool_call_id: config.toolCall?.id as string,
           }),
@@ -548,6 +799,104 @@ Use read_file to access the full scope: read_file({ filePath: "${filePath}" })`,
       researchAreas: z
         .array(z.string())
         .describe("Key areas that need research"),
+    }),
+  }
+);
+
+export const composePlan = tool(
+  (input: unknown, config: ToolRunnableConfig) => {
+    const state = getCurrentTaskInput<DeepAgentStateType>();
+    const files: FileStore = { ...(state.files || {}) };
+    const { topic, context } = input as { topic: string; context?: string };
+
+    const paths = plannerPaths(topic);
+    const analysisDocument = createTopicAnalysisDocument({ topic, context });
+    files[paths.analysis] = JSON.stringify(analysisDocument, null, 2);
+
+    const scopeResult = createScopeDocument({
+      topic,
+      topicType: analysisDocument.topicType,
+      complexity: analysisDocument.complexity,
+      researchAreas: analysisDocument.researchAreas,
+    });
+    files[paths.scope] = JSON.stringify(scopeResult, null, 2);
+
+    const initialPlan = buildInitialPlan({
+      paths,
+      analysis: analysisDocument,
+      scope: scopeResult,
+    });
+    files[paths.plan] = JSON.stringify(initialPlan, null, 2);
+
+    updatePlannerMetadata({
+      files,
+      paths,
+      analysis: analysisDocument,
+      scope: scopeResult,
+      plan: initialPlan,
+    });
+
+    // Debug logging to trace file creation
+    console.log(
+      `[compose_plan] Creating planner artifacts for topic: "${topic}"`
+    );
+    console.log(`[compose_plan] Files created:`, {
+      analysis: paths.analysis,
+      scope: paths.scope,
+      plan: paths.plan,
+      metadata: paths.metadata,
+    });
+    console.log(
+      `[compose_plan] Total files in state: ${Object.keys(files).length}`
+    );
+    console.log(
+      `[compose_plan] File keys:`,
+      Object.keys(files).filter((k) => k.startsWith("/research/plans/"))
+    );
+
+    const payload = {
+      event: "compose_plan_completed" as const,
+      topic,
+      metadataPath: paths.metadata,
+      paths,
+      summary: {
+        topicType: analysisDocument.topicType,
+        complexity: analysisDocument.complexity,
+        estimatedTimeframe: analysisDocument.estimatedTimeframe,
+        taskCount: scopeResult.researchTasks.length,
+        milestoneCount: scopeResult.suggestedMilestones.length,
+      },
+      artifacts: {
+        analysisPath: paths.analysis,
+        scopePath: paths.scope,
+        planPath: paths.plan,
+      },
+      timestamp: initialPlan.metadata.createdAt,
+    };
+
+    return new Command({
+      update: {
+        files,
+        messages: [
+          new ToolMessage({
+            content: JSON.stringify(payload, null, 2),
+            // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
+            tool_call_id: config.toolCall?.id as string,
+          }),
+        ],
+      },
+    });
+  },
+  {
+    name: "compose_plan",
+    description:
+      "Generate topic analysis, scope estimation, and initial research plan in a single step.",
+    schema: z.object({
+      topic: z.string().describe("The research topic to analyze and plan"),
+      context: z
+        .string()
+        .optional()
+        .describe("Additional context about the research request"),
     }),
   }
 );
@@ -652,7 +1001,7 @@ function calculateImprovement(
 export const planOptimization = tool(
   (input: unknown, config: ToolRunnableConfig) => {
     const state = getCurrentTaskInput<DeepAgentStateType>();
-    const files = { ...(state.files || {}) };
+    const files: FileStore = { ...(state.files || {}) };
     const {
       topic,
       currentPlan,
@@ -704,23 +1053,57 @@ export const planOptimization = tool(
     };
 
     // Store in mock filesystem
-    const sanitizedTopic = sanitizeTopicForPath(topic);
-    const filePath = `/research/plans/${sanitizedTopic}_plan_optimized.json`;
-    files[filePath] = JSON.stringify(optimizationResult, null, 2);
+    const paths = plannerPaths(topic);
+    files[paths.optimized] = JSON.stringify(optimizationResult, null, 2);
+
+    const existingMetadata = getPlannerMetadata(files, paths);
+    const truncationWarnings = paths.truncated
+      ? [`Slug truncated to ${paths.slug} (max ${paths.maxLength} characters)`]
+      : [];
+    const metadata: PlannerMetadata = {
+      topic: existingMetadata?.topic ?? topic,
+      context: existingMetadata?.context,
+      originalSlug: paths.originalSlug,
+      truncated: paths.truncated,
+      warnings: uniqueWarnings(existingMetadata?.warnings, truncationWarnings),
+      paths,
+      timestamps: {
+        ...existingMetadata?.timestamps,
+        optimized: optimizationResult.timestamp,
+      },
+      artifacts: {
+        ...existingMetadata?.artifacts,
+        optimized: {
+          path: paths.optimized,
+          timestamp: optimizationResult.timestamp,
+          identifiedGaps: gaps.length,
+          suggestions: suggestions.length,
+          estimatedImprovement,
+        },
+      },
+    };
+    writePlannerMetadata(files, paths, metadata);
+
+    const payload = {
+      event: "plan_optimized" as const,
+      topic,
+      path: paths.optimized,
+      metadataPath: paths.metadata,
+      paths,
+      summary: {
+        identifiedGaps: gaps.length,
+        suggestions: suggestions.length,
+        estimatedImprovement,
+      },
+      timestamp: optimizationResult.timestamp,
+    };
 
     return new Command({
       update: {
         files,
         messages: [
           new ToolMessage({
-            content: `Plan optimization completed and saved to ${filePath}
-
-Optimization Summary:
-- Identified Gaps: ${gaps.length}
-- Suggestions: ${suggestions.length}
-- Improvement: ${estimatedImprovement}
-
-Use read_file to access the full optimized plan: read_file({ filePath: "${filePath}" })`,
+            content: JSON.stringify(payload, null, 2),
             // biome-ignore lint/style/useNamingConvention: tool_call_id is required by ToolMessage interface
             tool_call_id: config.toolCall?.id as string,
           }),
@@ -754,7 +1137,12 @@ Use read_file to access the full optimized plan: read_file({ filePath: "${filePa
 /**
  * Planner tools collection
  */
-export const plannerTools = [topicAnalysis, scopeEstimation, planOptimization];
+export const plannerTools = [
+  composePlan,
+  topicAnalysis,
+  scopeEstimation,
+  planOptimization,
+];
 
 /**
  * Message modifier for adding planner system prompts

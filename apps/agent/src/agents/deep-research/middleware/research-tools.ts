@@ -59,13 +59,15 @@ These research tools automatically store results in the mock filesystem, making 
 /**
  * Detailed description for exa_search tool
  */
-export const EXA_SEARCH_DESCRIPTION = `Perform semantic web search using Exa's neural search engine. Returns structured results with highlights, summaries, and optional full text content.
+export const EXA_SEARCH_DESCRIPTION = `Perform semantic web search using Exa's neural search engine. Returns structured results with highlights and summaries. Full text content is disabled by default to prevent state overflow.
 
 **When to Use:**
 - When you need semantic understanding of content (not just keyword matching)
 - For finding research papers, technical documentation, or expert content
 - When looking for high-quality, authoritative sources
 - For discovering related content based on meaning, not just keywords
+
+**Important:** Full text content is disabled by default. Highlights and summaries provide sufficient context for most research tasks. Only set \`includeText: true\` if you specifically need the full page content (note: full text is truncated to 10,000 characters to prevent state overflow).
 
 **Search Types:**
 - \`auto\` (default): Automatically chooses best strategy
@@ -78,7 +80,7 @@ Stores search results in \`/research/searches/{sanitized_query}_exa.json\` with:
 - \`timestamp\`: When search was performed
 - \`searchType\`: "exa"
 - \`cached\`: false (set to true on subsequent reads)
-- \`results\`: Array of search results with titles, URLs, highlights, summaries, full text
+- \`results\`: Array of search results with titles, URLs, highlights, summaries (full text only if \`includeText: true\`)
 
 **Usage Pattern:**
 1. Call \`exa_search\` with your query
@@ -86,19 +88,24 @@ Stores search results in \`/research/searches/{sanitized_query}_exa.json\` with:
 3. Use \`read_file\` to re-read results: \`read_file({ filePath: "/research/searches/{query}_exa.json" })\`
 4. Extract findings and use \`save_research_findings\` to persist structured data
 
-**Example:**
+**Example (Basic - Recommended):**
 \`\`\`
 exa_search({
   query: "LangGraph agent architectures",
-  numResults: 10,
-  includeText: true,
-  includeHighlights: true
+  numResults: 10
 })
 → Stores: /research/searches/langgraph_agent_architectures_exa.json
-→ Returns: Summary with result count and file path
+→ Returns: Results with highlights and summaries (no full text to keep state size small)
+\`\`\`
 
-read_file({ filePath: "/research/searches/langgraph_agent_architectures_exa.json" })
-→ Returns: Full cached search results
+**Example (With Full Text - Use Sparingly):**
+\`\`\`
+exa_search({
+  query: "specific technical documentation",
+  numResults: 5,
+  includeText: true  // Only when you need full page content
+})
+→ Returns: Results with full text (truncated to 10k chars each to prevent overflow)
 \`\`\`
 
 The search results persist across agent turns and are accessible to all agents in the hierarchy.`;
@@ -304,12 +311,32 @@ export const exaSearch = tool(
       }
     );
 
-    // Prepare user-facing message
+    // Prepare user-facing message with enhanced error diagnostics
     const resultCount = searchResult.results.length;
     const hasError = !!searchResult.error;
-    const messageContent = hasError
-      ? `Exa search encountered an issue: ${searchResult.error}\n\nSearch results cached to ${filePath}\nYou can still read cached results with: read_file({ filePath: "${filePath}" })`
-      : `Exa search completed: Found ${resultCount} results for "${args.query}"\n\nResults cached to ${filePath}\nUse read_file to access full results: read_file({ filePath: "${filePath}" })`;
+
+    let messageContent: string;
+    if (hasError) {
+      const errorMessage = searchResult.error || "Unknown error";
+
+      // Provide specific guidance based on error type
+      let errorGuidance = "";
+      if (errorMessage.includes("EXA_API_KEY is not configured")) {
+        errorGuidance = "\n\nAction Required: Configure EXA_API_KEY in your .env file to enable Exa search.";
+      } else if (errorMessage.includes("timeout") || errorMessage.includes("timed out")) {
+        errorGuidance = "\n\nSuggestion: Try a more specific or simplified query. The search may have timed out due to query complexity.";
+      } else if (errorMessage.includes("rate limit") || errorMessage.includes("429")) {
+        errorGuidance = "\n\nSuggestion: Wait a moment before retrying. Exa API rate limit reached.";
+      } else if (errorMessage.includes("authentication") || errorMessage.includes("unauthorized") || errorMessage.includes("401")) {
+        errorGuidance = "\n\nAction Required: Verify your EXA_API_KEY is valid. Authentication failed.";
+      } else {
+        errorGuidance = "\n\nSuggestion: Try simplifying your query or use tavily_search as an alternative.";
+      }
+
+      messageContent = `Exa search encountered an issue: ${errorMessage}${errorGuidance}\n\nSearch results (with error details) cached to ${filePath}\n\nIMPORTANT: Before reporting this as a limitation, try:\n1. Simplifying your query (use fewer keywords, more focused terms)\n2. Breaking the query into smaller, more specific searches\n3. Using tavily_search as an alternative for this particular query\n\nYou can read cached error details with: read_file({ filePath: "${filePath}" })`;
+    } else {
+      messageContent = `Exa search completed: Found ${resultCount} results for "${args.query}"\n\nResults cached to ${filePath}\nUse read_file to access full results: read_file({ filePath: "${filePath}" })`;
+    }
 
     return new Command({
       update: {

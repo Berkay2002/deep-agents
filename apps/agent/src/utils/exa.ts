@@ -29,6 +29,7 @@ const MAX_RESULTS = 100;
 const DEFAULT_HIGHLIGHT_SENTENCES = 4;
 const MAX_SUBPAGES = 8;
 const MAX_SNIPPET_LENGTH = 500;
+const MAX_TEXT_LENGTH = 10_000; // Maximum characters for full text to prevent state overflow
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 export const exaSearchArgsSchema = z.object({
@@ -49,8 +50,8 @@ export const exaSearchArgsSchema = z.object({
   includeText: z
     .boolean()
     .optional()
-    .default(true)
-    .describe("Whether to include full text content"),
+    .default(false)
+    .describe("Whether to include full text content (disabled by default to prevent state overflow)"),
   includeHighlights: z
     .boolean()
     .optional()
@@ -103,12 +104,17 @@ export const exaSearchArgsSchema = z.object({
     .describe("End date for crawled content (YYYY-MM-DD)"),
 });
 
-const exaHighlightSchema = z
-  .object({
-    snippet: z.string().optional().nullable(),
-    source: z.string().optional().nullable(),
-  })
-  .passthrough();
+// Exa API sometimes returns highlights as strings instead of objects
+// Handle both formats to prevent schema validation errors
+const exaHighlightSchema = z.union([
+  z.string(), // Simple string highlight
+  z
+    .object({
+      snippet: z.string().optional().nullable(),
+      source: z.string().optional().nullable(),
+    })
+    .passthrough(), // Structured highlight object
+]);
 
 const exaSubpageSchema = z
   .object({
@@ -145,12 +151,15 @@ export type ExaSearchResponse = z.infer<typeof exaSearchResponseSchema>;
 export type ExaSearchResult = ExaSearchResponse["results"][number];
 export type ExaSearchSubpage = NonNullable<ExaSearchResult["subpages"]>[number];
 
+export type ExaSearchNormalizedHighlight = {
+  snippet?: string | null;
+  source?: string | null;
+};
+
 export type ExaSearchNormalizedSubpage = {
   title?: string | null;
   url: string;
-  highlights: ExaSearchSubpage["highlights"] extends Array<infer T>
-    ? T[]
-    : unknown[];
+  highlights: ExaSearchNormalizedHighlight[];
   summary?: string | null;
   fullText?: string | null;
 };
@@ -160,9 +169,7 @@ export type ExaSearchNormalizedResult = {
   url: string;
   author?: string | null;
   publishedDate?: string | null;
-  highlights: ExaSearchResult["highlights"] extends Array<infer T>
-    ? T[]
-    : unknown[];
+  highlights: ExaSearchNormalizedHighlight[];
   summary?: string | null;
   fullText?: string | null;
   snippet?: string | null;
@@ -244,18 +251,39 @@ function buildSearchOptions(
   );
 }
 
+/**
+ * Normalize highlight - handle both string and object formats from Exa API
+ */
+function normalizeHighlight(
+  highlight: string | { snippet?: string | null; source?: string | null }
+): ExaSearchNormalizedHighlight {
+  if (typeof highlight === "string") {
+    return { snippet: highlight, source: null };
+  }
+  return {
+    snippet: highlight.snippet ?? null,
+    source: highlight.source ?? null,
+  };
+}
+
 function normalizeResults(
   results: ExaSearchResult[],
   includeText: boolean
 ): ExaSearchNormalizedResult[] {
   return results.map((result) => {
+    // Helper to truncate text if needed
+    const truncateText = (text: string | null | undefined): string | null | undefined => {
+      if (!text || typeof text !== "string") return text;
+      if (text.length <= MAX_TEXT_LENGTH) return text;
+      return `${text.slice(0, MAX_TEXT_LENGTH)}... [truncated - original length: ${text.length} chars]`;
+    };
+
     const normalizedSubpages = result.subpages?.map((subpage) => ({
       title: subpage.title ?? undefined,
       url: subpage.url,
-      highlights: (subpage.highlights ??
-        []) as ExaSearchNormalizedSubpage["highlights"],
+      highlights: (subpage.highlights ?? []).map(normalizeHighlight),
       summary: subpage.summary ?? undefined,
-      fullText: includeText ? (subpage.text ?? null) : undefined,
+      fullText: includeText ? truncateText(subpage.text ?? null) : undefined,
     }));
 
     let snippet: string | null | undefined = result.text ?? null;
@@ -268,10 +296,9 @@ function normalizeResults(
       url: result.url,
       author: result.author ?? undefined,
       publishedDate: result.publishedDate ?? undefined,
-      highlights: (result.highlights ??
-        []) as ExaSearchNormalizedResult["highlights"],
+      highlights: (result.highlights ?? []).map(normalizeHighlight),
       summary: result.summary ?? undefined,
-      fullText: includeText ? (result.text ?? null) : undefined,
+      fullText: includeText ? truncateText(result.text ?? null) : undefined,
       snippet,
       subpages: normalizedSubpages,
     };
@@ -306,9 +333,13 @@ export async function performExaSearch(
   const args = exaSearchArgsSchema.parse(rawArgs);
   const { query } = args;
 
+  // Log search initiation for diagnostics
+  console.log(`[Exa Search] Initiating search for query: "${query}"`);
+
   if (!process.env.EXA_API_KEY) {
     const errorMsg =
       "EXA_API_KEY is not configured. Exa search is unavailable.";
+    console.error("[Exa Search] CONFIGURATION ERROR: EXA_API_KEY not found in environment");
     return {
       error: errorMsg,
       query,
@@ -323,6 +354,8 @@ export async function performExaSearch(
     const exa = new Exa(exaApiKey);
     const searchOptions = buildSearchOptions(args);
 
+    console.log(`[Exa Search] Search options:`, JSON.stringify(searchOptions, null, 2));
+
     const rawResult = await withRetry(
       () => exa.searchAndContents(query, searchOptions),
       { timeoutMs }
@@ -334,6 +367,8 @@ export async function performExaSearch(
       args.includeText
     );
 
+    console.log(`[Exa Search] SUCCESS: Found ${normalizedResults.length} results for query: "${query}"`);
+
     return {
       query,
       results: normalizedResults,
@@ -344,6 +379,14 @@ export async function performExaSearch(
 
     const classified = classifyError(err, query, timeoutMs, toolName);
     const userMessage = formatErrorForUser(classified);
+
+    // Enhanced error logging for diagnostics
+    console.error(`[Exa Search] FAILED for query: "${query}"`);
+    console.error(`[Exa Search] Error type: ${classified.constructor.name}`);
+    console.error(`[Exa Search] Error message: ${err.message}`);
+    if (err.stack) {
+      console.error(`[Exa Search] Stack trace:`, err.stack);
+    }
 
     return {
       query,

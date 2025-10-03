@@ -5,6 +5,36 @@ import { critiqueTools } from "./middleware/critique-tools.js";
 import { plannerTools } from "./middleware/planner-tools.js";
 import { researchTools } from "./middleware/research-tools.js";
 
+const RESERVED_TOOL_NAMES = new Set([
+  "ls",
+  "read_file",
+  "write_file",
+  "edit_file",
+  "write_todos",
+  "task",
+]);
+
+function sanitizeLoadedTools(tools: LoadedTool[]): LoadedTool[] {
+  const seenNames = new Set<string>();
+  const filtered: LoadedTool[] = [];
+
+  for (const tool of tools) {
+    const name = tool.name ?? "";
+    if (name !== "" && RESERVED_TOOL_NAMES.has(name)) {
+      continue;
+    }
+    if (name !== "") {
+      if (seenNames.has(name)) {
+        continue;
+      }
+      seenNames.add(name);
+    }
+    filtered.push(tool);
+  }
+
+  return filtered;
+}
+
 export type LoadedTool = StructuredTool;
 
 /**
@@ -35,7 +65,7 @@ export async function loadResearchTools(): Promise<LoadedTool[]> {
   const mcpTools = await loadMcpTools();
   tools.push(...mcpTools);
 
-  return tools;
+  return sanitizeLoadedTools(tools);
 }
 
 /*

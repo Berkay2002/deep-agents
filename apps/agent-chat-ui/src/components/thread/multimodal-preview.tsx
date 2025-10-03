@@ -1,8 +1,8 @@
-import type { Base64ContentBlock } from "@/types";
 import { File, X } from "lucide-react";
 import Image from "next/image";
 import type React from "react";
 import { cn } from "@/lib/utils";
+import type { Base64ContentBlock } from "@/types";
 
 export type MultimodalPreviewProps = {
   block: Base64ContentBlock;

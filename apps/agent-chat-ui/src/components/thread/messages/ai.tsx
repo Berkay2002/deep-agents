@@ -3,7 +3,7 @@ import { parsePartialJson } from "@langchain/core/output_parsers";
 import type { AIMessage, Checkpoint, Message } from "@langchain/langgraph-sdk";
 import { LoadExternalComponent } from "@langchain/langgraph-sdk/react-ui";
 import { parseAsBoolean, useQueryState } from "nuqs";
-import { Fragment } from "react/jsx-runtime";
+import { Fragment, memo, useMemo } from "react";
 import { isAgentInboxInterruptSchema } from "@/lib/agent-inbox-interrupt";
 import { cn } from "@/lib/utils";
 import { useStreamContext } from "@/providers/Stream";
@@ -14,8 +14,10 @@ import { getContentString } from "../utils";
 import { GenericInterruptView } from "./generic-interrupt";
 import { BranchSwitcher, CommandBar } from "./shared";
 import { ToolCalls, ToolResult } from "./tool-calls";
+import { SubagentTaskResult } from "./subagent-result";
 
-function CustomComponent({
+// Memoized custom component to prevent re-renders
+const CustomComponent = memo(function CustomComponent({
   message,
   thread,
 }: {
@@ -24,13 +26,17 @@ function CustomComponent({
 }) {
   const artifact = useArtifact();
   const { values } = useStreamContext();
-  const customComponents = values.ui?.filter(
-    (ui) => ui.metadata?.message_id === message.id
+
+  // Memoize the filtered components to prevent re-filtering on every render
+  const customComponents = useMemo(
+    () => values.ui?.filter((ui) => ui.metadata?.message_id === message.id),
+    [values.ui, message.id]
   );
 
   if (!customComponents?.length) {
     return null;
   }
+
   return (
     <Fragment key={message.id}>
       {customComponents.map((customComponent) => (
@@ -43,7 +49,7 @@ function CustomComponent({
       ))}
     </Fragment>
   );
-}
+});
 
 function parseAnthropicStreamedToolCalls(
   content: MessageContentComplex[]
@@ -137,49 +143,57 @@ function getToolResults(
   });
 }
 
-function shouldHideToolResult(message: Message | undefined): boolean {
-  if (!message || message.type !== "tool") {
-    return false;
+function getToolContent(
+  message: Message | undefined,
+  fallback: string
+): string {
+  if (!message) {
+    return fallback;
   }
 
-  // Hide tool results for TodoWrite since TodoList component already shows this
-  const isTodoWriteResult =
-    message.name === "TodoWrite" || message.name === "write_todos";
+  if (typeof message.content === "string") {
+    return message.content;
+  }
 
-  // Also hide tool results that contain todo list updates in the content
-  const isTodoListContentResult =
-    typeof message.content === "string" &&
-    message.content.includes("Updated todo list to");
+  if (Array.isArray(message.content)) {
+    return fallback;
+  }
 
-  // Hide sub-agent responses (research-agent, critique-agent) since they are intermediate results
-  // The main agent synthesizes these into the final report, so users shouldn't see raw sub-agent output
-  const isSubAgentResult =
-    message.name === "research-agent" ||
-    message.name === "critique-agent" ||
-    message.name === "task"; // "task" is the generic name for sub-agent calls
+  if (message.content && typeof message.content === "object") {
+    try {
+      return JSON.stringify(message.content, null, 2);
+    } catch {
+      return fallback;
+    }
+  }
 
-  // Hide file operation results since they're shown in WriteFileDiff component
-  const isFileOperationResult =
-    message.name === "write_file" ||
-    message.name === "edit_file" ||
-    message.name === "Write" ||
-    message.name === "Edit" ||
-    message.name === "MultiEdit";
+  return fallback;
+}
 
-  // Also hide file operation results based on content
-  const isFileOperationContentResult =
-    typeof message.content === "string" &&
-    (message.content.startsWith("Updated file ") ||
-      message.content.startsWith("Created file ") ||
-      message.content.startsWith("Edited file "));
+const KNOWN_SUBAGENTS = new Set([
+  "research-agent",
+  "critique-agent",
+  "planner-agent",
+]);
 
-  return (
-    isTodoWriteResult ||
-    isTodoListContentResult ||
-    isSubAgentResult ||
-    isFileOperationResult ||
-    isFileOperationContentResult
-  );
+function inferSubagentTypeFromContent(content: string): string | undefined {
+  if (/^RESEARCH FINDINGS:/im.test(content)) {
+    return "research-agent";
+  }
+  if (/^CRITIQUE (ANALYSIS )?SUMMARY:/im.test(content) || /^CRITIQUE OF REPORT:/im.test(content)) {
+    return "critique-agent";
+  }
+  if (/^RESEARCH PLAN SUMMARY:/im.test(content) || /^PLANNING ARTIFACTS CREATED:/im.test(content)) {
+    return "planner-agent";
+  }
+  return undefined;
+}
+
+function shouldHideToolResult(
+  _message: Message | undefined,
+  _subagentType?: string
+): boolean {
+  return false;
 }
 
 function hasTodoListToolCalls(message: Message | undefined): boolean {
@@ -250,6 +264,26 @@ function useMessageState(message: Message | undefined) {
   const meta = message ? thread.getMessagesMetadata(message) : undefined;
   const threadInterrupt = thread.interrupt;
 
+  const correspondingToolCall = getCorrespondingToolCall(message, thread);
+  const rawToolArgs =
+    (correspondingToolCall?.args as Record<string, unknown> | undefined) ??
+    undefined;
+  const messageName =
+    message && "name" in message
+      ? (message as Message & { name?: string }).name
+      : undefined;
+  const subagentType =
+    (rawToolArgs && typeof rawToolArgs["subagentType"] === "string"
+      ? (rawToolArgs["subagentType"] as string)
+      : undefined) ??
+    (rawToolArgs && typeof rawToolArgs["subagent_type"] === "string"
+      ? (rawToolArgs["subagent_type"] as string)
+      : undefined) ??
+    (typeof messageName === "string" &&
+    (messageName === "research-agent" || messageName === "critique-agent")
+      ? messageName
+      : undefined);
+
   const toolResults = getToolResults(message, thread);
   const parentCheckpoint = meta?.firstSeenState?.parent_checkpoint;
   const anthropicStreamedToolCalls = Array.isArray(content)
@@ -268,6 +302,7 @@ function useMessageState(message: Message | undefined) {
     );
   const hasAnthropicToolCalls = !!anthropicStreamedToolCalls?.length;
   const isToolResult = message?.type === "tool";
+  const toolContent = getToolContent(message, contentString);
 
   return {
     content,
@@ -285,6 +320,10 @@ function useMessageState(message: Message | undefined) {
     toolCallsHaveContents,
     hasAnthropicToolCalls,
     isToolResult,
+    correspondingToolCall,
+    subagentType,
+    toolContent,
+    messageName,
   };
 }
 
@@ -292,10 +331,12 @@ export function AssistantMessage({
   message,
   isLoading,
   handleRegenerate,
+  alignment = "left",
 }: {
   message: Message | undefined;
   isLoading: boolean;
   handleRegenerate: (parentCheckpoint: Checkpoint | null | undefined) => void;
+  alignment?: "left" | "right";
 }) {
   const {
     contentString,
@@ -312,32 +353,62 @@ export function AssistantMessage({
     toolCallsHaveContents,
     hasAnthropicToolCalls,
     isToolResult,
+    correspondingToolCall,
+    subagentType,
+    toolContent,
+    messageName,
   } = useMessageState(message);
+  const isRightAligned = alignment === "right";
+  const containerAlignment = isRightAligned ? "ml-auto" : "mr-auto";
+
+  const normalizedMessageName = messageName?.toLowerCase();
+  const fallbackSubagentName =
+    normalizedMessageName && KNOWN_SUBAGENTS.has(normalizedMessageName)
+      ? messageName
+      : undefined;
+  const derivedSubagentType =
+    subagentType ??
+    fallbackSubagentName ??
+    inferSubagentTypeFromContent(toolContent);
 
   if (isToolResult && hideToolCalls) {
     return null;
   }
 
-  if (shouldHideToolResult(message)) {
+  if (shouldHideToolResult(message, derivedSubagentType)) {
     return null;
   }
 
-  const correspondingToolCall = getCorrespondingToolCall(message, thread);
   const shouldHideButtons = shouldHideCommandButtons(
     message,
     contentString,
     isLastMessage
   );
 
+  const shouldRenderSubagentResult = Boolean(
+    isToolResult && derivedSubagentType
+  );
+
+  const renderedToolResult = shouldRenderSubagentResult
+    ? (
+        <SubagentTaskResult
+          content={toolContent}
+          subagentType={derivedSubagentType as string}
+        />
+      )
+    : (
+        <ToolResult
+          message={message as Message & { type: "tool" }}
+          toolCall={correspondingToolCall}
+        />
+      );
+
   return (
-    <div className="group mr-auto flex items-start gap-2">
+    <div className={cn("group flex items-start gap-2", containerAlignment)}>
       <div className="flex flex-col gap-2">
         {isToolResult ? (
           <>
-            <ToolResult
-              message={message as Message & { type: "tool" }}
-              toolCall={correspondingToolCall}
-            />
+            {renderedToolResult}
             <Interrupt
               hasNoAiOrToolMessages={hasNoAiOrToolMessages}
               interruptValue={threadInterrupt?.value}
@@ -396,7 +467,8 @@ export function AssistantMessage({
             {!hasTodoListToolCalls(message) && (
               <div
                 className={cn(
-                  "mr-auto flex items-center gap-2 transition-opacity",
+                  "flex items-center gap-2 transition-opacity",
+                  isRightAligned ? "ml-auto" : "mr-auto",
                   "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
                 )}
               >

@@ -71,15 +71,32 @@ export const writeTodos = tool(
  * Equivalent to Python's ls function
  */
 export const ls = tool(
-  () => {
+  (input: unknown) => {
     const state = getCurrentTaskInput<DeepAgentStateType>();
     const files = state.files || {};
-    return Object.keys(files);
+    const typedInput =
+      typeof input === "object" && input !== null
+        ? (input as { pathPrefix?: string })
+        : {};
+    const { pathPrefix } = typedInput;
+    const filePaths = Object.keys(files);
+
+    if (!pathPrefix || pathPrefix === "") {
+      return filePaths;
+    }
+
+    return filePaths.filter((filePath) => filePath.startsWith(pathPrefix));
   },
   {
     name: "ls",
-    description: "List all files in the mock filesystem",
-    schema: z.object({}),
+    description:
+      "List files in the mock filesystem, optionally filtering by a path prefix",
+    schema: z.object({
+      pathPrefix: z
+        .string()
+        .optional()
+        .describe("Optional prefix to filter returned file paths"),
+    }),
   }
 );
 

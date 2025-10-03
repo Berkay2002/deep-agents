@@ -4,6 +4,8 @@
  * Adapts the experimental middleware functionality to work with createReactAgent
  * by providing tools and message modifiers that can be used with the stable API.
  */
+/** biome-ignore-all lint/style/noUnusedTemplateLiteral: <Need template literals for multi-line strings> */
+/** biome-ignore-all lint/suspicious/noConsole: <Need console logs for debugging> */
 
 import { ToolMessage } from "@langchain/core/messages";
 import { type ToolRunnableConfig, tool } from "@langchain/core/tools";
@@ -128,15 +130,32 @@ export const writeTodos = tool(
  * List files tool - returns list of files from state.files
  */
 export const ls = tool(
-  () => {
+  (input: unknown) => {
     const state = getCurrentTaskInput<DeepAgentStateType>();
     const files = state.files || {};
-    return Object.keys(files);
+    const typedInput =
+      typeof input === "object" && input !== null
+        ? (input as { pathPrefix?: string })
+        : {};
+    const { pathPrefix } = typedInput;
+    const filePaths = Object.keys(files);
+
+    if (!pathPrefix || pathPrefix === "") {
+      return filePaths;
+    }
+
+    return filePaths.filter((filePath) => filePath.startsWith(pathPrefix));
   },
   {
     name: "ls",
-    description: "List all files in the mock filesystem",
-    schema: z.object({}),
+    description:
+      "List files in the mock filesystem, optionally filtering by a path prefix",
+    schema: z.object({
+      pathPrefix: z
+        .string()
+        .optional()
+        .describe("Optional prefix to filter returned file paths"),
+    }),
   }
 );
 
@@ -153,7 +172,21 @@ export const readFile = tool(
       limit = DEFAULT_LIMIT,
     } = input as ReadFileInput;
 
+    // Debug logging for file access
+    console.log(`[read_file] Attempting to read: "${filePath}"`);
+    console.log(
+      `[read_file] Total files in state: ${Object.keys(mockFilesystem).length}`
+    );
+    if (filePath.startsWith("/research/plans/")) {
+      const plannerFiles = Object.keys(mockFilesystem).filter((k) =>
+        k.startsWith("/research/plans/")
+      );
+      console.log(`[read_file] Available planner files:`, plannerFiles);
+    }
+
     if (!(filePath in mockFilesystem)) {
+      console.error(`[read_file] File NOT FOUND: "${filePath}"`);
+      console.error(`[read_file] All file keys:`, Object.keys(mockFilesystem));
       return `Error: File '${filePath}' not found`;
     }
 

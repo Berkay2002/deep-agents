@@ -86,6 +86,7 @@ export default function useInterruptedActions({
       thread.submit(
         {},
         {
+          config: { recursion_limit: 100 },
           command: {
             resume: response,
           },
@@ -253,6 +254,7 @@ export default function useInterruptedActions({
       thread.submit(
         {},
         {
+          config: { recursion_limit: 100 },
           command: {
             goto: END,
           },

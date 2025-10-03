@@ -2,6 +2,7 @@ import type { Thread } from "@langchain/langgraph-sdk";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { parseAsBoolean, useQueryState } from "nuqs";
 import { useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -13,6 +14,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useThreads } from "@/providers/Thread";
 import { getContentString } from "../utils";
+
+const THREAD_HISTORY_SKELETON_KEYS = Array.from(
+  { length: 30 },
+  (_, index) => `thread-history-skeleton-${index}`
+);
 
 function ThreadList({
   threads,
@@ -63,8 +69,8 @@ function ThreadList({
 function ThreadHistoryLoading() {
   return (
     <div className="flex h-full w-full flex-col items-start justify-start gap-2 overflow-y-scroll [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5">
-      {Array.from({ length: 30 }).map((_, i) => (
-        <Skeleton className="h-10 w-[280px]" key={`skeleton-${i}`} />
+      {THREAD_HISTORY_SKELETON_KEYS.map((key) => (
+        <Skeleton className="h-10 w-[280px]" key={key} />
       ))}
     </div>
   );
@@ -87,7 +93,13 @@ export default function ThreadHistory() {
     setThreadsLoading(true);
     getThreads()
       .then(setThreads)
-      .catch(console.error)
+      .catch((error) => {
+        const description =
+          error instanceof Error
+            ? error.message
+            : "Unable to load thread history.";
+        toast.error("Failed to load threads", { description });
+      })
       .finally(() => setThreadsLoading(false));
   }, [getThreads, setThreads, setThreadsLoading]);
 

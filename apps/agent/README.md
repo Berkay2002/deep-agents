@@ -1,35 +1,75 @@
 # Deep Agent Runtime
 
-The `apps/agent` workspace packages the LangGraph runtime that powers Deep Agents. It exposes a Gemini-backed research agent, orchestrates specialist subagents, and wires in shared tooling so deployments can answer long-form prompts with optional file context.
+The `apps/agent` workspace hosts the LangGraph runtime that powers Deep Agents. It ships a Gemini-backed research agent, wires specialist subagents, and layers in tool adapters so long-form research requests can combine planning, browsing, critique, and artifact management.
 
-## Key capabilities
+## What Sets This Agent Apart
+- **Graph-native collaboration**: Planner, researcher, and critic subagents run inside a shared LangGraph state so todos, files, and critiques stay synchronized without extra orchestration glue.
+- **Filesystem-backed memory**: Research artifacts land in a structured virtual filesystem (`/research/plans`, `/research/searches`, `/research/critiques`) with deterministic paths, giving every phase durable context, auditability, and resumability that ordinary chat-bound agents lack.
+- **Deliberate escalation**: The planner enforces artifact gates before research or critique can proceed, preventing runaway browsing loops and ensuring each subagent builds on verified groundwork.
+- **Toolbelt fusion**: Built-in middleware composes Gemini, MCP servers (Copilot, DeepWiki, Sequential Thinking), and HTTP search adapters (Tavily, Exa) with deduping and retry semantics, giving each subagent a curated, typed toolset.
+- **Resilient runtime**: Middleware guards enforce timeouts, classify retryable failures, and offer minimal fallback tools so requests still complete when optional integrations degrade.
+- **Instructional control**: Core prompts live alongside environment-driven overrides, enabling operators to layer domain-specific guidance without forking the runtime.
+- **Proxy-ready contract**: Shared types and auth helpers let the Next.js UI stream the same annotated state the graph uses, making the experience consistent across transports.
 
-- **Deep research workflow** – `src/main.ts` lazily boots the `deepResearchAgent` export for LangGraph, falling back to a minimal agent if advanced tooling fails to load, and normalises uploaded files so the graph can accept attachments from the web UI or SDK clients.
-- **Composable agent core** – `src/deep-agent/agent.ts` builds a ReAct-style LangGraph with shared middleware, task decomposition, and interrupt hooks so that additional agents can reuse the same foundation.
-- **Specialist subagents** – `src/agents/deep-research` declares planner, researcher, and critique subagents that run through the task tool, enabling multi-step plans with automatic tool selection.
-- **Tool orchestration** – `src/utils` provides adapters for Tavily, Exa, and MCP servers. The MCP integration automatically discovers Sequential Thinking, DeepWiki, optional GitHub Copilot, and environment-provided servers with retries and caching.
-- **Configurable prompts and safety** – Default instructions live in `src/agents/deep-research/prompts.ts`, but you can replace them through environment variables without editing source.
+## Architecture Overview
 
-## Directory guide
+### Runtime entrypoints
+- `src/main.ts` lazily boots the Deep Research graph, normalizes uploaded files, and falls back to a minimal toolset if advanced integrations fail.
+- `langgraph.json` declares the exported graph (`deepAgentGraph`) for `langgraph dev`/`langgraph build`.
+- `src/auth.ts` and `src/types/` define the contracts shared with the Next.js proxy.
+
+### Deep Agent Core (experimental)
+- `src/deep-agent-experimental/` preserves parity with the established runtime design while staying compatible with LangGraph's stable `createReactAgent` helper.
+- `agent.ts` merges builtin middleware tools (filesystem, todo management, task routing) with caller-provided tools and instructions, and optionally attaches subagents.
+- `sub-agent.ts` builds the `task` tool: it dispatches to registered subagents, ensures planner artifacts exist, and synchronizes outputs back into the shared state.
+- `middleware/stable.ts` holds the filesystem/todo tools plus message modifiers that teach the model how to use them.
+- `state.ts` defines the annotated LangGraph state channels (`messages`, `todos`, `files`) so tool invocations can update the mock filesystem and todo list exactly the way the runtime expects.
+
+### Deep Research Program
+- `src/agents/deep-research/agent.ts` instantiates the Deep Research agent with low-temperature Gemini, instructions, and the merged toolbelt.
+- `nodes.ts` registers three subagents:
+  - `planner-agent` writes structured plans, todos, and cached path metadata under `/research/plans/`.
+  - `research-agent` executes Tavily/Exa web searches, saves raw findings to `/research/searches/` and `/research/findings/`.
+  - `critique-agent` runs fact-checking and structural critique tools, persisting reviews in `/research/critiques/`.
+- `middleware/*` provides typed tool collections for each subagent (planner, research, critique) and helper utilities such as plan writers and shared path constants.
+- `tools.ts` composes middleware tools with MCP-provided tools, filters reserved names, and deduplicates instances so downstream LangGraph wiring stays stable.
+
+### Tooling & Integrations
+- `src/utils/` contains service adapters and shared runtime helpers:
+  - `tavily.ts` and `exa.ts` wrap external search APIs with retry/backoff (`withRetry`), timeout guards, and typed responses.
+  - `mcp.ts` orchestrates Multi-Server MCP clients, caches tool descriptors per server, and auto-loads Sequential Thinking, DeepWiki, GitHub Copilot (when a PAT is present), and optional env-configured servers.
+  - `errors.ts` standardizes retryable errors, user-facing formatting, and safe tool execution fallbacks.
+  - `runtime-context.ts` exposes request-scoped storage (AsyncLocalStorage) so UI-provided credentials like GitHub PATs reach tool loaders.
+  - `state.ts` offers helpers for manipulating the mock filesystem and todo state when inflight updates are required outside of middleware.
+
+A legacy `src/deep-agent/` directory remains for the previous runtime; new features land in `deep-agent-experimental` and will supersede the legacy stack once stabilized.
+
+## Directory Reference
 
 | Path | Purpose |
 | --- | --- |
-| `src/main.ts` | Entry point exported to LangGraph (`deepAgentGraph`) and file normalisation helpers. |
-| `src/agents/` | Factories, prompts, and subagent definitions. Add new agent families here. |
-| `src/deep-agent/` | Shared agent construction layer (state schema, middleware, interrupt hooks, task tool). |
-| `src/utils/` | Tool clients and error helpers for Tavily, Exa, MCP, and runtime context. |
-| `src/shared/` | Cross-cutting model helpers and TypeScript types for run inputs. |
-| `langgraph.json` | Configuration consumed by `langgraphjs` for dev/build commands. |
+| `src/main.ts` | LangGraph entrypoint, agent bootstrap, file normalization helpers. |
+| `src/agents/` | Agent factories (`deep-research`, `code-assistant` placeholder) and shared prompts/middleware. |
+| `src/deep-agent-experimental/` | Experimental core runtime: agent creation, middleware, state annotations, task tool. |
+| `src/utils/` | Service adapters (Tavily, Exa, MCP), retry/error helpers, runtime context. |
+| `src/mcp/` | MCP client wiring, server config parsing, and type definitions. |
+| `src/shared/` | Model factory (`createAgentModel`), shared types, and request payload helpers. |
+| `src/types/` | Public TypeScript contracts shared with the proxy/web app. |
+| `__tests__` folders | Co-located Vitest suites for middleware, tools, and state reducers. |
+| `dist/` | Build output generated by `npm run build --workspace apps/agent`. |
 
 ## Prerequisites
 
 - Node.js 20+
-- npm 10+ (install dependencies from the monorepo root)
-- Access to the Google Generative AI API (Gemini)
+- npm 10+
+- Gemini access (`GOOGLE_API_KEY` or `GOOGLE_GENAI_API_KEY`)
+- Optional: Tavily, Exa, GitHub Copilot, or custom MCP credentials depending on the tools you enable
 
-## Environment configuration
+Run `npm install` once at the monorepo root to hydrate all workspaces.
 
-Copy the template and populate the required values:
+## Environment Configuration
+
+Copy the example file and populate values before running locally:
 
 ```bash
 cp apps/agent/.env.example apps/agent/.env
@@ -37,31 +77,49 @@ cp apps/agent/.env.example apps/agent/.env
 
 Key variables:
 
-- `GOOGLE_API_KEY` or `GOOGLE_GENAI_API_KEY` – Required Gemini credentials.
-- `GOOGLE_GENAI_MODEL` – Optional override (defaults to `gemini-2.5-flash`).
+- `GOOGLE_API_KEY` / `GOOGLE_GENAI_API_KEY` – Gemini credentials (required).
+- `GOOGLE_GENAI_MODEL` – Override the default `gemini-2.5-flash` model.
 - `TAVILY_API_KEY` – Enables the Tavily search tool.
-- `GITHUB_PAT` – Grants access to the optional GitHub Copilot MCP server (repo + read:org scopes).
-- `DEEP_AGENT_INSTRUCTIONS` – Override the bundled research instructions without code changes.
-- `LANGGRAPH_AUTH_*` – Shared secret, issuer, and audience for LangGraph auth (must align with the proxy app).
+- `EXA_API_KEY` – Enables Exa document retrieval.
+- `GITHUB_PAT` – Unlocks the GitHub Copilot MCP server (repo + read:org scopes recommended).
+- `MCP_*` variables – Configure additional MCP servers loaded by `src/mcp/config.ts`.
+- `DEEP_AGENT_INSTRUCTIONS` – Override bundled research instructions without editing source.
+- `LANGGRAPH_AUTH_*` – Auth settings shared with the proxy UI (issuer, audience, secret).
 
-Sequential Thinking and DeepWiki MCP servers are enabled automatically; additional servers can be defined with the `MCP_*` environment helpers consumed by `src/mcp`.
+## Development & Build Commands
 
-## Development workflow
+From the repository root:
 
-From the repository root after `npm install`:
+- `npm run dev --workspace apps/agent` – Start the LangGraph dev server with hot reload.
+- `npm run typecheck --workspace apps/agent` – Strict TypeScript gate (recommended before commits).
+- `npm run build --workspace apps/agent` – Emit production bundles to `dist/`.
+- `npm run build:server --workspace apps/agent` – Build the LangGraph server bundle declared in `langgraph.json`.
+- `npm run lint --workspace apps/agent` / `npm run format --workspace apps/agent` – Biome linting and formatting checks.
 
-- `npm run dev --workspace apps/agent` – Run the LangGraph development server with live reload.
-- `npm run typecheck --workspace apps/agent` – Verify TypeScript types without emitting files.
-- `npm run build --workspace apps/agent` – Compile to `dist/` for publishing or deployment packaging.
-- `npm run build:server --workspace apps/agent` – Produce the LangGraph server bundle defined in `langgraph.json`.
+## Request Lifecycle
 
-Use `npm run lint --workspace apps/agent` and `npm run format --workspace apps/agent` for quality checks before committing.
+1. Incoming requests flow through `invokeDeepAgent` in `src/main.ts`, which coerces messages/files into LangChain-compatible objects.
+2. `createDeepResearchAgent` provisions the runtime via `createDeepAgent`, attaching middleware tools, subagents, and instruction prompts.
+3. The generated LangGraph agent manages todos/files, dispatches planner/research/critique subagents through the `task` tool, and streams tool results back into state.
+4. Tool invocations leverage `src/utils/*` adapters, which handle retries, rate limits, and MCP connections before returning structured results to the graph.
 
-## Extending the runtime
+## Extending the Runtime
 
-1. **Add tools** – Register new LangChain tools or MCP servers in `src/utils` and include them in the relevant agent factory.
-2. **Create subagents** – Define additional `SubAgent` entries under `src/deep-agent` or `src/agents/<name>/nodes.ts`, then reference them when calling `createDeepAgent`.
-3. **Custom instructions** – Supply `DEEP_AGENT_INSTRUCTIONS` in `.env` or edit the prompt modules for deeper changes.
-4. **Expose new agents** – Implement a factory in `src/agents/<agent>/agent.ts` and export it from `src/agents/index.ts`; the router in `src/main.ts` is designed to select between them once re-enabled.
+- **Introduce new tools**: add the adapter under `src/utils/`, export a typed tool from the relevant middleware module, then aggregate it in `agents/<agent>/tools.ts`.
+- **Add subagents**: author a `SubAgent` definition in `src/agents/<agent>/nodes.ts`, register specialized tools, and update the factory to include the subagent.
+- **Customize prompts**: tweak instruction files in `src/agents/<agent>/prompts.ts` or supply overrides via environment variables.
+- **Support new MCP servers**: declare environment variables consumed by `src/mcp/config.ts`; the loader will attach them (with retries and caching) at startup.
 
-After modifying agent logic or tooling, restart the dev server or rebuild to ensure LangGraph picks up the changes.
+## Testing & Quality
+
+- Unit and integration specs live beside their targets in `__tests__/` directories (Vitest).
+- Run `npm run typecheck --workspace apps/agent` as a minimum quality gate; add Vitest coverage for complex middleware and tool adapters.
+- Prefer adding deterministic fixtures for planner/research tool behavior to keep regression detection simple.
+
+## Troubleshooting
+
+- **MCP startup delays**: `src/utils/mcp.ts` enforces 5s connection timeouts and caches failures; check environment variables or remote availability if tools are missing.
+- **Rate limit or timeout errors**: surface through `errors.ts` helpers—retryable failures are retried automatically, but repeated failures propagate as `DeepAgentError` subclasses.
+- **Missing planner artifacts**: the `task` tool blocks research/critique subagents until planner outputs exist; rerun the planner subagent via the task tool if you see `MissingArtifact` payloads.
+
+The runtime will continue converging on the experimental core; expect incremental migrations from `src/deep-agent/` to `src/deep-agent-experimental/` as new capabilities harden.

@@ -1,7 +1,7 @@
-import type { Base64ContentBlock } from "@/types";
 import type React from "react";
 import { cn } from "@/lib/utils";
-import { MultimodalPreview } from "./MultimodalPreview";
+import type { Base64ContentBlock } from "@/types";
+import { MultimodalPreview } from "./multimodal-preview";
 
 type ContentBlocksPreviewProps = {
   blocks: Base64ContentBlock[];

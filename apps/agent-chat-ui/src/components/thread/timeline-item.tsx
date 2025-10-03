@@ -11,6 +11,7 @@ import {
   Loader2,
   MessageSquare,
   Search,
+  UserRound,
   Users,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -26,7 +27,8 @@ export type TimelineItemType =
   | "planning"
   | "tool-call"
   | "search-result"
-  | "generic";
+  | "generic"
+  | "conversation";
 
 type TimelineItemProps = {
   children: ReactNode;
@@ -37,6 +39,7 @@ type TimelineItemProps = {
   isLast?: boolean;
   className?: string;
   isMini?: boolean;
+  onSelect?: () => void;
 };
 
 function getIconForType(type: TimelineItemType) {
@@ -61,6 +64,8 @@ function getIconForType(type: TimelineItemType) {
       return <GitBranch className={cn(iconClass, "text-gray-600")} />;
     case "search-result":
       return <Search className={cn(iconClass, "text-blue-500")} />;
+    case "conversation":
+      return <UserRound className={cn(iconClass, "text-slate-600")} />;
     default:
       return <Clock className={cn(iconClass, "text-gray-500")} />;
   }
@@ -92,12 +97,22 @@ export function TimelineItem({
   isLast = false,
   className,
   isMini = false,
+  onSelect,
 }: TimelineItemProps) {
   const icon = getIconForType(type);
   const statusColor = getStatusColor(status);
+  const isInteractive = typeof onSelect === "function";
 
-  return (
-    <div className={cn("relative flex gap-4", isMini && "ml-8", className)}>
+  const containerClasses = cn(
+    "relative flex gap-4",
+    isMini && "ml-8",
+    isInteractive &&
+      "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-200 focus-visible:ring-offset-2",
+    className
+  );
+
+  const timelineContent = (
+    <>
       {/* Timeline Line */}
       <div className="flex flex-col items-center">
         {/* Timeline Dot */}
@@ -157,6 +172,20 @@ export function TimelineItem({
           {children}
         </motion.div>
       </div>
-    </div>
+    </>
   );
+
+  if (isInteractive) {
+    return (
+      <button
+        className={containerClasses}
+        onClick={() => onSelect?.()}
+        type="button"
+      >
+        {timelineContent}
+      </button>
+    );
+  }
+
+  return <div className={containerClasses}>{timelineContent}</div>;
 }

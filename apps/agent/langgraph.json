@@ -8,8 +8,5 @@
   "env": ".env",
   "auth": {
     "path": "./dist/auth.js:auth"
-  },
-  "config": {
-    "recursionLimit": 50
   }
 }

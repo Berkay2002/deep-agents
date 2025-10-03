@@ -1,6 +1,6 @@
 import type { Message } from "@langchain/langgraph-sdk";
 import { useState } from "react";
-import { MultimodalPreview } from "@/components/thread/MultimodalPreview";
+import { MultimodalPreview } from "@/components/thread/multimodal-preview";
 import { Textarea } from "@/components/ui/textarea";
 import { isBase64ContentBlock } from "@/lib/multimodal-utils";
 import { cn } from "@/lib/utils";
@@ -17,9 +17,9 @@ function EditableContent({
   setValue: React.Dispatch<React.SetStateAction<string>>;
   onSubmit: () => void;
 }) {
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-      e.preventDefault();
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+      event.preventDefault();
       onSubmit();
     }
   };
@@ -27,7 +27,7 @@ function EditableContent({
   return (
     <Textarea
       className="focus-visible:ring-0"
-      onChange={(e) => setValue(e.target.value)}
+      onChange={(event) => setValue(event.target.value)}
       onKeyDown={handleKeyDown}
       value={value}
     />
@@ -37,9 +37,11 @@ function EditableContent({
 export function HumanMessage({
   message,
   isLoading,
+  alignment = "right",
 }: {
   message: Message;
   isLoading: boolean;
+  alignment?: "left" | "right";
 }) {
   const thread = useStreamContext();
   const meta = thread.getMessagesMetadata(message);
@@ -48,6 +50,7 @@ export function HumanMessage({
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState("");
   const contentString = getContentString(message.content);
+  const isLeftAligned = alignment === "left";
 
   const handleSubmitEdit = () => {
     setIsEditing(false);
@@ -78,7 +81,8 @@ export function HumanMessage({
   return (
     <div
       className={cn(
-        "group ml-auto flex items-center gap-2",
+        "group flex items-center gap-2",
+        isLeftAligned ? "mr-auto" : "ml-auto",
         isEditing && "w-full max-w-xl"
       )}
     >
@@ -91,16 +95,19 @@ export function HumanMessage({
           />
         ) : (
           <div className="flex flex-col gap-2">
-            {/* Render images and files if no text */}
             {Array.isArray(message.content) && message.content.length > 0 && (
-              <div className="flex flex-wrap items-end justify-end gap-2">
+              <div
+                className={cn(
+                  "flex flex-wrap items-end gap-2",
+                  isLeftAligned ? "justify-start" : "justify-end"
+                )}
+              >
                 {message.content.reduce<React.ReactNode[]>((acc, block) => {
                   if (isBase64ContentBlock(block)) {
-                    const uniqueKey = `block-${acc.length}`;
                     acc.push(
                       <MultimodalPreview
                         block={block}
-                        key={uniqueKey}
+                        key={JSON.stringify(block)}
                         size="md"
                       />
                     );
@@ -109,9 +116,13 @@ export function HumanMessage({
                 }, [])}
               </div>
             )}
-            {/* Render text if present, otherwise fallback to file/image name */}
             {contentString ? (
-              <p className="ml-auto w-fit whitespace-pre-wrap rounded-3xl bg-muted px-4 py-2 text-right">
+              <p
+                className={cn(
+                  "w-fit whitespace-pre-wrap rounded-3xl bg-muted px-4 py-2",
+                  isLeftAligned ? "mr-auto text-left" : "ml-auto text-right"
+                )}
+              >
                 {contentString}
               </p>
             ) : null}
@@ -120,7 +131,8 @@ export function HumanMessage({
 
         <div
           className={cn(
-            "ml-auto flex items-center gap-2 transition-opacity",
+            "flex items-center gap-2 transition-opacity",
+            isLeftAligned ? "mr-auto" : "ml-auto",
             "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100",
             isEditing && "opacity-100"
           )}

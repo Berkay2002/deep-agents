@@ -150,17 +150,20 @@ function StateViewRecursive(props: StateViewRecursiveProps) {
 
 function HasContentsEllipsis({ onClick }: { onClick?: () => void }) {
   return (
-    <span
+    <button
+      aria-label="Show value"
       className={cn(
         "rounded-md p-[2px] font-mono text-[10px] leading-3",
-        "bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-800",
-        "cursor-pointer transition-colors ease-in-out",
-        "-translate-y-[2px] inline-block"
+        "bg-gray-50 text-gray-600 transition-colors ease-in-out",
+        "-translate-y-[2px] inline-block cursor-pointer",
+        "hover:bg-gray-100 hover:text-gray-800",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-2"
       )}
       onClick={onClick}
+      type="button"
     >
       {"{...}"}
-    </span>
+    </button>
   );
 }
 
