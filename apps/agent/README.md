@@ -36,11 +36,9 @@ The `apps/agent` workspace hosts the LangGraph runtime that powers Deep Agents. 
 
 ### Tooling & Integrations
 - `src/utils/` contains service adapters and shared runtime helpers:
-  - `tavily.ts` and `exa.ts` wrap external search APIs with retry/backoff (`withRetry`), timeout guards, and typed responses.
+  - `tavily/` and `exa/` wrap external search APIs with retry/backoff (`withRetry`), timeout guards, and typed responses.
   - `mcp.ts` orchestrates Multi-Server MCP clients, caches tool descriptors per server, and auto-loads Sequential Thinking, DeepWiki, GitHub Copilot (when a PAT is present), and optional env-configured servers.
   - `errors.ts` standardizes retryable errors, user-facing formatting, and safe tool execution fallbacks.
-  - `runtime-context.ts` exposes request-scoped storage (AsyncLocalStorage) so UI-provided credentials like GitHub PATs reach tool loaders.
-  - `state.ts` offers helpers for manipulating the mock filesystem and todo state when inflight updates are required outside of middleware.
 
 A legacy `src/deep-agent/` directory remains for the previous runtime; new features land in `deep-agent-experimental` and will supersede the legacy stack once stabilized.
 
@@ -51,7 +49,7 @@ A legacy `src/deep-agent/` directory remains for the previous runtime; new featu
 | `src/main.ts` | LangGraph entrypoint, agent bootstrap, file normalization helpers. |
 | `src/agents/` | Agent factories (`deep-research`, `code-assistant` placeholder) and shared prompts/middleware. |
 | `src/deep-agent-experimental/` | Experimental core runtime: agent creation, middleware, state annotations, task tool. |
-| `src/utils/` | Service adapters (Tavily, Exa, MCP), retry/error helpers, runtime context. |
+| `src/utils/` | Service adapters (Tavily, Exa, MCP) and retry/error helpers. |
 | `src/mcp/` | MCP client wiring, server config parsing, and type definitions. |
 | `src/shared/` | Model factory (`createAgentModel`), shared types, and request payload helpers. |
 | `src/types/` | Public TypeScript contracts shared with the proxy/web app. |

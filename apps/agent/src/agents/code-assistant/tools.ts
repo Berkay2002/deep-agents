@@ -4,7 +4,7 @@ import {
   performTavilySearch,
   type TavilySearchArgs,
   tavilySearchArgsSchema,
-} from "../../utils/tavily.js";
+} from "../../utils/tavily/index.js";
 
 export type LoadedTool = StructuredTool;
 
