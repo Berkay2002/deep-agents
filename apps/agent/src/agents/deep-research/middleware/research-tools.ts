@@ -17,12 +17,12 @@ import {
   type ExaSearchArgs,
   exaSearchArgsSchema,
   performExaSearch,
-} from "../../../utils/exa.js";
+} from "../../../utils/exa/index.js";
 import {
   performTavilySearch,
   type TavilySearchArgs,
   tavilySearchArgsSchema,
-} from "../../../utils/tavily.js";
+} from "../../../utils/tavily/index.js";
 
 /**
  * System prompt for research tools - similar to TODO_SYSTEM_PROMPT and FS_SYSTEM_PROMPT

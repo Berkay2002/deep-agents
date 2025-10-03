@@ -16,7 +16,7 @@ import type { DeepAgentStateType } from "../../../deep-agent-experimental/types.
 import {
   performTavilySearch,
   type TavilySearchArgs,
-} from "../../../utils/tavily.js";
+} from "../../../utils/tavily/index.js";
 
 /**
  * System prompt for critique tools - similar to TODO_SYSTEM_PROMPT and FS_SYSTEM_PROMPT
