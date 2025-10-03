@@ -14,7 +14,7 @@ export type TavilySearchToolError = {
   results: TavilySearchResult[];
   answer?: string | null;
   images?: TavilySearchResponse["images"];
-  followUpQuestions?: TavilySearchResponse["followUpQuestions"];
+  follow_up_questions?: TavilySearchResponse["follow_up_questions"];
   message: string;
   error: string;
 };
