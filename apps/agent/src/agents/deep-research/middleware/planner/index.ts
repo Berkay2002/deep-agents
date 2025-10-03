@@ -17,15 +17,15 @@ import { ToolMessage } from "@langchain/core/messages";
 import { type ToolRunnableConfig, tool } from "@langchain/core/tools";
 import { Command, getCurrentTaskInput } from "@langchain/langgraph";
 import { z } from "zod";
-import type { DeepAgentStateType } from "../../../deep-agent-experimental/types.js";
-import { plannerPaths } from "./planner-paths.js";
-import type { PlannerPaths } from "./planner-paths.js";
+import type { DeepAgentStateType } from "../../../../deep-agent-experimental/types.js";
+import { plannerPaths } from "./paths.js";
+import type { PlannerPaths } from "./paths.js";
 import {
   buildInitialPlan,
   type InitialPlanDocument,
   type ScopeDocument,
   type TopicAnalysisDocument,
-} from "./plan-writer.js";
+} from "./documents.js";
 
 /**
  * System prompt for planner tools - similar to TODO_SYSTEM_PROMPT and FS_SYSTEM_PROMPT

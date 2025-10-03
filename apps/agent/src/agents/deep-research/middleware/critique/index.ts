@@ -12,11 +12,11 @@ import { ToolMessage } from "@langchain/core/messages";
 import { type ToolRunnableConfig, tool } from "@langchain/core/tools";
 import { Command, getCurrentTaskInput } from "@langchain/langgraph";
 import { z } from "zod";
-import type { DeepAgentStateType } from "../../../deep-agent-experimental/types.js";
+import type { DeepAgentStateType } from "../../../../deep-agent-experimental/types.js";
 import {
   performTavilySearch,
   type TavilySearchArgs,
-} from "../../../utils/tavily.js";
+} from "../../../../utils/tavily.js";
 
 /**
  * System prompt for critique tools - similar to TODO_SYSTEM_PROMPT and FS_SYSTEM_PROMPT

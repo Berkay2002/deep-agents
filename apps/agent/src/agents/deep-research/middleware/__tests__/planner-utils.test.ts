@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { ScopeDocument, TopicAnalysisDocument } from "../plan-writer.js";
-import { buildInitialPlan } from "../plan-writer.js";
-import { plannerPaths } from "../planner-paths.js";
+import type { ScopeDocument, TopicAnalysisDocument } from "../planner/documents.js";
+import { buildInitialPlan } from "../planner/documents.js";
+import { plannerPaths } from "../planner/paths.js";
 
 test("plannerPaths normalizes topics and builds canonical paths", () => {
   const result = plannerPaths("NVIDIA Stock");

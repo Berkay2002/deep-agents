@@ -47,7 +47,7 @@ async function createBasicAgent(): Promise<AgentRunnable> {
   );
   const { createAgentModel } = await import("./shared/model.js");
   const { RESEARCH_AGENT_INSTRUCTIONS } = await import(
-    "./agents/deep-research/prompts.js"
+    "./agents/deep-research/prompts/index.js"
   );
 
   const LowTemperature = 0.1; // Low temperature for consistent responses

@@ -4,9 +4,9 @@ import type { ToolRunnableConfig } from "@langchain/core/tools";
 import type {
   ScopeDocument,
   TopicAnalysisDocument,
-} from "../../agents/deep-research/middleware/plan-writer.js";
-import { buildInitialPlan } from "../../agents/deep-research/middleware/plan-writer.js";
-import { plannerPaths } from "../../agents/deep-research/middleware/planner-paths.js";
+} from "../../agents/deep-research/middleware/planner/documents.js";
+import { buildInitialPlan } from "../../agents/deep-research/middleware/planner/documents.js";
+import { plannerPaths } from "../../agents/deep-research/middleware/planner/paths.js";
 import { plannerArtifactUtils } from "../sub-agent.js";
 
 test("planner artifacts registry is populated and validated for downstream agents", () => {

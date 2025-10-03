@@ -1,29 +1,17 @@
 // Deep Research Agent - Expert researcher for in-depth analysis and report generation
 import { createDeepAgent } from "../../deep-agent-experimental/agent.js";
 import { createAgentModel } from "../../shared/model.js";
-import type { AgentConfig, AgentFactory } from "../../shared/types.js";
-import { researchSubAgents } from "./nodes.js";
-import { RESEARCH_AGENT_INSTRUCTIONS } from "./prompts.js";
+import type { AgentFactory } from "../../shared/types.js";
+import {
+  defaultDeepResearchConfig,
+  researchSubAgents,
+} from "./config/index.js";
+import { RESEARCH_AGENT_INSTRUCTIONS } from "./prompts/index.js";
 import { loadResearchTools } from "./tools.js";
-
-const defaultConfig: AgentConfig = {
-  name: "deep-research",
-  description: "Expert researcher for in-depth analysis and report generation",
-  capabilities: [
-    "Web research and analysis",
-    "Report writing and synthesis",
-    "Academic research methodology",
-    "Multi-source information gathering",
-    "Citation and source management",
-    "Comparative analysis",
-    "Topic exploration and breakdown",
-  ],
-  temperature: 0.1,
-};
 
 export const deepResearchAgentFactory: AgentFactory = {
   async create(config = {}) {
-    const mergedConfig = { ...defaultConfig, ...config };
+    const mergedConfig = { ...defaultDeepResearchConfig, ...config };
     const model = createAgentModel(mergedConfig.temperature);
     const tools = await loadResearchTools();
 
@@ -36,7 +24,7 @@ export const deepResearchAgentFactory: AgentFactory = {
   },
 
   getConfig() {
-    return defaultConfig;
+    return defaultDeepResearchConfig;
   },
 };
 

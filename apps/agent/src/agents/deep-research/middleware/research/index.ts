@@ -12,17 +12,17 @@ import { ToolMessage } from "@langchain/core/messages";
 import { type ToolRunnableConfig, tool } from "@langchain/core/tools";
 import { Command, getCurrentTaskInput } from "@langchain/langgraph";
 import { z } from "zod";
-import type { DeepAgentStateType } from "../../../deep-agent-experimental/types.js";
+import type { DeepAgentStateType } from "../../../../deep-agent-experimental/types.js";
 import {
   type ExaSearchArgs,
   exaSearchArgsSchema,
   performExaSearch,
-} from "../../../utils/exa.js";
+} from "../../../../utils/exa.js";
 import {
   performTavilySearch,
   type TavilySearchArgs,
   tavilySearchArgsSchema,
-} from "../../../utils/tavily.js";
+} from "../../../../utils/tavily.js";
 
 /**
  * System prompt for research tools - similar to TODO_SYSTEM_PROMPT and FS_SYSTEM_PROMPT

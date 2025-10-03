@@ -1,4 +1,4 @@
-import type { PlannerPaths } from "./planner-paths.js";
+import type { PlannerPaths } from "./paths.js";
 
 export type TopicAnalysisDocument = {
   topic: string;

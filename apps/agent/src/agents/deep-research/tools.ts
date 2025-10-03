@@ -1,18 +1,10 @@
 // Deep Research Agent specific tools
 import type { StructuredTool } from "@langchain/core/tools";
 import { loadMcpTools } from "../../utils/mcp.js";
-import { critiqueTools } from "./middleware/critique-tools.js";
-import { plannerTools } from "./middleware/planner-tools.js";
-import { researchTools } from "./middleware/research-tools.js";
-
-const RESERVED_TOOL_NAMES = new Set([
-  "ls",
-  "read_file",
-  "write_file",
-  "edit_file",
-  "write_todos",
-  "task",
-]);
+import { critiqueTools } from "./middleware/critique/index.js";
+import { plannerTools } from "./middleware/planner/index.js";
+import { researchTools } from "./middleware/research/index.js";
+import { RESERVED_TOOL_NAMES } from "./middleware/shared/reserved-tools.js";
 
 function sanitizeLoadedTools(tools: LoadedTool[]): LoadedTool[] {
   const seenNames = new Set<string>();
@@ -82,6 +74,6 @@ export async function loadResearchTools(): Promise<LoadedTool[]> {
  * - Follow the same pattern as core deep-agent built-in tools
  *
  * Import them from:
- * - ./middleware/research-tools.ts (exaSearch, tavilySearch, saveResearchFindings)
- * - ./middleware/planner-tools.ts (topicAnalysis, scopeEstimation, planOptimization)
+ * - ./middleware/research/index.ts (exaSearch, tavilySearch, saveResearchFindings)
+ * - ./middleware/planner/index.ts (topicAnalysis, scopeEstimation, planOptimization)
  */
