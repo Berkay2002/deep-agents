@@ -14,8 +14,7 @@ export function normalizeResults(
 
     if (
       !normalized.snippet &&
-      typeof normalized.content === "string" &&
-      normalized.content.length > 0
+      typeof normalized.content === "string"
     ) {
       const content = normalized.content as string;
       normalized.snippet =
